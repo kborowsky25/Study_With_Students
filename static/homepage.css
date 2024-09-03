@@ -1,0 +1,250 @@
+
+* {
+    margin: 0; /* overwriting built-in margins and paddings that browser may have applied */
+    padding: 0;
+    box-sizing: border-box; /* Ensures padding and border are included in the element's total width and height */
+}
+
+a {
+    text-decoration: none; /* Removes the underline */
+}
+
+
+/* We defined navbar to be able to define the properties of the whole navbar (and its children), namely the color and sizing. 
+This allows us to change these properties without changing the child elements' properties (which could have more significant effects on parent elements) */
+
+/* Navigation bar */
+
+.navbar {
+    background: #add8e6; /*could use background-color if we want to be more specific*/ 
+    height: 100px;
+    width: 100%;
+    position: sticky;
+    align-items: center; /*aligns the navbar_container to center, but since is has same dimensions it doesnt really change anything but good practice if we have subcontainers that are smaller and we want to center them along y */
+    top: 0; /* used with position to define position relative to what -- will be sticky 0px from top of parent container (screen in this case) */
+    font-size: 12px;
+    justify-content: center;
+    display: flex;
+    z-index: 1; /* Elements with higher positive z-index values are stacked above elements with lower values.*/
+}
+
+.navbar_container {
+    height: 100px;
+    width: 100%;
+    display: flex;
+    justify-content: space-evenly;
+    padding: 10px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.logo {
+    margin: 20px;
+    font-size: 20px;
+}
+
+.elements_container {
+    display: flex;
+    list-style: none;
+    align-items: center;
+}
+
+.element {
+    color: #000;
+    justify-content: center;
+    padding: 50px;
+    align-items: center;
+}
+
+.elements:hover {
+    color: blue;
+    transition: all 0.3s ease;
+}
+
+
+/* Content 1 */
+
+.main {
+    background: #add8e6; /*could use background-color if we want to be more specific*/ 
+    height: 400px;
+    width: 100%;
+    align-items: center; /*aligns the navbar_container to center, but since is has same dimensions it doesnt really change anything but good practice if we have subcontainers that are smaller and we want to center them along y */
+    font-size: 12px;
+    justify-content: center;
+    display: flex;
+    z-index: 1; /*Elements with higher positive z-index values are stacked above elements with lower values.*/
+}
+
+.main_container {
+    height: 100px;
+    width: 100%;
+    display: flex;
+    justify-content: space-evenly;
+    padding: 10px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.content {
+    height: 100px;
+    outline: 2px solid red;
+    padding: 1px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+
+/* Content 2 */
+
+.unis {
+    height: 200px;
+    width: 100%;
+    align-items: center; /*aligns the navbar_container to center, but since is has same dimensions it doesnt really change anything but good practice if we have subcontainers that are smaller and we want to center them along y */
+    font-size: 15px;
+    justify-content: center;
+    display: flex;
+    border: 2px solid red;
+}
+
+.unis_container {
+    height: 200px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.unis_list {
+    height: 50px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 2px solid red;
+    margin: 20px;
+}
+
+.unis_logo_container {
+    width: 100%;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.images {
+    height: 10px;
+    width: 10px;
+}
+
+
+/* Content 2 */
+
+.more {
+    height: 200px;
+    width: 100%;
+    align-items: center; /*aligns the navbar_container to center, but since is has same dimensions it doesnt really change anything but good practice if we have subcontainers that are smaller and we want to center them along y */
+    font-size: 15px;
+    justify-content: center;
+    display: flex;
+    border: 2px solid red;
+}
+
+.more_content {
+    size: 200px;
+}
+
+
+/* Content 3 */
+
+.works {
+    height: 400px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+}
+
+.works_container {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: center;
+    height: 400px;
+}
+
+.works_header {
+    font-weight: bold;
+}
+
+.works_icons {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    align-items: center;
+}
+
+.works_icons_indv {
+    margin: 20px;
+}
+
+/* Content 4 */
+
+.students {
+    height: 200px;
+    width: 100%;
+    font-size: 12px;
+}
+
+.students_container {
+    height: 200px;
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    flex-direction: column;
+}
+
+.students_header {
+    font: bold;
+}
+
+.students_reviews_container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-evenly;
+}
+
+.reviews {
+    margin: 20px;
+}
+
+
+/* Footer */
+
+.footer {
+    font-size: 15px;
+    height: 300px;
+    width: 100%;
+}
+
+.footer_container {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    align-items: center;
+}
+
+.footer_main {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.footer_content {
+    font-size: 12px;
+}
