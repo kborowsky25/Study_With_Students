@@ -3,6 +3,7 @@
     margin: 0; /* overwriting built-in margins and paddings that browser may have applied */
     padding: 0;
     box-sizing: border-box; /* Ensures padding and border are included in the element's total width and height */
+    font-family: "Noto Sans JP", sans-serif; /* be careful cuz this overwrites everything i believe */
 }
 
 a {
@@ -16,7 +17,7 @@ This allows us to change these properties without changing the child elements' p
 /* Navigation bar */
 
 .navbar {
-    background: #add8e6; /*could use background-color if we want to be more specific*/ 
+    background: #1c253c; /*could use background-color if we want to be more specific*/ 
     height: 100px;
     width: 100%;
     position: sticky;
@@ -26,6 +27,10 @@ This allows us to change these properties without changing the child elements' p
     justify-content: center;
     display: flex;
     z-index: 1; /* Elements with higher positive z-index values are stacked above elements with lower values.*/
+    font: white;
+    color: white;
+    font-weight: bold;
+    font-family: "Noto Sans JP", sans-serif;  /*downloaded using google fonts */
 }
 
 .navbar_container {
@@ -50,29 +55,31 @@ This allows us to change these properties without changing the child elements' p
 }
 
 .element {
-    color: #000;
     justify-content: center;
     padding: 50px;
     align-items: center;
+    color: white;
 }
 
-.elements:hover {
-    color: blue;
+.element:hover {
     transition: all 0.3s ease;
+    color: #c52f3f;
 }
 
 
 /* Content 1 */
 
 .main {
-    background: #add8e6; /*could use background-color if we want to be more specific*/ 
-    height: 400px;
+    background: #1c253c; /*could use background-color if we want to be more specific*/ 
+    height: 600px;
     width: 100%;
     align-items: center; /*aligns the navbar_container to center, but since is has same dimensions it doesnt really change anything but good practice if we have subcontainers that are smaller and we want to center them along y */
-    font-size: 12px;
+    color: white;
+    font-family: "Noto Sans JP", sans-serif;
     justify-content: center;
     display: flex;
     z-index: 1; /*Elements with higher positive z-index values are stacked above elements with lower values.*/
+
 }
 
 .main_container {
@@ -86,16 +93,31 @@ This allows us to change these properties without changing the child elements' p
 }
 
 .content {
-    height: 100px;
-    outline: 2px solid red;
+    height: 400px;
     padding: 1px;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: top;
     align-items: center;
 }
 
+.img1 {
+    height: auto;
+    width: 30%;
+}
 
+.header_main {
+    width: 700px;
+    font-size: 50px;
+    font-weight: bold;
+}
+
+
+.paragraph_main {
+    width: 700px;
+    padding: 20px 0;
+    font-size: 12px;
+}
 /* Content 2 */
 
 .unis {
@@ -105,7 +127,6 @@ This allows us to change these properties without changing the child elements' p
     font-size: 15px;
     justify-content: center;
     display: flex;
-    border: 2px solid red;
 }
 
 .unis_container {
@@ -117,43 +138,53 @@ This allows us to change these properties without changing the child elements' p
 }
 
 .unis_list {
-    height: 50px;
+    height: 30px;
     width: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
-    border: 2px solid red;
-    margin: 20px;
+    margin-top: 40px;
+    font-size: 40px;
+    font-weight: bold;
+    color: #1c253c;
 }
+
 
 .unis_logo_container {
     width: 100%;
-    height: 50px;
+    height: 120px;
+    margin: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .images {
-    height: 10px;
-    width: 10px;
+    padding: 20px;
+    height: auto;
+    width: 10%;
 }
 
 
 /* Content 2 */
 
 .more {
-    height: 200px;
+    margin-top: 40px;
+    height: 500px;
     width: 100%;
-    align-items: center; /*aligns the navbar_container to center, but since is has same dimensions it doesnt really change anything but good practice if we have subcontainers that are smaller and we want to center them along y */
+    align-items: top; /*aligns the navbar_container to center, but since is has same dimensions it doesnt really change anything but good practice if we have subcontainers that are smaller and we want to center them along y */
     font-size: 15px;
-    justify-content: center;
+    justify-content: start;
     display: flex;
-    border: 2px solid red;
+    background-color: #1c253c;
+    color: white;
+    padding-left: 100px;
+    padding-top: 100px;
 }
 
 .more_content {
-    size: 200px;
+    font-size: 40px;
+    font-weight: bold;
 }
 
 
@@ -227,8 +258,9 @@ This allows us to change these properties without changing the child elements' p
 
 .footer {
     font-size: 15px;
-    height: 300px;
+    height: 150px;
     width: 100%;
+    background-color: #b0c4de;
 }
 
 .footer_container {
@@ -236,6 +268,8 @@ This allows us to change these properties without changing the child elements' p
     flex-direction: row;
     justify-content: space-evenly;
     align-items: center;
+    width: 100%;
+    height: 100%;
 }
 
 .footer_main {
@@ -243,6 +277,8 @@ This allows us to change these properties without changing the child elements' p
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    height: 100%;
+    width: 100%;
 }
 
 .footer_content {
