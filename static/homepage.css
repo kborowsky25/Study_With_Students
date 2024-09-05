@@ -17,13 +17,13 @@ This allows us to change these properties without changing the child elements' p
 /* Navigation bar */
 
 .navbar {
-    background: #1c253c; /*could use background-color if we want to be more specific*/ 
-    height: 100px;
+    background: #1b263b; /*could use background-color if we want to be more specific*/ 
+    height: 60px;
     width: 100%;
     position: sticky;
     align-items: center; /*aligns the navbar_container to center, but since is has same dimensions it doesnt really change anything but good practice if we have subcontainers that are smaller and we want to center them along y */
     top: 0; /* used with position to define position relative to what -- will be sticky 0px from top of parent container (screen in this case) */
-    font-size: 12px;
+    font-size: 15px;
     justify-content: center;
     display: flex;
     z-index: 1; /* Elements with higher positive z-index values are stacked above elements with lower values.*/
@@ -45,7 +45,7 @@ This allows us to change these properties without changing the child elements' p
 
 .logo {
     margin: 20px;
-    font-size: 20px;
+    font-size: 23px;
 }
 
 .elements_container {
@@ -63,64 +63,225 @@ This allows us to change these properties without changing the child elements' p
 
 .element:hover {
     transition: all 0.3s ease;
-    color: #c52f3f;
+    color: #ff725e;
 }
 
 
 /* Content 1 */
 
 .main {
-    background: #1c253c; /*could use background-color if we want to be more specific*/ 
-    height: 600px;
+    background: #1b263b; /*could use background-color if we want to be more specific*/ 
+    height: 710px;
     width: 100%;
-    align-items: center; /*aligns the navbar_container to center, but since is has same dimensions it doesnt really change anything but good practice if we have subcontainers that are smaller and we want to center them along y */
+    align-items: top; /*aligns the navbar_container to center, but since is has same dimensions it doesnt really change anything but good practice if we have subcontainers that are smaller and we want to center them along y */
     color: white;
     font-family: "Noto Sans JP", sans-serif;
     justify-content: center;
     display: flex;
     z-index: 1; /*Elements with higher positive z-index values are stacked above elements with lower values.*/
-
 }
 
 .main_container {
-    height: 100px;
+    height: 800px;
     width: 100%;
     display: flex;
-    justify-content: space-evenly;
-    padding: 10px;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 85px;
+}
+
+.content_top {
+    height: 200px;
+    padding: 0px;
+    width: 100%;
+    display: flex;
     flex-direction: row;
+    justify-content: space-evenly;
     align-items: center;
 }
 
-.content {
-    height: 400px;
+#image_block_top_left {
+    height: 200px;
+    width: 80%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 30px;
+    padding-left: 30px;
+    margin: 0px;
+}
+
+#image_block_top_right {
+    height: 200px;
+    width: 80%;
+    display: flex;
+    flex-direction: column;
+    justify-content: right;
+    align-items: center;
+    padding-top: 50px;
+    transform: translate(-5px, -60px);
+}
+
+#image_block_top_middle {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding-bottom: 40px;
+    width: 80%;
+    transform: translate(-100px, -30px);
+}
+
+.content_middle 
+{
+    height: 200px;
+    width: 100%;
     padding: 1px;
     display: flex;
     flex-direction: column;
-    justify-content: top;
+    justify-content: center;
     align-items: center;
+    text-align: center;
 }
 
-.img1 {
-    height: auto;
-    width: 30%;
-}
-
-.header_main {
-    width: 700px;
-    font-size: 50px;
+.title_main {
+    width: 100%;
+    font-size: 60px;
     font-weight: bold;
 }
 
-
 .paragraph_main {
-    width: 700px;
+    width: 100%;
     padding: 20px 0;
     font-size: 12px;
 }
+
+.form_container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: row;
+}
+
+.form_main {
+    padding: 0 30px;
+}
+
+#button_main_left {
+    background-color: #ff725e;
+    border: 1px solid #1c253c;
+    font-size: 20px;
+    border-radius: 10px;
+    cursor:pointer;
+    color: white;
+    font-weight: bold;
+    padding: 4px;
+}
+
+#button_main_right {
+    background-color: #b0bec5;
+    border: 1px solid #ff725e;
+    font-size: 20px;
+    border-radius: 10px;
+    cursor:pointer;
+    color: #fff;
+    font-weight: bold;
+    padding: 4px;
+}
+
+.content_bottom {
+    height: 100px;
+    width: 100%;
+    padding: 100px 0 px 50px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+    gap: 50px;
+}
+
+.image_block_bottom {
+    height: 100px;
+    padding-top: 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.images_main {
+    width: 165px;
+    height: auto;
+}
+
+.images_main:hover {
+    transform: scale(1.1); /*needs working on  */
+}
+
+.p_main {
+    background-color: #ff725e;
+    color: white;
+    font-weight: bolder;
+    border-radius: 15px;
+    display: inline-block;
+    padding: 5px;
+    transform: translate(80px, -20px);
+}
+
+
 /* Content 2 */
 
-.unis {
+.more {
+    height: 500px;
+    width: 100%;
+    align-items: top;
+    font-size: 15px;
+    justify-content: flex-start;
+    display: flex;
+    background-color: #1c253c;
+    color: white;
+}
+
+.more_container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    flex-direction: column;
+}
+
+.more_break {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.line {
+    flex-grow: 1; /* Make the line stretch */
+    height: 2px; /* Thickness of the line */
+    background-color: white; /* Line color */
+    margin: 0 20px;
+}
+
+.more_paragraph {
+    padding: 0 20px; /* Space between the text and the line */
+    font-size: 1.2rem; /* Text size */
+    color: white; /* Text color */
+    white-space: nowrap; /* Prevent text from wrapping */
+    font-weight: bold;
+}
+.more_content {
+    margin-top: 200px;
+    border: 2px solid red;   
+}
+
+
+
+/* Content 3 */
+
+unis {
     height: 200px;
     width: 100%;
     align-items: center; /*aligns the navbar_container to center, but since is has same dimensions it doesnt really change anything but good practice if we have subcontainers that are smaller and we want to center them along y */
@@ -164,29 +325,6 @@ This allows us to change these properties without changing the child elements' p
     height: auto;
     width: 10%;
 }
-
-
-/* Content 2 */
-
-.more {
-    margin-top: 40px;
-    height: 500px;
-    width: 100%;
-    align-items: top; /*aligns the navbar_container to center, but since is has same dimensions it doesnt really change anything but good practice if we have subcontainers that are smaller and we want to center them along y */
-    font-size: 15px;
-    justify-content: start;
-    display: flex;
-    background-color: #1c253c;
-    color: white;
-    padding-left: 100px;
-    padding-top: 100px;
-}
-
-.more_content {
-    font-size: 40px;
-    font-weight: bold;
-}
-
 
 /* Content 3 */
 
