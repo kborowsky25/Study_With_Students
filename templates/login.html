@@ -1,0 +1,52 @@
+{% extends "template.html" %}
+
+{% block body %}
+
+
+<div class="navbar">
+    <div class="navbar_container">
+        <div class="logo"> <span class="material-symbols-outlined">
+            rocket_launch
+            </span> Study with Students</div>
+        <ul class="elements_container">
+            <li> 
+                <a href="whatwedo" class="element">What We Do</a>
+            </li>
+            <li>
+                <a href="meettheteam" class="element">Meet The Team</a>
+            </li>
+            <li>
+                <a href="contact" class="element">Contact</a>
+            </li>
+        </ul>
+        <ul class="elements_container_signup">
+            <li>
+                <a href="/signup" id="element_signup">Sign Up</a>
+            </li>
+            <li>
+                <a href="/login" id="element_login">Log in</a>
+            </li>
+        </ul>
+
+    </div>
+</div>
+
+<div class="signup_main">
+    <div class="signup_main_container">
+        <h class="create_an_account">LOG-IN</h>
+        <form method="POST" class="create" action="/login">
+            <div class="email">
+                <input type="email" placeholder="Email" name="email">
+            </div>
+            <div class="password">
+                <input type="password" placeholder="Password" name="password">
+            </div>
+            <div class="button">
+                <button class="btn">log-in!</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+{% endblock %}

@@ -6,10 +6,17 @@
     font-family: "Noto Sans JP", sans-serif; /* be careful cuz this overwrites everything i believe */
 }
 
-a {
-    text-decoration: none; /* Removes the underline */
+.body {
+    background-color: #1b263b; /* changes safari overflow to this color */
 }
 
+a {
+    text-decoration: none; /* Removes the underline from all anchor tags*/
+}
+
+.another {
+    color:#ff725e
+}
 
 /* We defined navbar to be able to define the properties of the whole navbar (and its children), namely the color and sizing. 
 This allows us to change these properties without changing the child elements' properties (which could have more significant effects on parent elements) */
@@ -18,7 +25,7 @@ This allows us to change these properties without changing the child elements' p
 
 .navbar {
     background: #1b263b; /*could use background-color if we want to be more specific*/ 
-    height: 60px;
+    height: 8vh;
     width: 100%;
     position: sticky;
     align-items: center; /*aligns the navbar_container to center, but since is has same dimensions it doesnt really change anything but good practice if we have subcontainers that are smaller and we want to center them along y */
@@ -37,7 +44,7 @@ This allows us to change these properties without changing the child elements' p
     height: 100px;
     width: 100%;
     display: flex;
-    justify-content: space-evenly;
+    justify-content: space-around;
     padding: 10px;
     flex-direction: row;
     align-items: center;
@@ -56,15 +63,56 @@ This allows us to change these properties without changing the child elements' p
 
 .element {
     justify-content: center;
-    padding: 50px;
+    padding: 40px;
     align-items: center;
     color: white;
+}
+
+.elements_container_signup {
+    justify-content: center;
+    align-items: center;
+    display: flex;
+    flex-direction: row;
+    list-style: none;
+}
+
+#element_signup {
+    background-color: #ff725e;
+    margin: 0 20px;
+    padding: 5px;
+    border-radius: 10px;
+    font-size: 17px;
+    display: inline-block;
+    color: white;
+}
+
+#element_login {
+    background-color: #b0bec5;
+    margin: 0 20px;
+    padding: 5px;
+    border-radius: 10px;
+    font-size: 17px;
+    display: inline-block;
+    color: white
 }
 
 .element:hover {
     transition: all 0.3s ease;
     color: #ff725e;
 }
+
+#element_signup:hover {
+    transition: all 0.3s ease;
+    background-color: white;
+    color: #ff725e;
+}
+
+#element_login:hover {
+    transition: all 0.3s ease;
+    background-color: white;
+    color: #b0bec5;
+}
+
 
 
 /* Content 1 */
@@ -170,18 +218,17 @@ This allows us to change these properties without changing the child elements' p
 
 #button_main_left {
     background-color: #ff725e;
-    border: 1px solid #1c253c;
     font-size: 20px;
     border-radius: 10px;
     cursor:pointer;
     color: white;
     font-weight: bold;
     padding: 4px;
+    border: none; 
 }
 
 #button_main_right {
     background-color: #b0bec5;
-    border: 1px solid #ff725e;
     font-size: 20px;
     border-radius: 10px;
     cursor:pointer;
@@ -211,7 +258,7 @@ This allows us to change these properties without changing the child elements' p
 }
 
 .images_main {
-    width: 165px;
+    width: 190px;
     height: auto;
 }
 
@@ -223,17 +270,18 @@ This allows us to change these properties without changing the child elements' p
     background-color: #ff725e;
     color: white;
     font-weight: bolder;
-    border-radius: 15px;
+    border-radius: 20px;
     display: inline-block;
     padding: 5px;
     transform: translate(80px, -20px);
+    font-size: 13px;
 }
 
 
 /* Content 2 */
 
 .more {
-    height: 500px;
+    height: 100px;
     width: 100%;
     align-items: top;
     font-size: 15px;
@@ -272,17 +320,12 @@ This allows us to change these properties without changing the child elements' p
     white-space: nowrap; /* Prevent text from wrapping */
     font-weight: bold;
 }
-.more_content {
-    margin-top: 200px;
-    border: 2px solid red;   
-}
-
 
 
 /* Content 3 */
 
-unis {
-    height: 200px;
+.unis {
+    height: 250px;
     width: 100%;
     align-items: center; /*aligns the navbar_container to center, but since is has same dimensions it doesnt really change anything but good practice if we have subcontainers that are smaller and we want to center them along y */
     font-size: 15px;
@@ -310,6 +353,10 @@ unis {
     color: #1c253c;
 }
 
+.unis_p {
+    color: #1b263b;
+}
+
 
 .unis_logo_container {
     width: 100%;
@@ -326,15 +373,87 @@ unis {
     width: 10%;
 }
 
+
+
+
 /* Content 3 */
+.trust {
+    height: 500px;
+    max-width: 100%;
+    display: flex;
+    background-color: white;
+    justify-content: center;
+    align-items: flex-start;
+    border: 2px solid red;
+    margin-top: 50px;
+    margin-left: 50px;
+    margin-right: 50px;
+}
+
+.trust_container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.trust_header {
+    font-size: 50px;
+    font-weight: bold;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    color: #1b263b;
+}
+
+.trust_body {
+    margin-top: 40px;
+    font-size: 15px;
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    width: 100%;
+}
+
+.trust_body::-webkit-scrollbar { 
+    width: 0; 
+}
+
+.trust_subject {
+    min-width: 25%;
+    height: 300px;
+    margin-left: 20px;
+    background-image: url("/static/images/maths.jpg");
+    background-size: cover; /* Cover the entire div, cropping as needed */
+    background-position: center; /* Center the image */
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    border-radius: 10px;
+}
+
+.subject_p {
+    color: white; /* Text color for contrast */
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7); /* Black shadow with some blur */
+    font-size: 20px;
+    background-color: grey;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 20%;
+    border-radius: 0 0 10px 10px;
+}
+
+/* Content 4 */
 
 .works {
-    height: 400px;
+    height: 600px;
     width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 15px;
+    background-color: lightgrey;
 }
 
 .works_container {
@@ -342,11 +461,13 @@ unis {
     flex-direction: column;
     justify-content: space-around;
     align-items: center;
-    height: 400px;
+    height: 600px;
+    width: 100%;
 }
 
 .works_header {
     font-weight: bold;
+    font-size: 40px;
 }
 
 .works_icons {
@@ -354,13 +475,19 @@ unis {
     flex-direction: row;
     justify-content: space-evenly;
     align-items: center;
+    border: 2px solid green;
+    width: 100%;
+    height: 400px;
 }
 
 .works_icons_indv {
     margin: 20px;
+    border: 2px solid red;
+    width: 100%;
+    height: 300px;
 }
 
-/* Content 4 */
+/* Content 5 */
 
 .students {
     height: 200px;

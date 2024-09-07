@@ -1,0 +1,62 @@
+{% extends "template.html" %}
+
+{% block body %}
+
+
+<div class="navbar">
+    <div class="navbar_container">
+        <div class="logo"> <span class="material-symbols-outlined">
+            rocket_launch
+            </span> Study with Students</div>
+        <ul class="elements_container">
+            <li> 
+                <a href="whatwedo" class="element">What We Do</a>
+            </li>
+            <li>
+                <a href="meettheteam" class="element">Meet The Team</a>
+            </li>
+            <li>
+                <a href="contact" class="element">Contact</a>
+            </li>
+        </ul>
+        <ul class="elements_container_signup">
+            <li>
+                <a href="/signup" id="element_signup">Sign Up</a>
+            </li>
+            <li>
+                <a href="/login" id="element_login">Log in</a>
+            </li>
+        </ul>
+
+    </div>
+</div>
+
+<div class="signup_main">
+    <div class="signup_main_container">
+        <h class="create_an_account">CREATE AN ACCOUNT</h>
+        <p class = "signup_p"> We're so excited for you to join and kickstart your journey!! Next stop: SPACE!!</p>
+        <form method="POST" class="create" action="/signup">
+            <div class="inp">
+                <input type="name" placeholder="Full Name" name="name" class="name_placeholder">
+            </div>
+            <div class="inp">
+                <input type="email" placeholder="Email" name="email" class="name_placeholder">
+            </div>
+            <div class="inp">
+                <input type="password" placeholder="Password" name="password" class="name_placeholder">
+            </div>
+            <div class="inp">
+                <input type="password" placeholder="Confirm Password" name="confirm_password" class="name_placeholder">
+            </div>
+            <div class="button">
+                <button class="btn">Create!!!</button>
+            </div>
+        </form>
+    </div>
+    <div class="signup_image_div">
+        <img src="static/images/signup.svg" alt="Failed to load" class="signup_image">
+    </div>
+</div>
+
+
+{% endblock %}
