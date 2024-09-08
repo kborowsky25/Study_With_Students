@@ -1,0 +1,15 @@
+.div_hub {
+    width: 100%;
+    height: 92vh;
+}
+
+.div_hub_container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.hub_header {
+     font-size: 30px;
+     font-weight: bold;
+}

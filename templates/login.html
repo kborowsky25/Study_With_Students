@@ -31,20 +31,28 @@
     </div>
 </div>
 
-<div class="signup_main">
-    <div class="signup_main_container">
-        <h class="create_an_account">LOG-IN</h>
-        <form method="POST" class="create" action="/login">
-            <div class="email">
-                <input type="email" placeholder="Email" name="email">
+<div class="login_main">
+    <div class="login_image_div">
+        <img src="static/images/signup/signup.svg" alt="Failed to load" class="login_image">
+    </div>
+    <div class="login_main_container">
+        <h class="login_h">LOG IN</h>
+        <p class = "login_p"> One day or day one?</p>
+        <form method="POST" class="login_form" action="/login">
+            <div class="inp_login">
+                <input type="email" placeholder="Email" name="email" class="name_login">
             </div>
-            <div class="password">
-                <input type="password" placeholder="Password" name="password">
+            <div class="inp_login">
+                <input type="password" placeholder="Password" name="password" class="name_login">
             </div>
-            <div class="button">
-                <button class="btn">log-in!</button>
+            <div class="button_login">
+                <button class="btn_login">Login</button>
             </div>
         </form>
+        <div class="no_account">
+            <p class="no_account_p">Don't have an account yet?</p>
+            <a href="/signup" class="no_account_a">Sign up here</a>
+        </div>
     </div>
 </div>
 

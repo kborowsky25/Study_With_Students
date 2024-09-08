@@ -422,7 +422,7 @@ This allows us to change these properties without changing the child elements' p
     min-width: 25%;
     height: 300px;
     margin-left: 20px;
-    background-image: url("/static/images/maths.jpg");
+    background-image: url("/static/images/homepage/maths.jpg");
     background-size: cover; /* Cover the entire div, cropping as needed */
     background-position: center; /* Center the image */
     display: flex;
