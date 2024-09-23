@@ -130,3 +130,8 @@ def hub():
     else:
         # If user is not logged in, redirect to login page
         return redirect("/login") #facts chatgbt, you tell em gurl
+
+
+@app.route("/tutor-profile")
+def tutor_profile():
+    return render_template("tutor_profile.html")

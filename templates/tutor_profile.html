@@ -1,0 +1,32 @@
+{% extends "template.html" %}
+
+{% block body %}
+
+<div class="tutor_profile">
+    <div class="tutor_profile_container">
+        <div class="tutor_profile_image">
+            <div class="tutor_profile_explain">
+                <p>This is where you put your info and goals, so that we can recommend the best tutors for you!!!</p>
+            </div>
+        </div>
+        <div class="tutor_profile_form_container">
+            <form action="/hub" class="tutor_profile_form" method="POST">
+                <select name="gender">
+                    <option value="null" disabled selected>Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="non-binary">Non-Binary</option>
+                    <option value="other">Other</option>
+                  </select>
+                <input type="date" placeholder="Age" name="age" class="tutor_info">
+                <input type="text" placeholder="University" name="university" class="tutor_info">
+                <input type="text" placeholder="Course" name="course" class="tutor_info">
+                <input type="text" placeholder="About me" name="about_me" class="tutor_info">
+                <input type="text" placeholder="Can tutor in..." name="subjects" class="tutor_info">
+                <input type="text" placeholder="availability" name="availability" class="tutor_info">
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

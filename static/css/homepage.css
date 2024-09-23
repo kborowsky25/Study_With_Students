@@ -41,7 +41,7 @@ This allows us to change these properties without changing the child elements' p
 }
 
 .navbar_container {
-    height: 100px;
+    height: 100%;
     width: 100%;
     display: flex;
     justify-content: space-around;
@@ -62,6 +62,7 @@ This allows us to change these properties without changing the child elements' p
 }
 
 .element {
+    display: flex;
     justify-content: center;
     padding: 40px;
     align-items: center;
@@ -79,7 +80,7 @@ This allows us to change these properties without changing the child elements' p
 #element_signup {
     background-color: #ff725e;
     margin: 0 20px;
-    padding: 5px;
+    padding: 10px;
     border-radius: 10px;
     font-size: 17px;
     display: inline-block;
@@ -89,11 +90,12 @@ This allows us to change these properties without changing the child elements' p
 #element_login {
     background-color: #b0bec5;
     margin: 0 20px;
-    padding: 5px;
+    padding: 5px 10px 5px 10px;
     border-radius: 10px;
     font-size: 17px;
     display: inline-block;
-    color: white
+    color: white;
+    justify-content: ce;
 }
 
 .element:hover {
@@ -119,7 +121,7 @@ This allows us to change these properties without changing the child elements' p
 
 .main {
     background: #1b263b; /*could use background-color if we want to be more specific*/ 
-    height: 710px;
+    height: 85vh;
     width: 100%;
     align-items: top; /*aligns the navbar_container to center, but since is has same dimensions it doesnt really change anything but good practice if we have subcontainers that are smaller and we want to center them along y */
     color: white;
@@ -130,7 +132,7 @@ This allows us to change these properties without changing the child elements' p
 }
 
 .main_container {
-    height: 800px;
+    height: 100%;
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -281,7 +283,7 @@ This allows us to change these properties without changing the child elements' p
 /* Content 2 */
 
 .more {
-    height: 100px;
+    height: 7vh;
     width: 100%;
     align-items: top;
     font-size: 15px;
@@ -485,6 +487,19 @@ This allows us to change these properties without changing the child elements' p
     border: 2px solid red;
     width: 100%;
     height: 300px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.icons_h {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.icons_p {
+    font-size: 12px;
 }
 
 /* Content 5 */
