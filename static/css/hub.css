@@ -26,24 +26,48 @@ a {
 }
 
 
-/* navbar for students and tutors */
+/* hub.html to choose between student and tutor */
 
-.navbar_student {
-    background: #1b263b; /*could use background-color if we want to be more specific*/ 
-    height: 8vh;
+.choice {
+    height: 100vh;
     width: 100%;
-    position: sticky;
-    display: flex;
-    top: 0; /* used with position to define position relative to what -- will be sticky 0px from top of parent container (screen in this case) */
-    font-size: 15px;
-    z-index: 1; /* Elements with higher positive z-index values are stacked above elements with lower values.*/
-    font: white;
-    color: white;
-    font-weight: bold;
-    font-family: "Noto Sans JP", sans-serif;  /*downloaded using google fonts */
 }
 
-.navbar_tutor {
+.choice_container {
+    background-color: #1b263b;
+    height: 100%;
+    display: flex;
+}
+
+.choose_student {
+    width: 50%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: row;
+}
+
+.choose_tutor {
+    width: 50%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.choose_anchor {
+    font-size: 20px;
+    color: white;
+}
+
+
+
+
+
+/* navbar for students and tutors */
+
+.navbar {
     background: #1b263b; /*could use background-color if we want to be more specific*/ 
     height: 8vh;
     width: 100%;
@@ -73,17 +97,11 @@ a {
     font-size: 23px;
 }
 
-
-#switch_button_student {
+#switch_button {
     border-radius: 20px;
     padding: 10px;
     border: none;
-}
-
-#switch_button_tutor {
-    border-radius: 20px;
-    padding: 10px;
-    border: none;
+    background-color: #ff725e;
 }
 
 
@@ -99,16 +117,14 @@ a {
 
 
 
-
 /* main for student */
 
 .div_hub_student {
     width: 100%;
     height: 92vh;
-    background-color: #1c253c;
+    background-color: #1b263b;
     color: white;
 }
-
 
 .div_hub_container_student {
     display: flex;
@@ -134,7 +150,6 @@ a {
     padding-bottom: 300px;
 }
 
-
 .hub_sidebar_student {
     width: 15vw;
     height: 90%;
@@ -148,8 +163,9 @@ a {
     margin-bottom: 5vh;
 }
 
-#toggle_btn {
-    size: 20px;
+#toggle_btn_collapsed {
+    background-color: transparent;
+    border: none;
 }
 
 .sidebar_element_student {
@@ -197,7 +213,6 @@ a {
     margin: 2vh;
 }
 
-
 #find_tutor {
     background-image: url("/static/images/hub/tutor.svg");
     background-size: 50%;
@@ -211,7 +226,6 @@ a {
     background-position: center;
     background-repeat: no-repeat; /* Prevents the image from repeating */
 }
-
 
 #create_thread {
     background-image: url("/static/images/hub/profile.svg");
@@ -234,12 +248,19 @@ a {
     background-repeat: no-repeat; /* Prevents the image from repeating */
 }
 
+
+
+
+
+
+
+
 /* main for tutor */
 
 .div_hub_tutor {
     width: 100%;
     height: 92vh;
-    background-color: #1c253c;
+    background-color: #1b263b;
     color: white;
 }
 
@@ -253,16 +274,32 @@ a {
     height: 100%;
 }
 
-.hub_sidebar_tutor{
-    width: 10vw;
+.hub_sidebar_tutor_collapsed {
+    width: 5vw;
     height: 100%;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
-    flex-direction: column;
     font-weight: bold;
-    border-right: 1px solid white;
     padding: 20px;
+    margin-bottom: 5vh;
+    z-index: 10;
+    overflow-y:hidden;
+    padding-bottom: 300px;
+}
+
+.hub_sidebar_tutor {
+    width: 15vw;
+    height: 90%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    border-right: 3px solid white;
+    padding: 20px;
+    margin-bottom: 5vh;
 }
 
 .sidebar_element_tutor {
@@ -324,6 +361,13 @@ a {
     background-position: center;
     background-repeat: no-repeat; /* Prevents the image from repeating */
 }
+
+
+
+
+
+
+
 
 
 

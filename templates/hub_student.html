@@ -1,0 +1,126 @@
+{% extends "template.html" %}
+
+{% block body %}
+
+    <div class="navbar">
+        <div class="navbar_container">
+            <div class="logo"> <span class="material-symbols-outlined"> rocket_launch
+                </span> Study with Students</div>
+            <ul class="elements_container_signup">
+                <li>
+                    <a href="/hub-tutor" id="switch_button">Switch Mode Tutor</a>
+                </li>
+            </ul>
+
+        </div>
+    </div>
+
+    <div class="div_hub_student" id="div_hub_student">
+        <div class="div_hub_container_student">
+            
+            <div class="hub_sidebar_student_collapsed">
+                <button class="sidebar_element_student" id="toggle_btn_collapsed">
+                    <span class="material-symbols-outlined" style="font-size: 40px;">menu</span>
+                </button>
+                <div class="sidebar_element_student">
+                    <span class="material-symbols-outlined">
+                        home
+                    </span>
+                </div>
+                <div class="sidebar_element_student">
+                    <span class="material-symbols-outlined">
+                        check_box
+                    </span>
+                </div>
+                <div class="sidebar_element_student">
+                    <span class="material-symbols-outlined">
+                        check
+                    </span>
+                </div>
+                <div class="sidebar_element_student">
+                    <span class="material-symbols-outlined">
+                        filter_list
+                    </span>
+                </div>
+                <div class="sidebar_element_student">
+                    <span class="material-symbols-outlined">
+                        add_box
+                    </span>
+                </div>
+                <div class="sidebar_element_student">
+                    <span class="material-symbols-outlined">
+                        add_box
+                    </span>
+                </div>
+            </div>
+
+            <!-- When button is toggled -->
+            <div class="hub_sidebar_student hide">
+                <button id="toggle_btn_expanded">icon</button>
+                <div class="sidebar_element_student">
+                    <span class="material-symbols-outlined">
+                        home
+                    </span>
+                    <p>Home</p>
+                </div>
+                <div class="sidebar_element_student">
+                    <span class="material-symbols-outlined">
+                        check_box
+                    </span>
+                    <p>Dashboard Student</p>
+                </div>
+                <div class="sidebar_element_student">
+                    <span class="material-symbols-outlined">
+                        check
+                    </span>
+                    <p>Sessions Student</p>
+                </div>
+                <div class="sidebar_element_student">
+                    <span class="material-symbols-outlined">
+                        filter_list
+                    </span>
+                    <p>Forum</p>
+                </div>
+                <div class="sidebar_element_student">
+                    <span class="material-symbols-outlined">
+                        add_box
+                    </span>
+                    <p>Events Students</p>
+                </div>
+                <div class="sidebar_element_student">
+                    <span class="material-symbols-outlined">
+                        add_box
+                    </span>
+                    <p>Account</p>
+                </div>
+            </div>
+
+
+            <div class="hub_content_student">
+                <div class="hub_header_student">
+                    <h1>Ready to study, {{ name }}? </h1>
+                </div>
+                <div class="hub_body_student">
+                    <div class="hub_select" id="find_tutor">
+                        <a href="/find-tutor">Find a tutor</a>
+                    </div>
+                    <div class="hub_select" id="personalize_profile">
+                        <a href="/student-profile">Personalize profile</a>
+                    </div>
+                    <div class="hub_select" id="create_thread">
+                        <p>Create a thread</p>
+                    </div>
+                    <div class="hub_select" id="find_event">
+                        <p>Find Events</p>
+                    </div>
+                    <div class="hub_select" id="dashboard_link">
+                        <p>dashboard</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+

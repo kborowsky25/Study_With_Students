@@ -1,4 +1,4 @@
-from flask import Flask, redirect, render_template, request, session 
+from flask import Flask, redirect, render_template, request, session, jsonify
 import mysql.connector
 from mysql.connector import Error
 
@@ -24,6 +24,9 @@ def route2():
 @app.route("/talk")
 def route3():
     return render_template("contact.html")
+
+
+
 
 
 @app.route("/signup", methods=["GET", "POST"])
@@ -121,6 +124,9 @@ def login():
     return redirect("/") #prob will never be needed
 
 
+#FROM HERE ON, NEED TO BE CAREFUL THAT YOU ARE LOGGED IN BEFORE YOU DO ANYTHING ###########################################################
+
+
 @app.route("/hub")
 def hub():
     if 'user_id' in session: #check to see if session is active just in case someone /hubs 
@@ -131,7 +137,226 @@ def hub():
         # If user is not logged in, redirect to login page
         return redirect("/login") #facts chatgbt, you tell em gurl
 
+@app.route("/hub-student")
+def hub_student():
+    return render_template("hub_student.html", name = session["name"]) #this will through an error if someone tries to /into this. (could put if user in session)
 
-@app.route("/tutor-profile")
+
+@app.route("/hub-tutor")
+def hub_tutor():
+    return render_template("hub_tutor.html", name = session["name"]) #this will through an error if someone tries to /into this. (could put if user in session)
+
+
+
+
+@app.route("/tutor-profile", methods=["GET", "POST"])
 def tutor_profile():
-    return render_template("tutor_profile.html")
+    if request.method == "GET":
+        return render_template("tutor_profile.html")
+    elif request.method == "POST":
+        if 'user_id' in session: #check to see if session is active just in case someone /hubs 
+            age = request.form["age"]
+            university = request.form["university"]
+            course = request.form["course"]
+            about_me = request.form["about_me"]
+            subjects = request.form["subjects"]
+            availability = request.form["availability"]
+
+            user_id = session["user_id"]
+            name = session["name"]
+
+            try:
+                # Connect to the database
+                connection = mysql.connector.connect(
+                    host='localhost',          # e.g., 'localhost' or an IP address
+                    user='root',      # your database username
+                    password='Kikidi25',  # your database password
+                    database='users_tutoring'   # the name of your database
+                )
+                
+                if connection.is_connected():
+                    cursor = connection.cursor()
+
+                    sql = "SELECT * FROM tutor_profiles WHERE user_id = %s "
+                    cursor.execute(sql, (user_id,))
+                    
+                    result = cursor.fetchone() #one row
+                    
+                    if result:  # Profile exists, update it
+                        sql = """
+                            UPDATE tutor_profiles
+                            SET age = %s, university = %s, course = %s, about_me = %s,
+                                subjects = %s, availability = %s
+                            WHERE user_id = %s
+                        """
+                        cursor.execute(sql, (age, university, course, about_me, subjects, availability, user_id))
+                    else:  # Profile does not exist, insert new
+                        sql = """
+                            INSERT INTO tutor_profiles (user_id, age, university, course, about_me, subjects, availability)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        """
+                        cursor.execute(sql, (user_id, age, university, course, about_me, subjects, availability))
+                    
+                    connection.commit()  # Commit the transaction
+                    cursor.close()
+                    connection.close()
+                    
+                    return redirect("/hub-tutor")  # Redirect to hub
+                   
+            except Error as error_message:
+                print(f"Error: {error_message}")
+                return render_template("homepage.html")
+
+        else:
+            # If user is not logged in, redirect to login page
+            return redirect("/login") #facts chatgbt, you tell em gurl
+            
+        
+    return redirect("/") #prob will never be needed
+
+
+@app.route ("/find-tutor", methods=["GET", "POST"])
+def find_tutors():
+    if request.method == "GET":
+        if 'user_id' in session: #check to see if session is active just in case someone /find-tutors
+
+            try:
+                    # Connect to the database
+                    connection = mysql.connector.connect(
+                        host='localhost',          # e.g., 'localhost' or an IP address
+                        user='root',      # your database username
+                        password='Kikidi25',  # your database password
+                        database='users_tutoring'   # the name of your database
+                    )
+                    
+                    if connection.is_connected():
+                        cursor = connection.cursor()
+
+                        query1 = "SELECT DISTINCT subjects FROM tutor_profiles ORDER BY subjects ASC" #give you all distinct subjects for filter
+                        query2 = "SELECT DISTINCT university FROM tutor_profiles ORDER BY university ASC" #give you all distinct unis for filter
+
+                        query3 = "SELECT * FROM users JOIN tutor_profiles ON users.id = tutor_profiles.user_id" #to give you all the data you need (name is [1] email[2])
+
+                        
+                        cursor.execute(query1)
+                        subjects = cursor.fetchall() #fetch all rows
+        
+                        cursor.execute(query2)
+                        unis = cursor.fetchall()
+                        
+                        cursor.execute(query3)
+                        tutors = cursor.fetchall()
+
+                        connection.commit()  # Commit the transaction
+                        cursor.close()
+                        connection.close()
+
+                        # Pass the list of tutors to the template
+                        return render_template("find_tutors.html", subjects=subjects, unis=unis, tutors=tutors)
+                    
+            except Error as error_message:
+                print(f"Error: {error_message}")
+                return render_template("homepage.html")
+            
+        else:
+            return render_template("/signup.html")
+        
+    # elif request.method == "POST":
+    #     selected_university = request.form["university"] #because of jinja
+    #     selected_subject = request.form["subject"] #because of jinja
+    #     print(selected_subject)
+    #     print(selected_university)
+
+    #     try:
+    #             # Connect to the database
+    #             connection = mysql.connector.connect(
+    #                 host='localhost',          # e.g., 'localhost' or an IP address
+    #                 user='root',      # your database username
+    #                 password='Kikidi25',  # your database password
+    #                 database='users_tutoring'   # the name of your database
+    #             )
+                
+    #             if connection.is_connected():
+    #                 cursor = connection.cursor()
+
+    #                 query1 = "SELECT DISTINCT subjects FROM tutor_profiles ORDER BY subjects ASC" #give you all distinct subjects for filter
+    #                 query2 = "SELECT DISTINCT university FROM tutor_profiles ORDER BY university ASC" #give you all distinct unis for filter
+
+    #                 query3 = "SELECT * FROM users   JOIN tutor_profiles ON users.id = tutor_profiles.user_id  WHERE tutor_profiles.university = %s AND  tutor_profiles.subjects = %s" #to give you all the data you need (name is [1] email[2])
+
+                    
+    #                 cursor.execute(query1)
+    #                 subjects = cursor.fetchall() #fetch all rows
+    
+    #                 cursor.execute(query2)
+    #                 unis = cursor.fetchall()
+                    
+    #                 cursor.execute(query3, (selected_university, selected_subject))
+    #                 tutors = cursor.fetchall()
+    #                 print(tutors)
+
+    #                 connection.commit()  # Commit the transaction
+    #                 cursor.close()
+    #                 connection.close()
+
+    #                 # Pass the list of tutors to the template
+    #                 return render_template("find_tutors.html", subjects=subjects, unis=unis, tutors=tutors)
+                    
+    #     except Error as error_message:
+    #         print(f"Error: {error_message}")
+    #         return render_template("homepage.html")
+
+    
+    else:
+        return render_template("homepage.html")
+    
+
+@app.route('/find-tutor-ajax', methods=['POST'])
+def find_tutor_ajax():
+    if request.content_type != 'application/json':
+        return jsonify({'error': 'Invalid Content-Type. Expected application/json'}), 400
+
+    data = request.get_json()  # Get the JSON data sent from the client
+    selected_university = data.get('university', '').strip()  # Get selected university
+    selected_subject = data.get('subject', '').strip()  # Get selected subject
+
+    try:
+        # Connect to the database
+        connection = mysql.connector.connect(
+            host='localhost',
+            user='root',
+            password='Kikidi25',
+            database='users_tutoring'
+        )
+
+        if connection.is_connected():
+            cursor = connection.cursor()
+
+            # Prepare the SQL query
+            query3 = "SELECT * FROM users JOIN tutor_profiles ON users.id = tutor_profiles.user_id WHERE 1=1"
+            filters = []
+
+            # Add filters based on user input
+            if selected_university:
+                query3 += " AND tutor_profiles.university = %s"
+                filters.append(selected_university)
+
+            if selected_subject:
+                query3 += " AND tutor_profiles.subjects = %s"
+                filters.append(selected_subject)
+
+            # Execute the query
+            cursor.execute(query3, tuple(filters))
+            tutors = cursor.fetchall()
+            print(tutors)
+
+            # Return the data as a JSON response
+            return jsonify({'tutors': tutors})
+
+    except mysql.connector.Error as err:
+        return jsonify({'error': str(err)}), 500
+
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()

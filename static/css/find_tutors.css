@@ -1,0 +1,18 @@
+.find_tutors {
+    height: 100%;
+    background-color: blue;
+    width: 100%;
+}
+
+.find_tutors_container {
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.tutor_card {
+    height: 20%;
+    width: 20%;
+    background-color: grey;
+}

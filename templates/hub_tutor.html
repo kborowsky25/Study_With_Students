@@ -1,0 +1,116 @@
+{% extends "template.html" %}
+
+{% block body %}
+
+    <!-- tutor mode -->
+    <div class="navbar">
+        <div class="navbar_container">
+            <div class="logo"> <span class="material-symbols-outlined">rocket_launch
+                </span> Study with Students</div>
+            <ul class="elements_container_signup">
+                <li>
+                    <a href="/hub-student" id="switch_button">Switch Mode Student</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    
+
+
+    <div class="div_hub_tutor">
+        <div class="div_hub_container_tutor">
+
+            <div class="hub_sidebar_tutor_collapsed">
+                <button class="sidebar_element_tutor" id="toggle_btn_collapsed">
+                    <span class="material-symbols-outlined" style="font-size: 40px;">menu</span>
+                </button>
+                <div class="sidebar_element_tutor">
+                    <span class="material-symbols-outlined">
+                        home
+                    </span>
+                </div>
+                <div class="sidebar_element_tutor">
+                    <span class="material-symbols-outlined">
+                        check_box
+                    </span>
+                </div>
+                <div class="sidebar_element_tutor">
+                    <span class="material-symbols-outlined">
+                        check
+                    </span>
+                </div>
+                <div class="sidebar_element_tutor">
+                    <span class="material-symbols-outlined">
+                        filter_list
+                    </span>
+                </div>
+                <div class="sidebar_element_tutor">
+                    <span class="material-symbols-outlined">
+                        add_box
+                    </span>
+                </div>
+                <div class="sidebar_element_tutor">
+                    <span class="material-symbols-outlined">
+                        add_box
+                    </span>
+                </div>
+            </div>
+
+            <div class="hub_sidebar_tutor hide">
+                <button id="toggle_btn_expanded">icon</button>
+                <div class="sidebar_element_student">
+                    <span class="material-symbols-outlined">
+                        home
+                    </span>
+                    <p>Home</p>
+                </div>
+                <div class="sidebar_element_tutor">
+                    <span class="material-symbols-outlined">
+                        check_box
+                    </span>
+                    <p>Dashboard Student</p>
+                </div>
+                <div class="sidebar_element_tutor">
+                    <span class="material-symbols-outlined">
+                        check
+                    </span>
+                    <p>Sessions Student</p>
+                </div>
+                <div class="sidebar_element_tutor">
+                    <span class="material-symbols-outlined">
+                        filter_list
+                    </span>
+                    <p>Forum</p>
+                </div>
+                <div class="sidebar_element_tutor">
+                    <span class="material-symbols-outlined">
+                        add_box
+                    </span>
+                    <p>Events Students</p>
+                </div>
+                <div class="sidebar_element_tutor">
+                    <span class="material-symbols-outlined">
+                        add_box
+                    </span>
+                    <p>Account</p>
+                </div>
+            </div>
+
+            <div class="hub_content_tutor">
+                <div class="hub_header_tutor">
+                    <h1>Tutoring time, {{ name }}?</h1>
+                </div>
+                <div class="hub_body_tutor">
+                    <div class="tutor_profile_link">
+                        <a href="/tutor-profile">Tutor Profile</a>
+                    </div>
+                    <div class="active_students">
+                        <p>Active Students</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
