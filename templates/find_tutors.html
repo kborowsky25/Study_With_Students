@@ -33,14 +33,19 @@
         <div class="find_tutor_main">
             <div class="find_tutor_main_container" id="tutor_results">
                 {% for tutor in tutors %}
-                    <div class="tutor_card">
-                        <p><strong>Name:</strong> {{ tutor[1] }}</p>
-                        <p><strong>Age:</strong> {{ tutor[5] }}</p>
-                        <p><strong>Uni:</strong> {{ tutor[6] }}</p>
-                        <p><strong>Course:</strong> {{ tutor[7] }}</p>
-                        <p><strong>About me:</strong> {{ tutor[8] }}</p>
-                        <p><strong>Subjects:</strong> {{ tutor[9] }}</p>
-                        <p><strong>availability:</strong> {{ tutor[10] }}</p>
+                    <div class="tutor_card" data-tutor-id = " {{ tutor[4] }} "> <!-- including data for tutors id for likes and stuff -->
+                        <div class="tutor_card_info">
+                            <p><strong>Name:</strong> {{ tutor[1] }}</p>
+                            <p><strong>Age:</strong> {{ tutor[6] }}</p>
+                            <p><strong>Uni:</strong> {{ tutor[7] }}</p>
+                            <p><strong>Course:</strong> {{ tutor[8] }}</p>
+                            <p><strong>About me:</strong> {{ tutor[9] }}</p>
+                            <p><strong>Subjects:</strong> {{ tutor[10] }}</p>
+                            <p><strong>availability:</strong> {{ tutor[11] }}</p>
+                        </div>
+                        <div class="tutor_card_img">
+                            <button class="tutor_like" id="tutor_like_btn">Like Tutor</button>
+                        </div>
                     </div>
                     <hr>
                 {% else %}
@@ -68,26 +73,33 @@
                 },
                 body: JSON.stringify({ university: university, subject: subject })
             })
-            .then(response => response.json())
-            .then(data => {
+            .then(response => response.json()) //get your vars (notably tutors) converted back from json
+            .then(data => { //data stores all info
                 const resultsContainer = document.getElementById('tutor_results');
-                resultsContainer.innerHTML = ''; // Clear current results
+                resultsContainer.innerHTML = ''; // Clear current results   (all children (innerHTML))
 
                 if (data.tutors.length > 0) {
                     data.tutors.forEach(tutor => {
-                        const tutorCard = `
-                            <div class="tutor_card">
-                                <p><strong>Name:</strong> ${tutor[1]}</p>
-                                <p><strong>Age:</strong> ${tutor[5]}</p>
-                                <p><strong>Uni:</strong> ${tutor[6]}</p>
-                                <p><strong>Course:</strong> ${tutor[7]}</p>
-                                <p><strong>About me:</strong> ${tutor[8]}</p>
-                                <p><strong>Subjects:</strong> ${tutor[9]}</p>
-                                <p><strong>Availability:</strong> ${tutor[10]}</p>
+                        const tutorCard = ` 
+                            <div class="tutor_card" data-tutor-id ="${tutor[4]}">
+                                <div class="tutor_card_info">
+                                    <p><strong>Name:</strong> ${tutor[1]}</p>
+                                    <p><strong>Age:</strong> ${tutor[6]}</p>
+                                    <p><strong>Uni:</strong> ${tutor[7]}</p>
+                                    <p><strong>Course:</strong> ${tutor[8]}</p>
+                                    <p><strong>About me:</strong> ${tutor[9]}</p>
+                                    <p><strong>Subjects:</strong> ${tutor[10]}</p>
+                                    <p><strong>Availability:</strong> ${tutor[11]}</p>
+                                </div>
+
+                                <div class="tutor_card_img">
+                                    <button class="tutor_like" id="tutor_like_btn">Like Tutor</button>
+                                </div>
                             </div>
                             <hr>
-                        `;
-                        resultsContainer.insertAdjacentHTML('beforeend', tutorCard);
+                        `; //inverted commas used for multi-line strings, with vars being inserted using ${}
+
+                        resultsContainer.insertAdjacentHTML('beforeend', tutorCard); //beforeend adds only after all exisiting content in tutorcard
                     });
                 } else {
                     resultsContainer.innerHTML = '<p>No tutors available at the moment.</p>';
@@ -95,6 +107,39 @@
             })
             .catch(error => console.error('Error:', error));
         });
+
+
+        // to add liked tutor
+        document.querySelectorAll(".tutor_like").forEach(button => {
+            button.addEventListener('click', function() {
+                const tutorCard = this.closest('.tutor_card');
+                const tutorId = tutorCard.getAttribute('data-tutor-id');
+
+                fetch('/like-tutor-ajax', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ tutor_id: tutorId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message === 'Tutor liked successfully') {
+                        alert('Tutor liked!');
+                    } else if (data.message === 'Tutor like removed') {
+                        alert('You have unliked this tutor.');
+                    } else if (data.error) {
+                        alert(`Error: ${data.error}`);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            });
+        });
+
+
+
     </script>
     
 {% endblock %}
+
+ <!-- In JavaScript, backticks ` are used to create template literals, which allow for multi-line strings and the inclusion of variables or expressions using ${}. This makes it easier to embed dynamic values, such as the tutor[n] fields in your case, into a string without needing to concatenate multiple strings together with +. -->

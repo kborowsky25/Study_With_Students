@@ -147,8 +147,6 @@ def hub_tutor():
     return render_template("hub_tutor.html", name = session["name"]) #this will through an error if someone tries to /into this. (could put if user in session)
 
 
-
-
 @app.route("/tutor-profile", methods=["GET", "POST"])
 def tutor_profile():
     if request.method == "GET":
@@ -177,7 +175,7 @@ def tutor_profile():
                 if connection.is_connected():
                     cursor = connection.cursor()
 
-                    sql = "SELECT * FROM tutor_profiles WHERE user_id = %s "
+                    sql = "SELECT * FROM tutor_profiles WHERE id_user = %s "
                     cursor.execute(sql, (user_id,))
                     
                     result = cursor.fetchone() #one row
@@ -187,12 +185,12 @@ def tutor_profile():
                             UPDATE tutor_profiles
                             SET age = %s, university = %s, course = %s, about_me = %s,
                                 subjects = %s, availability = %s
-                            WHERE user_id = %s
+                            WHERE id_user = %s
                         """
                         cursor.execute(sql, (age, university, course, about_me, subjects, availability, user_id))
                     else:  # Profile does not exist, insert new
                         sql = """
-                            INSERT INTO tutor_profiles (user_id, age, university, course, about_me, subjects, availability)
+                            INSERT INTO tutor_profiles (id_user, age, university, course, about_me, subjects, availability)
                             VALUES (%s, %s, %s, %s, %s, %s, %s)
                         """
                         cursor.execute(sql, (user_id, age, university, course, about_me, subjects, availability))
@@ -235,7 +233,7 @@ def find_tutors():
                         query1 = "SELECT DISTINCT subjects FROM tutor_profiles ORDER BY subjects ASC" #give you all distinct subjects for filter
                         query2 = "SELECT DISTINCT university FROM tutor_profiles ORDER BY university ASC" #give you all distinct unis for filter
 
-                        query3 = "SELECT * FROM users JOIN tutor_profiles ON users.id = tutor_profiles.user_id" #to give you all the data you need (name is [1] email[2])
+                        query3 = "SELECT * FROM users JOIN tutor_profiles ON users.id_user = tutor_profiles.id_user" #to give you all the data you need (name is [1] email[2])
 
                         
                         cursor.execute(query1)
@@ -260,53 +258,7 @@ def find_tutors():
             
         else:
             return render_template("/signup.html")
-        
-    # elif request.method == "POST":
-    #     selected_university = request.form["university"] #because of jinja
-    #     selected_subject = request.form["subject"] #because of jinja
-    #     print(selected_subject)
-    #     print(selected_university)
 
-    #     try:
-    #             # Connect to the database
-    #             connection = mysql.connector.connect(
-    #                 host='localhost',          # e.g., 'localhost' or an IP address
-    #                 user='root',      # your database username
-    #                 password='Kikidi25',  # your database password
-    #                 database='users_tutoring'   # the name of your database
-    #             )
-                
-    #             if connection.is_connected():
-    #                 cursor = connection.cursor()
-
-    #                 query1 = "SELECT DISTINCT subjects FROM tutor_profiles ORDER BY subjects ASC" #give you all distinct subjects for filter
-    #                 query2 = "SELECT DISTINCT university FROM tutor_profiles ORDER BY university ASC" #give you all distinct unis for filter
-
-    #                 query3 = "SELECT * FROM users   JOIN tutor_profiles ON users.id = tutor_profiles.user_id  WHERE tutor_profiles.university = %s AND  tutor_profiles.subjects = %s" #to give you all the data you need (name is [1] email[2])
-
-                    
-    #                 cursor.execute(query1)
-    #                 subjects = cursor.fetchall() #fetch all rows
-    
-    #                 cursor.execute(query2)
-    #                 unis = cursor.fetchall()
-                    
-    #                 cursor.execute(query3, (selected_university, selected_subject))
-    #                 tutors = cursor.fetchall()
-    #                 print(tutors)
-
-    #                 connection.commit()  # Commit the transaction
-    #                 cursor.close()
-    #                 connection.close()
-
-    #                 # Pass the list of tutors to the template
-    #                 return render_template("find_tutors.html", subjects=subjects, unis=unis, tutors=tutors)
-                    
-    #     except Error as error_message:
-    #         print(f"Error: {error_message}")
-    #         return render_template("homepage.html")
-
-    
     else:
         return render_template("homepage.html")
     
@@ -333,7 +285,7 @@ def find_tutor_ajax():
             cursor = connection.cursor()
 
             # Prepare the SQL query
-            query3 = "SELECT * FROM users JOIN tutor_profiles ON users.id = tutor_profiles.user_id WHERE 1=1"
+            query3 = "SELECT * FROM users JOIN tutor_profiles ON users.id_user = tutor_profiles.id_user WHERE 1=1"
             filters = []
 
             # Add filters based on user input
@@ -352,6 +304,62 @@ def find_tutor_ajax():
 
             # Return the data as a JSON response
             return jsonify({'tutors': tutors})
+
+    except mysql.connector.Error as err:
+        return jsonify({'error': str(err)}), 500
+
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+
+@app.route("/like-tutor-ajax", methods=['POST'])
+def like_tutor():
+    if request.content_type != 'application/json':
+        return jsonify({'error': 'Invalid Content-Type. Expected application/json'}), 400
+    
+    data = request.get_json()  # Get the JSON data sent from the client
+    tutor_id = data.get('tutor_id', '').strip()
+    user_id = session["user_id"]  # Get user ID from session
+
+    if not user_id:
+        return jsonify({'error': 'User not authenticated'}), 401
+
+    if not tutor_id:
+        return jsonify({'error': 'No tutor ID provided'}), 400
+
+    try:
+        # Connect to the database
+        connection = mysql.connector.connect(
+            host='localhost',
+            user='root',
+            password='Kikidi25',
+            database='users_tutoring'
+        )
+
+        if connection.is_connected():
+            cursor = connection.cursor()
+
+            # Check if the user has already liked the tutor
+            check_query = '''SELECT * FROM liked_tutors WHERE id_user = %s AND id_tutor = %s'''
+            cursor.execute(check_query, (user_id, tutor_id))
+            result = cursor.fetchone()
+
+            if result:
+                # Tutor is already liked, possibly unlike or update
+                delete_query = '''DELETE FROM liked_tutors WHERE id_user = %s AND id_tutor = %s'''
+                cursor.execute(delete_query, (user_id, tutor_id))
+                connection.commit()
+
+                return jsonify({'message': 'Tutor like removed'}), 200
+            else:
+                # Tutor is not liked, insert a new record
+                insert_query = '''INSERT INTO liked_tutors (id_user, id_tutor, liked) VALUES (%s, %s, %s)'''
+                cursor.execute(insert_query, (user_id, tutor_id, 1))
+                connection.commit()
+
+                return jsonify({'message': 'Tutor liked successfully'}), 201
 
     except mysql.connector.Error as err:
         return jsonify({'error': str(err)}), 500
