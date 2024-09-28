@@ -1,0 +1,37 @@
+{% extends "template.html" %}
+
+{% block body %}
+    <div class="tutor_info">
+        <div class="tutor_info_container">
+            <div class="tutor_info_summary" data-tutor-id="{{ tutor_info[0] }}">
+                <p><strong>Name:</strong> {{ tutor_info[1] }}</p>
+                <p><strong>Age:</strong> {{ tutor_info[6] }}</p>
+                <p><strong>Uni:</strong> {{ tutor_info[7] }}</p>
+                <p><strong>Course:</strong> {{ tutor_info[8] }}</p>
+                <p><strong>About me:</strong> {{ tutor_info[9] }}</p>
+                <p><strong>Subjects:</strong> {{ tutor_info[10] }}</p>
+                <p><strong>availability:</strong> {{ tutor_info[11] }}</p>
+            </div>
+            <button class="tutor_contact_btn" id ="tutor_contact_btn">Contact Tutor</button>
+        </div>
+    </div>
+
+
+    <script>
+
+        document.getElementById("tutor_contact_btn").addEventListener("click", function() {
+            const tutorInfo = document.getElementsByClassName('tutor_info_summary');
+            
+            // Check if there are any elements with the class 'tutor_info_summary'
+            if (tutorInfo.length > 0) {
+                const tutorId = tutorInfo[0].getAttribute('data-tutor-id');  // Access the first element
+                console.log(`Redirecting to /send-message?tutor_id=${tutorId}`);  // Debugging log
+                window.location.href = `/send-message?tutor_id=${tutorId}`;  // Redirect
+            } else {
+                console.error('No elements found with class tutor_info_summary');  // Error log
+            }
+        });
+
+
+    </script>
+{% endblock %}

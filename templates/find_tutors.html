@@ -111,7 +111,8 @@
 
         // to add liked tutor
         document.querySelectorAll(".tutor_like").forEach(button => {
-            button.addEventListener('click', function() {
+            button.addEventListener('click', function(event) {
+                event.stopPropagation();
                 const tutorCard = this.closest('.tutor_card');
                 const tutorId = tutorCard.getAttribute('data-tutor-id');
 
@@ -126,8 +127,10 @@
                 .then(data => {
                     if (data.message === 'Tutor liked successfully') {
                         alert('Tutor liked!');
+                        button.style.backgroundColor = 'grey';
                     } else if (data.message === 'Tutor like removed') {
                         alert('You have unliked this tutor.');
+                        button.style.backgroundColor = 'orange'
                     } else if (data.error) {
                         alert(`Error: ${data.error}`);
                     }
@@ -136,8 +139,14 @@
             });
         });
 
-
-
+        // to redirect on click (could have also used anchor tag)
+        document.querySelectorAll(".tutor_card").forEach(card => {
+            card.addEventListener("click", function() {
+                const tutorCard = this.closest('.tutor_card');
+                const tutorId = tutorCard.getAttribute('data-tutor-id');
+                window.location.href = `/tutor-info?tutor_id=${tutorId}`;
+            });
+        });
     </script>
     
 {% endblock %}

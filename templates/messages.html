@@ -1,0 +1,24 @@
+{% extends "template.html" %}
+
+{% block body %}
+
+</body>
+    <h1>Your Inbox</h1>
+    <div id="messages">
+        {% if messages %}
+                {% for message in messages %}
+                    <li>
+                        Tutor ID: {{ message.tutor_id }} - Message: {{ message.content }}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>Your inbox is empty.</p>
+        {% endif %}
+    </div>
+    <div class="temp">
+        <a href="/send-message">send message</a>
+    </div>
+</body>
+
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "template.html" %}
+
+{% block body %}
+
+    <div class="send_message">
+        <div class="send_message_container" id="message-list">
+            {% for message in messages %} 
+            <p class="message_p"> {{ message }}</p>
+            {% endfor %}
+        </div>
+        <div class="send_message_text">
+            <form class="send_message_form">
+                <input type="text" class="send_message_input" placeholder="Type message...">
+                <button class="send_message_btn">Send Message</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        
+        
+        const socket = io();  // Connect to the SocketIO server
+
+        // Listen for new messages
+        socket.on('new_message', function(data) {
+            const messageList = document.getElementById('message-list');
+            const newMessageItem = document.createElement('p');
+            newMessageItem.textContent = `Message: ${data.message_content}`;
+            messageList.appendChild(newMessageItem);
+        });
+
+        // Handle form submission
+        document.getElementById('message-form').addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent the default form submission
+
+            // Send the message using AJAX
+            const formData = new FormData(this);
+            const params = new URLSearchParams(formData).toString();
+
+            fetch('/send-message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                // body: what am i sending? receiver id and message
+            }).then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url; // Redirect to inbox to update messages
+                }
+            });
+        });
+    </script>
+
+{% endblock %}

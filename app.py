@@ -1,10 +1,13 @@
 from flask import Flask, redirect, render_template, request, session, jsonify
 import mysql.connector
 from mysql.connector import Error
+from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
 
 app.config['SECRET_KEY'] = 'your_secret_key_here' #need to see what this is for later
+
+socketio = SocketIO(app) 
 
 # Set sessions to be permanent (not cleared on browser close)
 app.config['SESSION_PERMANENT'] = False  # False means the session lasts as long as the browser is open.
@@ -300,7 +303,6 @@ def find_tutor_ajax():
             # Execute the query
             cursor.execute(query3, tuple(filters))
             tutors = cursor.fetchall()
-            print(tutors)
 
             # Return the data as a JSON response
             return jsonify({'tutors': tutors})
@@ -368,3 +370,143 @@ def like_tutor():
         if connection.is_connected():
             cursor.close()
             connection.close()
+
+
+@app.route("/tutor-info", methods=["GET"])
+def tutor_info():
+    tutor_id = request.args.get('tutor_id')  # Get the tutor_id from the URL
+    try:
+        # Connect to the database
+        connection = mysql.connector.connect(
+            host='localhost',          # e.g., 'localhost' or an IP address
+            user='root',      # your database username
+            password='Kikidi25',  # your database password
+            database='users_tutoring'   # the name of your database
+        )
+        
+        if connection.is_connected():
+            cursor = connection.cursor()
+
+            query = "SELECT * FROM users JOIN tutor_profiles ON users.id_user = tutor_profiles.id_user WHERE id_tutor = %s" #gives you info on tutor
+
+            cursor.execute(query, (tutor_id,))
+            tutor_info = cursor.fetchone()
+
+            connection.commit()  # Commit the transaction
+            cursor.close()
+            connection.close()
+
+            # Pass the list of tutors to the template
+            return render_template('tutor_info.html', tutor_info=tutor_info)
+            
+            
+    except Error as error_message:
+        print(f"Error: {error_message}")
+        return render_template("homepage.html")
+    
+
+
+@app.route("/messages", methods=["GET", "POST"])
+def messages():
+    if request.method == "GET":
+        receiver_user_id = session["user_id"]
+        
+        try:
+            # Connect to the database
+            connection = mysql.connector.connect(
+                host='localhost',          # e.g., 'localhost' or an IP address
+                user='root',      # your database username
+                password='Kikidi25',  # your database password
+                database='users_tutoring'   # the name of your database
+            )
+            
+            if connection.is_connected():
+                cursor = connection.cursor()
+
+                query = "SELECT * FROM messages WHERE id_receiver = %s ORDER BY message_timestamp" #give you all messages ordered by person
+
+                cursor.execute(query, (receiver_user_id,))
+                messages = cursor.fetchall()
+
+                connection.commit()  # Commit the transaction
+                cursor.close()
+                connection.close()
+
+
+                return render_template("messages.html", messages=messages) 
+            
+        except Error as error_message:
+            print(f"Error: {error_message}")
+            return render_template("homepage.html")
+
+
+
+@app.route('/send-message', methods=["GET",'POST'])
+def send_message():
+    if request.method == "GET":
+        receiver_id = request.args.get('tutor_id')  # Get the tutor_id from the URL
+        sender_id = session["user_id"]
+        
+        try:
+            # Connect to the database
+            connection = mysql.connector.connect(
+                host='localhost',          # e.g., 'localhost' or an IP address
+                user='root',      # your database username
+                password='Kikidi25',  # your database password
+                database='users_tutoring'   # the name of your database
+            )
+            
+            if connection.is_connected():
+                cursor = connection.cursor()
+                query = "SELECT * FROM messages WHERE id_sender = %s ORDER BY message_timestamp"
+
+                cursor.execute(query, (sender_id,))  #need to add message to database, but also need to update it live for the user in case they are using platform and need to receive message while they are there.
+                messages = cursor.fetchall()
+
+                connection.commit()  # Commit the transaction
+                cursor.close()
+                connection.close()
+                
+                return render_template("send_message.html", messages = messages)
+
+        except Error as error_message:
+            print(f"Error: {error_message}")
+            redirect("/homepage")
+            
+
+    if request.method == "POST":
+        receiver_id = request.form.get('receiver_id')
+        message_content = request.form.get('message')
+        sender_id = session["user_id"]
+
+        try:
+            # Connect to the database
+            connection = mysql.connector.connect(
+                host='localhost',          # e.g., 'localhost' or an IP address
+                user='root',      # your database username
+                password='Kikidi25',  # your database password
+                database='users_tutoring'   # the name of your database
+            )
+            
+            if connection.is_connected():
+                cursor = connection.cursor()
+
+                query = '''INSERT INTO messages VALUES %s, %s, %s ''' #give you all messages ordered by person
+
+                cursor.execute(query, (message_content, sender_id, receiver_id))  #need to add message to database, but also need to update it live for the user in case they are using platform and need to receive message while they are there.
+
+                connection.commit()  # Commit the transaction
+                cursor.close()
+                connection.close()
+
+            
+            socketio.emit('new_message', {
+                'sender_id': sender_id,
+                'message_content': message_content,
+                "receiver_id": receiver_id
+            })
+                
+        except Error as error_message:
+            print(f"Error: {error_message}")
+            redirect("/homepage")
+            
