@@ -8,7 +8,7 @@
         {% if messages %}
                 {% for message in messages %}
                     <li>
-                        Tutor ID: {{ message.tutor_id }} - Message: {{ message.content }}
+                        Sender ID: {{ message[1] }} - Message: {{ message[3] }}
                     </li>
                 {% endfor %}
             </ul>

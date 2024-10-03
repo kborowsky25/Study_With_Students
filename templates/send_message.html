@@ -9,47 +9,58 @@
             {% endfor %}
         </div>
         <div class="send_message_text">
-            <form class="send_message_form">
-                <input type="text" class="send_message_input" placeholder="Type message...">
+            <form class="send_message_form" id ="message-form" data-receiver-id="{{ receiver_id }}">
+                <input type="text" class="send_message_input" placeholder="Type message..." id="message-input">
                 <button class="send_message_btn">Send Message</button>
             </form>
         </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
     <script>
-        
-        
         const socket = io();  // Connect to the SocketIO server
-
-        // Listen for new messages
-        socket.on('new_message', function(data) {
-            const messageList = document.getElementById('message-list');
-            const newMessageItem = document.createElement('p');
-            newMessageItem.textContent = `Message: ${data.message_content}`;
-            messageList.appendChild(newMessageItem);
-        });
-
         // Handle form submission
         document.getElementById('message-form').addEventListener('submit', function(event) {
             event.preventDefault(); // Prevent the default form submission
 
-            // Send the message using AJAX
-            const formData = new FormData(this);
-            const params = new URLSearchParams(formData).toString();
+            // Ensure variables are properly declared
+            const receiverId = this.getAttribute('data-receiver-id'); // Get receiver ID from data attribute
+            const message = document.getElementById('message-input').value; // Get message from input by ID
 
+            // Log the form data for debugging
+            console.log('Form Data:', { receiver_id: receiverId, message: message });
+
+            // Send the message using Fetch
             fetch('/send-message', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
+                    'Content-Type': 'application/json' // Sending JSON data
                 },
-                // body: what am i sending? receiver id and message
-            }).then(response => {
-                if (response.redirected) {
-                    window.location.href = response.url; // Redirect to inbox to update messages
+                body: JSON.stringify({ receiver_id: receiverId, message: message }) // Convert the form data to JSON
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok.'); // Handle errors
                 }
+                return response.json(); // Parse JSON response
+            })
+            .then(data => {
+                console.log('Message sent successfully:', data); // Handle success response
+                // Optionally, clear the input after sending
+                document.getElementById('message-input').value = ''; // Clear the input
+            })
+            .catch(error => {
+                console.error('Error sending message:', error); // Handle error
             });
         });
+
+        // Listen for new messages
+        socket.on('new_message', function(data) {
+                const messageList = document.getElementById('message-list');
+                const newMessageItem = document.createElement('p');
+                newMessageItem.textContent = `Message from ${data.sender_id}: ${data.message_content}`;
+                messageList.appendChild(newMessageItem);
+            });
     </script>
 
 {% endblock %}

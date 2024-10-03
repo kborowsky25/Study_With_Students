@@ -4,9 +4,7 @@ from mysql.connector import Error
 from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
-
 app.config['SECRET_KEY'] = 'your_secret_key_here' #need to see what this is for later
-
 socketio = SocketIO(app) 
 
 # Set sessions to be permanent (not cleared on browser close)
@@ -27,7 +25,6 @@ def route2():
 @app.route("/talk")
 def route3():
     return render_template("contact.html")
-
 
 
 
@@ -441,11 +438,12 @@ def messages():
 
 
 
-@app.route('/send-message', methods=["GET",'POST'])
+@app.route('/send-message', methods=["GET", "POST"])
 def send_message():
     if request.method == "GET":
         receiver_id = request.args.get('tutor_id')  # Get the tutor_id from the URL
         sender_id = session["user_id"]
+        print(receiver_id)
         
         try:
             # Connect to the database
@@ -458,55 +456,54 @@ def send_message():
             
             if connection.is_connected():
                 cursor = connection.cursor()
-                query = "SELECT * FROM messages WHERE id_sender = %s ORDER BY message_timestamp"
+                query = "SELECT * FROM messages WHERE id_sender = %s AND id_receiver = %s ORDER BY message_timestamp"
 
-                cursor.execute(query, (sender_id,))  #need to add message to database, but also need to update it live for the user in case they are using platform and need to receive message while they are there.
+                cursor.execute(query, (sender_id, receiver_id))  #need to add message to database, but also need to update it live for the user in case they are using platform and need to receive message while they are there.
                 messages = cursor.fetchall()
 
                 connection.commit()  # Commit the transaction
                 cursor.close()
                 connection.close()
                 
-                return render_template("send_message.html", messages = messages)
+                return render_template("send_message.html", messages = messages , receiver_id = receiver_id)
 
         except Error as error_message:
             print(f"Error: {error_message}")
             redirect("/homepage")
-            
+    elif request.method == "POST":
+        data = request.get_json()  # Get the JSON data from the request
+    receiver_id = data.get('receiver_id').strip()  # Extract receiver_id from the JSON data
+    message_content = data.get('message').strip()  # Extract message_content from the JSON data
+    sender_id = session.get("user_id")      # Get sender ID from session
 
-    if request.method == "POST":
-        receiver_id = request.form.get('receiver_id')
-        message_content = request.form.get('message')
-        sender_id = session["user_id"]
+    try:
+        # Connect to the database
+        connection = mysql.connector.connect(
+            host='localhost',
+            user='root',
+            password='Kikidi25',
+            database='users_tutoring'
+        )
 
-        try:
-            # Connect to the database
-            connection = mysql.connector.connect(
-                host='localhost',          # e.g., 'localhost' or an IP address
-                user='root',      # your database username
-                password='Kikidi25',  # your database password
-                database='users_tutoring'   # the name of your database
-            )
-            
-            if connection.is_connected():
-                cursor = connection.cursor()
+        if connection.is_connected():
+            cursor = connection.cursor()
+            query = "INSERT INTO messages (message, id_sender, id_receiver) VALUES (%s, %s, %s)"
+            cursor.execute(query, (message_content, sender_id, receiver_id))  # Insert message into the database
+        
+            connection.commit()  # Commit the transaction
+            cursor.close()
+            connection.close()
 
-                query = '''INSERT INTO messages VALUES %s, %s, %s ''' #give you all messages ordered by person
-
-                cursor.execute(query, (message_content, sender_id, receiver_id))  #need to add message to database, but also need to update it live for the user in case they are using platform and need to receive message while they are there.
-
-                connection.commit()  # Commit the transaction
-                cursor.close()
-                connection.close()
-
-            
+            # Emit the new message
             socketio.emit('new_message', {
                 'sender_id': sender_id,
                 'message_content': message_content,
-                "receiver_id": receiver_id
+                'receiver_id': receiver_id
             })
-                
-        except Error as error_message:
-            print(f"Error: {error_message}")
-            redirect("/homepage")
-            
+
+            return jsonify({'status': 'success'}), 200  # Return a JSON response
+
+    except Error as error_message:
+        print(f"Error: {error_message}")
+        return redirect("/homepage")
+    

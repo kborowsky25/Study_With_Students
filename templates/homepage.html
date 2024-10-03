@@ -8,7 +8,7 @@
     <div class="navbar_container">
         <div class="logo"> <span class="material-symbols-outlined">
             rocket_launch
-            </span> Study with Students</div>
+            </span> <a href="/"> Study with Students</a></div>
         <ul class="elements_container">
             <li> 
                 <a href="whatwedo" class="element">What We Do</a>
@@ -56,11 +56,11 @@
             <p class="paragraph_main">Here, at StudyWithStudents, you can find tutors, talk to students and find out about upcoming events near you. <br> This is your new student portal.</p>
             <div class="form_container">
                 <form action="/join" method="GET" class="form_main">
-                    <button id="button_main_left">Join Now</button>
+                    <button id="button_main_left"><a href = "/signup">Join Now</a></button>
                 </form>
     
                 <form action="/talk" method="GET" class="form_main">
-                    <button id="button_main_right">Talk to us</button>
+                    <button id="button_main_right"><a href = "/contact">Talk To US</a></button>
                 </form>
             </div>
         </div>
@@ -93,117 +93,287 @@
 <div class="unis">
     <div class="unis_container">
         <div class="unis_list">
-            <p class="unis_p">Students from TOP universities</p>
+            <p class="unis_p">Students from <i style="color: #ff725e">TOP</i> universities...</p>
         </div>
         <div class="unis_logo_container">
-            <img src="static/images/homepage/nyu.png" alt="Failed to load" class="images">
-            <img src="static/images/homepage/imperial.png" alt="Failed to load" class="images">
-            <img src="static/images/homepage/ucl.png" alt="Failed to load" class="images">
-            <img src="static/images/homepage/kcl.png" alt="Failed to load" class="images">
-            <img src="static/images/homepage/cam.png" alt="Failed to load" class="images">
+            <img src="static/images/homepage/nyu.png" alt="Failed to load" class="images_uni">
+            <img src="static/images/homepage/imperial.png" alt="Failed to load" class="images_uni">
+            <img src="static/images/homepage/ucl.png" alt="Failed to load" class="images_uni">
+            <img src="static/images/homepage/kcl.png" alt="Failed to load" class="images_uni">
+            <img src="static/images/homepage/cam.png" alt="Failed to load" class="images_uni">
+            <img src="static/images/homepage/oxf.jpg" alt="Failed to load" class="images_uni">
+            <img src="static/images/homepage/nus.jpg" alt="Failed to load" class="images_uni">
         </div>
     </div>
  </div>
 
  <!-- Content 4-->
-
- <div class="trust">
-    <div class="trust_container">
-        <div class="trust_header">
-            <p class="title_trust">
-                Find tutors in more subjects than ever.
-            </p>
+<img src="/static/images/homepage/wave.svg" alt="no load" class="wave">
+<div class="title_subjects">
+    Explore. Learn. Repeat.
+</div>
+<div class="p_subjects">Explore our subjects and find what's interesting to you.</div>
+ <div class="subjects">
+    <div class="subjects_container">
+        <div class="subjects_header">
+            <img src="/static/images/homepage/subjects.svg" class="subjects_img">
         </div>
-        <div class="trust_body">
-            <div class="trust_subject">
-                <p class="subject_p">
-                    Maths
+        <div class="subjects_body">
+            <div class="subjects_subject">
+                <div class="icon">
+                    <i class="fa-solid fa-calculator" style="color:#ff725e; font-size: 30px;"></i>
+                </div>
+                <p class="subjects_p">
+                    Mathematics
                 </p>
             </div>
-            <div class="trust_subject"></div>
-            <div class="trust_subject"></div>
-            <div class="trust_subject"></div>
-            <div class="trust_subject"></div>
-            <div class="trust_subject"></div>
-            <div class="trust_subject"></div>
-            <div class="trust_subject"></div>
-            <div class="trust_subject"></div>
+            <div class="subjects_subject">
+                <div class="icon">
+                    <i class="fa-solid fa-atom" style="color:#ff725e; font-size: 30px;"></i>
+                </div>
+                <p class="subjects_p">
+                    Physics
+                </p>
+            </div>
+            <div class="subjects_subject">
+                <div class="icon">
+                    <i class="fa-solid fa-flask" style="color:#ff725e; font-size: 30px;"></i>
+                </div>
+                <p class="subjects_p">
+                    Chemistry 
+                </p>
+            </div>
+            <div class="subjects_subject">
+                <div class="icon">
+                    <i class="fa-solid fa-flask" style="color:#ff725e; font-size: 30px;"></i>
+                </div>
+                <p class="subjects_p">
+                    Biology
+                </p>
+            </div>
+            <div class="subjects_subject">
+                <div class="icon">
+                    <i class="fa-solid fa-computer" style="color:#ff725e; font-size: 30px;"></i>
+                </div>
+                <p class="subjects_p">
+                    Comp. Sci.
+                </p>
+            </div>
+            <div class="subjects_subject">
+                <div class="icon">
+                    <i class="fa-solid fa-business-time" style="color:#ff725e; font-size: 30px;"></i>
+                </div>
+                <p class="subjects_p">
+                    Business
+                </p>
+            </div>
+            <div class="subjects_subject">
+                <div class="icon">
+                    <i class="fa-solid fa-money-check-dollar" style="color:#ff725e; font-size: 30px;"></i>
+                </div>
+                <p class="subjects_p">
+                    Economics
+                </p>
+            </div>
+            <div class="subjects_subject">
+                <div class="icon">
+                    <i class="fa-solid fa-language" style="color:#ff725e; font-size: 30px;"></i>
+                </div>
+                <p class="subjects_p">
+                    English
+                </p>
+            </div>
+            <div class="subjects_subject">
+                <div class="icon">
+                    <i class="fa-solid fa-language" style="color:#ff725e; font-size: 30px;"></i>
+                </div>
+                <p class="subjects_p">
+                    French
+                </p>
+            </div>
+            <div class="subjects_subject">
+                <div class="icon">
+                    <i class="fa-solid fa-paint-roller" style="color:#ff725e; font-size: 30px;"></i>
+                </div>
+                <p class="subjects_p">
+                    Art
+                </p>
+            </div>
+            <div class="subjects_subject">
+                <div class="icon">
+                    <i class="fa-solid fa-brain" style="color:#ff725e; font-size: 30px;"></i>
+                </div>
+                <p class="subjects_p">
+                    Psychology
+                </p>
+            </div>
+            <div class="subjects_subject">
+                <div class="icon">
+                    <i class="fa-solid fa-paint-roller" style="color:#ff725e; font-size: 30px;"></i>
+                </div>
+                <p class="subjects_p">
+                    Art
+                </p>
+            </div>
+            <div class="subjects_subject">
+                <div class="icon">
+
+                </div>
+                <p class="subjects_p">
+                    Engineering
+                </p>
+            </div>
+            <div class="subjects_subject">
+                <div class="icon">
+
+                </div>
+                <p class="subjects_p">
+                    Law
+                </p>
+            </div>
+            <div class="subjects_subject">
+                <p class="subjects_p">
+                    Explore All
+                </p>
+                <div class="icon"></div>
+                    <i class="fa-solid fa-arrow-right" style="color:#ff725e; font-size: 30px;"></i>
+                </div>
+            </div>
         </div>
     </div>
  </div>
 
-  <!-- Content 5 -->
-   <div class="works">
-    <div class="works_container">
-        <div class="works_header">
-            How it works
-        </div>
-        <div class="works_icons">
-            <div class="works_icons_indv">
-                <p class="icons_h">Step 1</p>
-                <p class="icons_p">Create an account with personalised information with your goals and uni situation</p>
-            </div>
-            <div class="works_icons_indv">
-                <p class="icons_h">Step 2</p>
-                <p class="icons_p">Discover our portal and find tutors, events or forums</p>
-            </div>
-            <div class="works_icons_indv">
-                <p class="icons_h">Step 3</p>
-                <p class="icons_p">Study away</p>
-            </div>
-        </div>
-    </div>
-   </div>
+   <!-- Content 5 -->
 
-
-   <!-- Content 6-->
-
-   <div class="becoming">
+ <div class="becoming">
     <div class="becoming_container">
         <div class="becoming_tutor">
-            <p class="tutor_p">Interested in becoming a tutor? <br> Say less. </p>
+            <p class="becoming_tutor_p">Interested in becoming a tutor? <br> Say less. </p>
         </div>
         <div class="becoming_tutor_image">
 
         </div>
     </div>
    </div>
-    <!-- Content 6 -->
-     <div class="students">
-        <div class="students_container">
-            <div class="students_header">
+
+
+  <!-- Content 6 -->
+   <div class="works">
+
+        <div class="works_container">
+            <div class="works_header">
+                How it works:
+            </div>
+            <div class="works_icons">
+                <div class="works_icons_container" id="scroll_item1">
+                    <div class="works_icons_left">
+                        <p class="icons_h">Step 1</p>
+                        <p class="icons_p">Create an account with your personalised information</p> 
+                    </div>
+                    <div class="works_icons_right">
+                        <img src="/static/images/homepage/step1.svg" alt="Not Loaded" class="works_image">
+                    </div>
+                </div>
+                <div class="works_icons_container" id="scroll_item2">
+                    <div class="works_icons_left">
+                        <img src="/static/images/homepage/step2.svg" alt="Not Loaded" class="works_image">
+                    </div>
+                    <div class="works_icons_right">
+                        <p class="icons_h">Step 2</p>
+                        <p class="icons_p">Discover our portal and find tutors, events or forums</p>
+                    </div>
+                </div>
+                <div class="works_icons_container" id="scroll_item3">
+                    <div class="works_icons_left">
+                        <p class="icons_h">Step 3</p>
+                        <p class="icons_p">Study away</p>
+                    </div>
+                    <div class="works_icons_right">
+                        <img src="/static/images/homepage/step3.svg" alt="Not Loaded" class="works_image">
+                    </div>
+                </div>
+            </div>
+        </div>
+   </div>
+
+
+
+    <!-- Content 7 -->
+    <img src="/static/images/homepage/wave_bottom.svg" alt="No Image" class="wave_bottom">
+    <div class="reviews">
+        <div class="reviews_container">
+            <div class="reviews_header">
                 Hear what our students have to say about us
             </div>
-            <div class="students_reviews_container">
-                <div class="reviews">Review 1</div>
-                <div class="reviews">Review 2</div>
-                <div class="reviews">Review 3</div>
+            <div class="reviews_list">
+                <div class="review_indv">
+                    <img src="" alt="" class="reviewer_img">
+                    <p>Shlonda</p>
+                    <p>"This is by far the best website to find reliable tutors quickly. Thanks!"</p>
+                </div>
+                <div class="review_indv">
+                    <img src="" alt="" class="reviewer_img">
+                    <p>Tiffany</p>
+                    <p>"I love this website so much it gives me the giggles everytime I use it"</p>
+                </div>
+                <div class="review_indv">
+                    <img src="" alt="" class="reviewer_img">
+                    <p>Mark</p>
+                    <p>Nothing else to say than Suberb.</p>
+                </div>
             </div>
         </div>
-     </div>
+    </div>
 
    <!-- Footer -->
-     <div class="footer">
+    <div class="footer">
         <div class="footer_container">
             <div class="footer_main">
-                <div class="footer_content">About us</div>
-                <div class="footer_content">About us</div>
-                <div class="footer_content">About us</div>
-                <div class="footer_content">About us</div>
+                <div class="footer_logo">
+                    <a href="/" id="footer_logo">
+                        <span class="material-symbols-outlined">rocket_launch</span>
+                        Study With Students</a>
+                </div>
+                <div class="social_icons">
+                    <a href ="/" class ="social_icon_link" target="_blank">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href ="/" class ="social_icon_link" target="_blank">
+                        <i class="fab fa-linkedin"></i>
+                    </a>
+                </div> 
             </div>
             <div class="footer_main">
-                <div class="footer_content">About us</div>
-                <div class="footer_content">About us</div>
-                <div class="footer_content">About us</div>
-                <div class="footer_content">About us</div>
+                <h class="footer_h">About The Company</h>
+                <a href="" class="footer_content">About us</a>
+                <a href="" class="footer_content">About us</a>
+                <a href="" class="footer_content">About us</a>
+                <a href="" class="footer_content">About us</a>
             </div>
             <div class="footer_main">
-                <div class="footer_content">About us</div>
-                <div class="footer_content">About us</div>
-                <div class="footer_content">About us</div>
-                <div class="footer_content">About us</div>
+                <h class="footer_h">Quick Shortcuts</h>
+                <a href="" class="footer_content">About us</a>
+                <a href="" class="footer_content">About us</a>
+                <a href="" class="footer_content">About us</a>
+                <a href="" class="footer_content">About us</a>
+            </div>
+            <div class="footer_main">
+                <h class="footer_h">The rest</h>
+                <a href="" class="footer_content">About us</a>
+                <a href="" class="footer_content">About us</a>
+                <a href="" class="footer_content">About us</a>
+                <a href="" class="footer_content">About us</a>
             </div>
         </div>
-     </div>
+
+        <div class="rights">
+            <div class="rights_container">
+                <div class="line_footer"></div>
+                <i class="fa-regular fa-copyright"></i>
+                <i class="website_rights"> Study with Students 2024. All rights reserved.</i>
+                <div class="line_footer"></div>
+            </div>
+        </div>
+    </div>
 
 {% endblock %}

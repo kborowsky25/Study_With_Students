@@ -8,8 +8,8 @@
     font-family: "Noto Sans JP", sans-serif; /* be careful cuz this overwrites everything i believe */
 }
 
-.body {
-    background-color: #1b263b; /* changes safari overflow to this color */
+body {
+    background-color: white;
 }
 
 a {
@@ -29,13 +29,14 @@ a {
 /* hub.html to choose between student and tutor */
 
 .choice {
-    height: 100vh;
+    height: 92vh;
     width: 100%;
+    background-color: #1b263b;
 }
 
 .choice_container {
-    background-color: #1b263b;
     height: 100%;
+    width: 100%;
     display: flex;
 }
 
@@ -46,6 +47,11 @@ a {
     align-items: center;
     justify-content: center;
     flex-direction: row;
+    background-image: url("/static/images/hub/tutor.svg");
+    background-size: 70%;
+    background-position: center;
+    background-repeat: no-repeat; /* Prevents the image from repeating */
+
 }
 
 .choose_tutor {
@@ -54,28 +60,30 @@ a {
     display: flex;
     align-items: center;
     justify-content: center;
+    background-image: url("/static/images/hub/tutor.svg");
+    background-size: 70%;
+    background-position: center;
+    background-repeat: no-repeat; /* Prevents the image from repeating */
 }
 
 .choose_anchor {
-    font-size: 20px;
-    color: white;
+    font-size: 50px;
+    color: #ff725e;
 }
 
 
-
-
-
 /* navbar for students and tutors */
-
 .navbar {
     background: #1b263b; /*could use background-color if we want to be more specific*/ 
     height: 8vh;
     width: 100%;
     position: sticky;
-    display: flex;
+    align-items: center; /*aligns the navbar_container to center, but since is has same dimensions it doesnt really change anything but good practice if we have subcontainers that are smaller and we want to center them along y */
     top: 0; /* used with position to define position relative to what -- will be sticky 0px from top of parent container (screen in this case) */
     font-size: 15px;
-    z-index: 1; /* Elements with higher positive z-index values are stacked above elements with lower values.*/
+    justify-content: center;
+    display: flex;
+    z-index: 20; /* Elements with higher positive z-index values are stacked above elements with lower values.*/
     font: white;
     color: white;
     font-weight: bold;
@@ -86,15 +94,15 @@ a {
     height: 100%;
     width: 100%;
     display: flex;
-    justify-content: center;
-    padding: 10px;
+    justify-content: space-evenly;
+    padding: 1vh;
     flex-direction: row;
     align-items: center;
 }
 
 .logo {
-    margin: 20px;
-    font-size: 23px;
+    margin: 2vh;
+    font-size: 20px;
 }
 
 #switch_button {
@@ -174,6 +182,7 @@ a {
     text-align: center;
 }
 
+
 .hub_content_student {
     display: flex;
     flex-direction: column;
@@ -211,6 +220,16 @@ a {
     border-radius: 20px;
     background-color: grey;
     margin: 2vh;
+    border: 1px solid #ff725e;
+}
+
+.a_hub_student{
+    background: transparent; /* Semi-transparent background */
+    backdrop-filter: blur(5px); /* Apply blur to the content behind the element */
+    -webkit-backdrop-filter: blur(5px); /* Add for Safari support */
+    border-radius: 20px;
+    padding: 10px;
+    color:white;
 }
 
 #find_tutor {
