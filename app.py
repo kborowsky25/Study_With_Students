@@ -14,9 +14,9 @@ app.config['SESSION_PERMANENT'] = False  # False means the session lasts as long
 def index():
     return render_template("homepage.html")
 
-@app.route("/whatwedo")
+@app.route("/aboutus")
 def route1():
-    return render_template("whatwedo.html")
+    return render_template("aboutus.html")
 
 @app.route("/join")
 def route2():
