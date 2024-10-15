@@ -765,6 +765,7 @@ This allows us to change these properties without changing the child elements' p
     align-items: center;
     position: relative;
     padding-top: 5vh;
+    background: ;
 }
 
 .becoming_container {
@@ -829,6 +830,7 @@ This allows us to change these properties without changing the child elements' p
     width: 100%;
     color: white;
     padding: 2vh;
+    font-weight: 450;
 }
 
 .create_profile_now {
@@ -842,7 +844,7 @@ This allows us to change these properties without changing the child elements' p
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 15px;
+    font-size: 17px;
     font-weight: bold;
     margin-right: 16.5vw;
 }

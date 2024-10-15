@@ -18,13 +18,22 @@ def index():
 def route1():
     return render_template("aboutus.html")
 
-@app.route("/join")
+@app.route("/howitworks")
 def route2():
+    return render_template("how_it_works.html")
+
+@app.route("/meettheteam")
+def route3():
+    return render_template("meet_the_team.html")
+
+@app.route("/join")
+def route4():
     return render_template("signup.html")
 
 @app.route("/talk")
-def route3():
+def route5():
     return render_template("contact.html")
+
 
 
 
