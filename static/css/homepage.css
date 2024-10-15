@@ -986,7 +986,7 @@ This allows us to change these properties without changing the child elements' p
 }
 
 #footer_logo {
-    color: white;
+    color: #fff;
     text-align: center;
 }
 
