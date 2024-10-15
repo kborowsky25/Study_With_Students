@@ -45,7 +45,7 @@
 }
 
 .all_in_one_info {
-    height: 50%;
+    height: auto;
     color: #b0bec5;
     display: flex;
     justify-content: center;
@@ -59,7 +59,7 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
     padding: 5vh;
 }
@@ -177,8 +177,10 @@
     font-weight: bold;
     text-align: center;
     width: 100%;
-    padding-top: 10vh;
-    color: #1b263b;    
+    padding-top: 10vh; 
+    background: linear-gradient(to right, #b0bec5,  #1b263b, #b0bec5); 
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;  
 }
 
 .process_containers_container {
@@ -199,12 +201,12 @@
     justify-content: center;
     align-items: center;
     flex-direction: column;
-    box-shadow: 0px 12px 16px rgba(0, 0, 0, 0.3), 0 6px 20px rgba(0, 0, 0, 0.1);
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3), 0 6px 20px rgba(0, 0, 0, 0.1);
     border-radius: 30px;
     transition: transform 0.15s ease-in-out;
     padding: 2vh;
-    border: 1px solid #cfd8dc;
-    background: linear-gradient(to bottom, #1b263b, #cfd8dc);
+    /* background: linear-gradient(to bottom, #1b263b, #fff); */
+    background-color: white;
 }
 
 .process_containers:hover {
@@ -217,12 +219,50 @@
     padding: 0.5vh 0.9vh 0.5vh 0.9vh;
     color: #ff725e;
     margin: 1vh 0 3vh 0;
-    border-radius: 20px;
+    border-radius: 30px;
+    width: 100%;
+    text-align: center;
 }
 
 .process_steps_img {
     height: 55%;
-    
+    background-image: url(/static/images/howitworks/blob.svg);
+    background-position: 70%;
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-size: 120%;
+}
+
+#process_img_1 {
+    height: 55%;
+    background-image: url(/static/images/howitworks/blob.svg);
+    background-position: 2vw 5vh ;
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-size: 120%;
+    width: 80%;
+    padding-bottom: 2vh;
+}
+
+#process_img_2 {
+    height: 55%;
+    background-image: url(/static/images/howitworks/blob.svg);
+    background-position: 5vw -4vh ;
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-size: 120%;
+    width: 80%;
+    padding-bottom: 2vh;
+}
+
+#process_img_3 {
+    height: 55%;
+    background-image: url(/static/images/howitworks/blob.svg);
+    background-position: -6.3vw -5vh ;
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-size: 120%;
+    width: 80%;
 }
 
 .process_steps_p {
@@ -230,8 +270,10 @@
     text-align: center;
     font-size: 18px;
     font-weight: 650;
-    padding: 3vh 2vh 2vh 2vh;
-    color:#1b263b
+    margin: -0.2vh 2vh 2vh 2vh;
+    color:#1b263b;
+    border-top: 3px solid #1b263b;
+    padding: 2vh;
 }
 
 
