@@ -22,9 +22,9 @@ def route1():
 def route2():
     return render_template("how_it_works.html")
 
-@app.route("/meettheteam")
+@app.route("/becometutor")
 def route3():
-    return render_template("meet_the_team.html")
+    return render_template("become_a_tutor.html")
 
 @app.route("/join")
 def route4():

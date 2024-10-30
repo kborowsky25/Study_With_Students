@@ -1,0 +1,67 @@
+.meet_the_team_main {
+    height: 150vh;
+    width: 100%;
+    background-color: #1b263b;
+}
+
+.meet_the_team_main_container {
+    height: 100vh;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+.meet_the_team_title {
+    font-size: 40px;
+    color: #fff;
+    width: 100%;
+    text-align: center;
+    padding-top: 5vh;
+    border: 2px solid red;
+    font-weight: bold;
+}
+
+.meet_the_team_profiles {
+    width: 100%;
+    height: 80vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.profile_indv {
+    width: 20%;
+    margin: 5vw;
+    height: 50%;
+    background-color: #cfd8dc;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    align-items: center;
+}
+
+.profile_img {
+    width: 40%;
+    height: auto;
+    
+}
+
+.profile_info {
+
+}
+
+.profile_name {
+
+}
+
+.profile_uni {
+
+}
+
+.profile_about {
+
+}

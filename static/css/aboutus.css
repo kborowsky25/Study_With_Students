@@ -32,7 +32,7 @@
     display: flex;
     flex-direction: row;
     justify-content: center;
-    width: 50%;
+    width: 45%;
     height: 80vh;
     background-image: url(/static/images/aboutus/earth.svg);
     background-repeat: no-repeat;
@@ -43,32 +43,33 @@
 }
 
 .our_mission_h {
-    font-size: 65px;
+    font-size: 60px;
     color: #fff;
     font-weight: bold;
     border-radius: 20px;
     font-weight: bold;
     margin-bottom: 10vh;
-    margin-top: -15vh;
-    padding-right: 17vw;
+    margin-top: -13vh;
+    padding-right: 13vw;
 
 }
 
 .our_mission_div {
-    width: 45%;
+    width: 40%;
     display: flex;
     flex-wrap: wrap;
-    height: 80vh;
+    height: 70vh;
     border: 2px solid white;
-    transform: translate(-4.5vw, 0);
     border-radius: 20px;
-    justify-content: start;
-    align-items: start;
-    padding: 3vh 5vh 3vh 5vh;
+    transform: translate(-4.5vw, 0);
+    justify-content: center;
+    align-items: center;
+    padding: 3vh 5vh 3vh 10vh;
+    margin-top: -11vh;
 }
 
 .our_mission_p {
-    font-size: 40px;
+    font-size: 35px;
     font-weight: bold;
     color: #ff725e;    
 }
@@ -86,12 +87,6 @@
     font-size: 20px;
     list-style:none;
     padding-bottom: 5vh;
-}
-
-.our_mission_sp {
-    color: #b0bec5;
-    font-size: 15px;
-    margin-bottom: -15vh;
 }
 
 /* core values section */

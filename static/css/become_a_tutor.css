@@ -1,0 +1,326 @@
+/* content 1 */
+
+.tutor_main {
+    height: 100vh;
+    width: 100%;
+    background-color: #1b263b;
+}
+
+.tutor_main_container{
+    height: 50%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: start;
+    padding-left: 4vw;
+    padding-top: 4vh;
+}
+
+.tutor_main_title {
+    font-size: 45px;
+    color: white;
+    font-weight: bold;
+    margin-top: 5vh;
+    padding-left: 2vw;
+}
+
+.flex_div_row {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+.tutor_process {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    height: 100%;
+    width: 55%;
+    position: relative; /* Enables positioning for the pseudo-element */
+}
+
+.tutor_process::before {
+    content: "";
+    position: absolute;
+    top: 50%; /* Aligns the line with the center of the elements */
+    left: 10%; /* Adjust to match starting point, assuming centered divs */
+    width: 80%; /* Spans the majority of the width, adjusting for padding */
+    height: 2px; /* Thickness of the line */
+    background-color: white; /* Color of the connecting line */
+    z-index: -0; /* Places the line behind the divs */
+}
+
+.process_step1,
+.process_step3 {
+    width: 10%;
+    height: 30%;
+    border: 2px solid white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1; /* Ensures these divs stay above the line */
+    background-color: #1b263b;
+    padding: 3vh;
+    color: white;
+    font-size: 30px;
+    font-weight: bold;
+}
+
+.process_step2 {
+    width: 10%;
+    height: 30%;
+    border: 2px solid white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1; /* Ensures these divs stay above the line */
+    background-color: #ff725e;
+    padding: 3vh;
+    color: white;
+    font-size: 30px;
+    font-weight: bold;
+}
+
+.image_container_tutor {
+    position: relative;
+    width: 45%;
+}
+
+.image_container_tutor img {
+    position: absolute;
+    width: 25vw; /* Adjust size as needed */
+    opacity: 0.8; /* Optional: Adjust transparency for layered effect */
+    margin-left: 10vw;
+}
+
+.image_container_tutor img:nth-child(1) {
+    left: -45px; /* Offset for the first image */
+    z-index: 1;
+}
+
+.image_container_tutor img:nth-child(2) {
+    left: -23px; /* Offset for the second image */
+    z-index: 2;
+}
+
+.image_container_tutor img:nth-child(3) {
+    left: 0; /* Main image at the top */
+    z-index: 3;
+}
+
+.process_steps_content {
+    width: 72%;
+    height: 50%;
+    display: flex;
+    color: white;
+    justify-content: space-between;
+    align-items: start;
+    margin-top: -7vh;
+}
+
+.par_div {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+}
+
+.process_content1, 
+.process_content2,
+.process_content3 {
+    width: 70%;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.process_content1_mini,
+.process_content2_mini,
+.process_content3_mini {
+    font-size: 15px;
+    font-style: italic;
+}
+
+
+#tutor_join_button1 {
+    font-size: 23px;
+    margin: 0vh 0 0 12vw;
+    border-radius: 5px;
+    background-color: #ff725e;
+    color: white;
+    padding: 1vh 2.5vh 1vh 2.5vh;
+    font-weight: bold;
+    border: none;
+}
+
+
+.tutor_why_main {
+    height: 40%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.main_reasons_list {
+    color: white;
+    display: flex;
+    justify-content: space-evenly;
+    align-items: start;
+    width: 100%;
+}
+
+.tutor_reason_div {
+    display: flex;
+    flex-direction: column;
+    align-items: space-evenly;
+    justify-content: center;
+    width: 28%;
+}
+
+.tutor_reasons {
+    font-size: 30px;
+    color:#ff725e;
+    font-weight: bold;
+}
+
+.tutor_explanation {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 50%;
+}
+
+.tutor_explanation_p1 {
+    font-size: 18px;
+    font-style: italic;
+    padding-top: 1vh;
+}
+
+
+/* content 2 */
+
+.review_tutor_container {
+    height: 140vh;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: start;
+    background-color: #1b263b;
+    color: white;
+    flex-direction: column;
+}
+
+.advantages_tutor {
+    width: 75%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    justify-content: start;
+    padding-left: 12vw;
+}
+
+.advantages_title {
+    font-size: 40px;
+    font-weight: bold;
+}
+
+.advantage_flex {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding-top: 4vh;
+}
+
+.advantages_list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    align-items: start;
+    width: 40%;
+    padding-bottom: 3vh;
+}
+
+.list_item_advantage {
+    font-size: 20px;
+    padding: 2vh;
+    color:#ff725e;
+    font-weight: 500;
+}
+
+.advantage_img_list {
+    width: 50%;
+    height: auto;
+}
+
+#tutor_join_button2 {
+    font-size: 23px;
+    border-radius: 5px;
+    background-color: #ff725e;
+    color: white;
+    padding: 1vh 2.5vh 1vh 2.5vh;
+    font-weight: bold;
+    border: none;
+}
+
+
+
+.review_tutor {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: end;
+}
+
+.review_tutor_indv {
+    height: 100%;
+    width: 70%;
+    display: flex;
+    flex-direction: row;
+    justify-content: end;
+    align-items: start;
+    padding-right: 5vw;
+    padding-top: 6vh;
+}
+
+.review_tutor_content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.review_tutor_img {
+    width: 45%;
+    height: auto;
+    padding: 2vh;
+}
+
+.review_tutor_content {
+    height: 60%;
+}
+
+.review_tutor_comment {
+    font-size: 23px;
+    padding: 2vh;
+    font-style: italic;
+}
+
+.review_tutor_person {
+    font-size: 15px;
+    padding-top: 2vh;
+}
+
+#tutor_join_button3 {
+    font-size: 23px;
+    border-radius: 5px;
+    background-color: #ff725e;
+    color: white;
+    padding: 1vh 2.5vh 1vh 2.5vh;
+    font-weight: bold;
+    border: none;
+    margin-top: 4vh;
+}

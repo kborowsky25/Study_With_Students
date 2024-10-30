@@ -618,7 +618,7 @@ This allows us to change these properties without changing the child elements' p
 /* Content 6 */
 
 .works {
-    height: 220vh;
+    height: 250vh;
     width: 100%;
     display: flex;
     font-size: 17px;
@@ -639,12 +639,11 @@ This allows us to change these properties without changing the child elements' p
 }
 
 .works_header {
-    height: 10vh;
+    height: 5vh;
     width: 100%;
     padding-left: 10vw;
     text-align: flex-start;
     margin-bottom: 10vh;
-
 }
 
 .works_header_h {
@@ -667,25 +666,21 @@ This allows us to change these properties without changing the child elements' p
 
 .works_icons {
     display: flex;
-    justify-content: space-evenly;
     flex-direction: column;
     align-items: center;
     width: 100%;
-    height: 150vh;
-    margin-top: 10vh;
+    height: 220vh;
 }
 
 
 .works_icons_container {
-    margin: 2vh;
+    margin-bottom: 30vh;
     width: 100%;
     height: 50vh;
     display: flex;
     flex-direction: row;
     justify-content: center;
     align-items: center;
-    margin-top: 15vh;
-    margin-bottom: 5vh;
 }
 
 
@@ -723,6 +718,7 @@ This allows us to change these properties without changing the child elements' p
 
 #scroll_item3 {
     padding-right: 10vw;
+    padding-top: 12vh;
 }
 
 #works_icon_left2 {
@@ -749,6 +745,10 @@ This allows us to change these properties without changing the child elements' p
     font-size: 20px;
     color: #fff;
     text-align: center;
+}
+
+#icons_2_sp {
+    padding-top: 10vh;
 }
 
 

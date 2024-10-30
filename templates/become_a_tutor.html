@@ -1,0 +1,183 @@
+{% extends "template.html" %}
+
+{% block body %}
+
+
+<!-- Navigation Bar -->
+
+
+<div class="navbar">
+    <div class="navbar_container">
+        <div class="logo"> <span class="material-symbols-outlined">
+            rocket_launch
+            </span> <a href="/"> Study with Students</a></div>
+        <ul class="elements_container">
+            <li> 
+                <a href="howitworks" class="element">How It Works</a>
+            </li>
+            <li> 
+                <a href="aboutus" class="element">About us</a>
+            </li>
+            <li> 
+                <a href="becometutor" class="element">Become a Tutor</a>
+            </li>
+        </ul>
+        <ul class="elements_container_signup">
+            <li>
+                <a href="/signup" id="element_signup">Sign Up</a>
+            </li>
+            <li>
+                <a href="/login" id="element_login">Log in</a>
+            </li>
+        </ul>
+
+    </div>
+</div>
+
+<!-- Main Content -->
+
+<!-- Content 1 -->
+<div class="tutor_main">
+    <div class="tutor_main_container">
+
+        <h class="tutor_main_title">Want to become a tutor?</h>
+
+        <div class="flex_div_row">
+            <div class="tutor_process">
+                <div class="process_step1">1</div>
+                <div class="process_step2">2</div>
+                <div class="process_step3">3</div>
+            </div>
+            <div class="image_container_tutor">
+                <img src="/static/images/becometutor/space.svg" alt="" class="process_img_tutor">
+                <img src="/static/images/becometutor/space.svg" alt="" class="process_img_tutor">
+                <img src="/static/images/becometutor/space.svg" alt="" class="process_img_tutor">
+            </div>      
+        </div>
+        <div class="process_steps_content">
+            <div class="par_div">
+                <p class="process_content1">Create an account</p>
+                <div class="process_content1_mini">and log in</div>
+            </div>
+            <div class="par_div">
+                <p class="process_content2">Verify your account</p>
+                <div class="process_content2_mini">and put your info</div>
+            </div>
+            <div class="par_div">
+                <p class="process_content3">Start Tutoring</p>
+                <div class="process_content3_mini">and start making your <br> nights out easier</div>
+            </div>
+        </div>
+    </div>
+
+    <button id="tutor_join_button1">Become a tutor</button>
+
+
+    <div class="tutor_why_main">
+        <div class="main_reasons_list">
+            <div class="tutor_reason_div">
+                <h class="tutor_reasons">Make Everything You Earn</h>
+                <p class="tutor_explanation_p1">You get everything you earn. No Strings Attached.</p>
+            </div>
+            <div class="tutor_reason_div">
+                <h class="tutor_reasons">Set Your Own Rates</h>
+                <p class="tutor_explanation_p1">Earn as much as you like, and value your own lessons at your own price</p>
+            </div>
+            <div class="tutor_reason_div">
+                <h class="tutor_reasons">Flexible and Reliable</h>
+                <p class="tutor_explanation_p1">Schedule your lessons at conveniant times, and find a constant influx of students</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Content 2 -->
+ <div class="review_tutor_container">
+    <div class="advantages_tutor">
+        <div class="advantages_title">Here is what you can expect</div>
+        <div class="advantage_flex">
+            <ul class="advantages_list">
+                <l class="list_item_advantage"><i class="fa-solid fa-check" style="color:white;"></i>&nbsp;&nbsp;&nbsp;Flexible</l>
+                <l class="list_item_advantage"><i class="fa-solid fa-check"style="color:white;"></i>&nbsp;&nbsp;&nbsp;Quick</l>
+                <l class="list_item_advantage"><i class="fa-solid fa-check"style="color:white;"></i>&nbsp;&nbsp;&nbsp;Good payments</l>
+                <l class="list_item_advantage"><i class="fa-solid fa-check"style="color:white;"></i>&nbsp;&nbsp;&nbsp;Verified Students</l>
+                <l class="list_item_advantage"><i class="fa-solid fa-check"style="color:white;"></i>&nbsp;&nbsp;&nbsp;More things</l>
+            </ul>
+
+            <img src="/static/images/becometutor/list.svg" alt="" class="advantage_img_list">
+        </div>
+        <button id="tutor_join_button2">Become A Tutor</button>
+    </div>
+
+    <div class="review_tutor">
+        <div class="review_tutor_indv">
+            <img src="/static/images/becometutor/shrek.jpg" alt="" class="review_tutor_img">
+            <div class="review_tutor_content">
+                <p class="review_tutor_comment">"Bro why would you use other websites when this one is commission free?"</p>
+                <p class="review_tutor_person">Mike Oxlong - Imperial College</p>
+                <button id="tutor_join_button3">Sign up</button>
+            </div>
+        </div>
+    </div>
+    
+    
+
+ </div>
+
+
+
+
+
+   <!-- Footer -->
+   <div class="footer">
+    <div class="footer_container">
+        <div class="footer_main">
+            <div class="footer_logo">
+                <a href="/" id="footer_logo">
+                    <span class="material-symbols-outlined">rocket_launch</span>
+                    Study With Students</a>
+            </div>
+            <div class="social_icons">
+                <a href ="/" class ="social_icon_link" target="_blank">
+                    <i class="fab fa-instagram"></i>
+                </a>
+                <a href ="/" class ="social_icon_link" target="_blank">
+                    <i class="fab fa-linkedin"></i>
+                </a>
+            </div> 
+        </div>
+        <div class="footer_main">
+            <h class="footer_h">About The Company</h>
+            <a href="" class="footer_content">About us</a>
+            <a href="" class="footer_content">About us</a>
+            <a href="" class="footer_content">About us</a>
+            <a href="" class="footer_content">About us</a>
+        </div>
+        <div class="footer_main">
+            <h class="footer_h">Quick Shortcuts</h>
+            <a href="" class="footer_content">About us</a>
+            <a href="" class="footer_content">About us</a>
+            <a href="" class="footer_content">About us</a>
+            <a href="" class="footer_content">About us</a>
+        </div>
+        <div class="footer_main">
+            <h class="footer_h">The rest</h>
+            <a href="" class="footer_content">About us</a>
+            <a href="" class="footer_content">About us</a>
+            <a href="" class="footer_content">About us</a>
+            <a href="" class="footer_content">About us</a>
+        </div>
+    </div>
+
+    <div class="rights">
+        <div class="rights_container">
+            <div class="line_footer"></div>
+            <i class="fa-regular fa-copyright"></i>
+            <i class="website_rights"> Study with Students 2024. All rights reserved.</i>
+            <div class="line_footer"></div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
