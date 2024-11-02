@@ -1,10 +1,192 @@
+/* main content */
 
+.meet_the_team {
+    height: 100vh;
+    width: 100vw;
+    background-color: #1b263b;
+    color: white;
+    position: relative;
+}
+
+.meet_the_team_container {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: start;
+}
+
+.meet_me {
+    height: 80%;
+    padding-left: 14vh;
+    display: flex;
+    flex-direction: column;
+    width: 55%;
+}
+
+.meet_me_h {
+    font-size: 130px;
+    color:#ff725e;
+}
+
+.meet_me_p {
+    padding-top: 15vh;
+    font-size: 23px;
+}
+
+.kilian_image_container{
+    width: 45%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0vh 5vw 0vh 0;
+}
+
+.kilian_image_circle{
+    width: 70vh; /* Set the width you want */
+    height: 70vh; /* Set the height to match the width */
+    overflow: hidden; /* Hide any overflow */
+    border-radius: 50%; /* Make the container a circle */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(45deg, #fff, #1b263b); /* Gradient colors */
+    position: relative;
+    
+}
+
+.kilian_image_circle::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%; /* Match circular shape */
+    background: radial-gradient(circle, #cfd8dc, #1b263b); /*Radial gradient from center */
+    z-index: 1; /* Puts gradient above the image */
+}
+
+/* Image settings */
+.kilian_img {
+    width: 60%;
+    height: auto;
+    object-fit: cover; /* Ensures image fits nicely */
+    position: relative; /* Stack on top of container */
+    z-index: 2;
+}
+
+
+/* section my team */
+
+
+.my_team {
+    height: 150vh;
+    width: 100vw;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: space-between;
+}
+
+.my_team_title {
+    font-size: 60px;
+    color:#cfd8dc;
+    font-weight: bold;
+    text-align: center;
+    background-color: #1b263b;
+    border: 1px solid #cfd8dc;
+    width: 30%;
+    padding: 2vh;
+    border-radius: 20px;
+    margin-left: 20vw;
+    margin-top: -30vh;
+}
+
+.my_team_container {
+    height: 80%;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    padding-top: 3vh;
+}
+.double_back {
+    width: 20%;
+    height: 37%;
+    border: 1.3px dashed #1b263b;
+    margin: 3vh 10vh 3vh 10vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    z-index: -0.5;
+}
+
+.my_team_profile {
+    width: 100%;
+    height: 100%;
+    border: 4px solid #1b263b;
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    align-items: center;
+    transform: translate(2vh,-2vh);
+    position: relative;
+    background-color: #ff725e;
+
+   
+}
+
+.profiles_position {
+    font-size: 20px;
+    padding: 2vh;
+    text-align: center;
+    height: 30%;
+    font-weight: bold;
+    color: #fff;
+}
+
+.profiles_images {
+    width: 50%;
+    height: auto;
+}
+
+.profiles_name {
+    font-size: 20px;
+    padding: 0.5vh;
+    color:#fff
+}
+
+.profiles_uni {
+    font-size: 16px;
+    color:#fff;
+    padding-bottom: 0.7vh;
+}
+
+
+/* wave section 1 */
+
+.img_wave_mission{
+    width: 100%;
+    position: relative;
+    z-index: -1;
+    margin-top: -80vh;
+}
+
+
+/* what we do */
 
 .whatwedo {
-    height: 320vh;
+    height: 160vh;
     background-color: #1b263b;
     width: 100%;
     color: white;
+    margin-top: -17vh;
 }
 
 .whatedo_container {
@@ -40,6 +222,7 @@
     background-position: bottom;
     padding-top: 18vh;
     margin: 8vh;
+    position: relative;
 }
 
 .our_mission_h {
@@ -99,13 +282,13 @@
     align-items: center;
     padding-top: 10vh;
     padding-bottom: 10vh;
+    position: relative;
 }
 
 .core_value_h {
     font-size: 50px;
-    color:#fff;
+    color:#ff725e;
     font-weight: bold;
-    margin-bottom: 5vh;
 }
 
 .core_values_list {
@@ -122,7 +305,6 @@
     height: 100%;
     justify-content: center;
     align-items: center;
-    margin: 4vh;
 }
 
 .core_values_p {
@@ -136,34 +318,14 @@
 }
 
 
-/* discover section  */
+/* wave section2 */
 
-.discover_subjects {
-    height: 50vh;
+.wave_section2{
     width: 100%;
-    display: flex;
-    flex-direction: column;
-    background-color: white;
-    color:#1b263b;
-    padding: 10vh 0 0 5vw;
+    position: relative;
+    margin-top: -77vh;
+    z-index:-1;
 }
-
-.discover_subjects_h {
-    font-size: 40px;
-    color:#ff725e;
-    font-weight: bold;
-}
-
-.discover_subjects_p {
-    font-size: 20px;
-}
-
-.button_discovernow {
-    width: 10vw;
-    height: 5vh;
-}
-
-
 
 /* quote section */
 
@@ -172,8 +334,12 @@
     width: 100%;
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: start;
     flex-direction: column;
+    background-color: #fff;
+    color:#1b263b;
+    margin-top: -25vh;
+    padding-left: 5vw;
 }
 
 .quote_h {
@@ -194,10 +360,11 @@
     display: flex;
     justify-content: space-evenly;
     align-items: center;
-    height: 60vh;
+    height: 70vh;
     width: 100%;
     background-color: #fff;
     padding-top: 12vh;
+    position: relative;
 }
 
 /* future section */

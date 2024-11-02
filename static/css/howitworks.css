@@ -4,7 +4,7 @@
 
 
 .how_it_works {
-    height: 305vh;
+    height: 315vh;
     width: 100%;
     background-color: #1b263b;
 }
@@ -339,24 +339,23 @@
 }
 
 .becoming_tutor_p_pr {
-    font-size: 55px;
+    font-size: 60px;
     font-weight: bold;
     width: 100%;
     display: flex;
     justify-content: start;
-    padding-left: 5vw;
+    transform: translate(20vw, 0);
     color:#fff;
 }
 
-
-.choose_modes_pr {
-    font-size: 16px;
+.becoming_tutor_p_pr_mini {
+    font-size: 17px;
     color: #ff725e;
-    font-style: italic;
-    width: 100%;
     padding-top: 1vh;
-    padding-left: 8vw;
+    transform: translate(17.5vw, 0);
+    width: 100%;
 }
+
 
 .reasons_for_choice {
     height: 60%;
@@ -365,14 +364,23 @@
     flex-direction: column;
     justify-content: center;
     align-items: start;
-    padding: 8vh 0 0 5vw;
+    padding: 17vh 0 0 5vw;
 }
 
 
 .reason_for_choice_p {
-    color:#fff;
-    font-size: 20px;
-    padding: 3vh 0 3vh 0;
+    color:#ff725e;
+    font-size: 25px;
+    padding: 5vh 0 0vh 0;
+    font-weight: 500;
+}
+
+
+.reason_for_choice_p_mini {
+    color:#cfd8dc;
+    font-size: 18px;
+    padding: 1vh 0 3vh 0;
+    font-style: italic;
 }
 
 
@@ -418,22 +426,22 @@
 .choice_container_boxes::before {
     content: "";
     position: absolute;
-    top: 30%;
-    left: 50%;
+    top: 20%;
+    left: 40%;
     width: 2px;
-    height: 50%;
+    height: 60%;
     background-color: #b0bec5;
     transform: rotate(45deg); /* Adjust angle based on position */
     z-index: 0;
 }
 
 #mode_student {
-    margin-top: 30vh;
+    margin-top: 40vh;
     background-image: url(/static/images/hub/students.svg);
     background-position: center;
     background-repeat: no-repeat;
     background-size: contain;
-    margin-left: -10vw;
+    margin-left: -15vw;
 }
 
 #mode_tutor {
@@ -442,4 +450,5 @@
     background-position: center;
     background-repeat: no-repeat;
     background-size: contain;
+    margin-left: -10vw;
 }

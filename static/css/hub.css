@@ -51,7 +51,7 @@ a {
     background-size: 70%;
     background-position: center;
     background-repeat: no-repeat; /* Prevents the image from repeating */
-
+    color:#ff725e;
 }
 
 .choose_tutor {
@@ -64,12 +64,38 @@ a {
     background-size: 70%;
     background-position: center;
     background-repeat: no-repeat; /* Prevents the image from repeating */
+    color:#ff725e;
 }
 
-.choose_anchor {
+.choose_anchor_student {
     font-size: 50px;
-    color: #ff725e;
+    transition: transform 0.5s ease; /* Smooth transition for movement */
 }
+
+.choose_anchor_tutor {
+    font-size: 50px;
+    transition: transform 0.5s ease; /* Smooth transition for movement */
+}
+
+
+.choose_student:hover {
+    color: white;
+    background-color: #ff725e;
+}
+
+.choose_student:hover .choose_anchor_student {
+    transform: translateY(40vh); /* Moves the <p> tag 100px to the right */
+}
+
+.choose_tutor:hover {
+    color: white;
+    background-color: #ff725e;
+}
+
+.choose_tutor:hover .choose_anchor_tutor {
+    transform: translateY(40vh); /* Moves the <p> tag 100px to the right */
+}
+
 
 
 /* navbar for students and tutors */

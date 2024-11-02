@@ -4,6 +4,7 @@
     height: 100vh;
     width: 100%;
     background-color: #1b263b;
+    position: relative;
 }
 
 .tutor_main_container{
@@ -13,7 +14,7 @@
     flex-direction: column;
     justify-content: center;
     align-items: start;
-    padding-left: 4vw;
+    padding-left: 5vw;
     padding-top: 4vh;
 }
 
@@ -51,7 +52,7 @@
     z-index: -0; /* Places the line behind the divs */
 }
 
-.process_step1,
+.process_step2,
 .process_step3 {
     width: 10%;
     height: 30%;
@@ -67,7 +68,7 @@
     font-weight: bold;
 }
 
-.process_step2 {
+.process_step1 {
     width: 10%;
     height: 30%;
     border: 2px solid white;
@@ -161,6 +162,7 @@
     justify-content: center;
     align-items: center;
     width: 100%;
+    padding-left: 2vh;
 }
 
 .main_reasons_list {
@@ -199,40 +201,69 @@
 }
 
 
+/* wave */
+
+.img_wave_tutor {
+    width: 100%;
+    position: relative;
+    z-index: -1;
+    margin-top: -55vh;
+}
+
+/* line */
+
+
 /* content 2 */
 
 .review_tutor_container {
-    height: 140vh;
+    height: 150vh;
     width: 100%;
     display: flex;
     justify-content: center;
     align-items: start;
-    background-color: #1b263b;
-    color: white;
+    background-color: #fff;
+    color: #1b263b;
+    flex-direction: row;
+    margin-top: -15vh;
+}
+
+.flex_advantages {
+    display: flex;
+    height: 100%;
+    width:100%;
     flex-direction: column;
 }
 
 .advantages_tutor {
-    width: 75%;
-    height: 100%;
+    width: 80%;
+    height: 40%;
     display: flex;
     flex-direction: column;
-    align-items: start;
+    align-items: center;
     justify-content: start;
-    padding-left: 12vw;
+    padding: 2vw;
+    position: relative;
+    background-color: #fff;
+    z-index: 1;
+    background-color: #1b263b;
+    margin-left: 10vw;
+    border-radius: 20px;
+    color: white;
 }
 
 .advantages_title {
-    font-size: 40px;
+    font-size: 43px;
     font-weight: bold;
 }
 
 .advantage_flex {
     display: flex;
     flex-direction: row;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     padding-top: 4vh;
+    padding-left: 2vw;
 }
+
 
 .advantages_list {
     list-style: none;
@@ -240,7 +271,7 @@
     flex-direction: column;
     justify-content: start;
     align-items: start;
-    width: 40%;
+    width: 55%;
     padding-bottom: 3vh;
 }
 
@@ -260,10 +291,11 @@
     font-size: 23px;
     border-radius: 5px;
     background-color: #ff725e;
-    color: white;
-    padding: 1vh 2.5vh 1vh 2.5vh;
+    color: #fff;
     font-weight: bold;
     border: none;
+    padding: 0.5vh 1vh 0.5vh 1vh;
+    margin-top: 1vh;
 }
 
 
@@ -272,18 +304,22 @@
     width: 100%;
     height: 100%;
     display: flex;
-    justify-content: end;
+    justify-content: center;
+    color: #fff;
 }
 
 .review_tutor_indv {
-    height: 100%;
-    width: 70%;
+    height: 43%;
+    width: 75%;
     display: flex;
     flex-direction: row;
-    justify-content: end;
-    align-items: start;
-    padding-right: 5vw;
-    padding-top: 6vh;
+    justify-content: center;
+    align-items: center;
+    margin-top: 55%;
+    position: relative;
+    z-index: 1;
+    background-color: #1b263b;
+    border-radius: 20px;
 }
 
 .review_tutor_content {
@@ -293,25 +329,42 @@
     justify-content: center;
 }
 
-.review_tutor_img {
-    width: 45%;
-    height: auto;
-    padding: 2vh;
+.review_tutor_content {
+    height: 100%;
 }
 
-.review_tutor_content {
-    height: 60%;
+.review_tutor_content_h {
+    font-size: 40px;
+    font-weight: bold;
 }
+
+.circle-crop {
+    width: 200px; /* Set the width you want */
+    height: 200px; /* Set the height to match the width */
+    overflow: hidden; /* Hide any overflow */
+    border-radius: 50%; /* Make the container a circle */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 3vh;
+}
+
+.circle-crop img {
+    width: 100%; /* Set image width to fill the container */
+    height: auto; /* Keep aspect ratio */
+}
+
 
 .review_tutor_comment {
     font-size: 23px;
-    padding: 2vh;
     font-style: italic;
+    padding: 2vh;
+    text-align: center;
 }
 
 .review_tutor_person {
     font-size: 15px;
-    padding-top: 2vh;
+    color:#ff725e;
 }
 
 #tutor_join_button3 {
@@ -322,5 +375,63 @@
     padding: 1vh 2.5vh 1vh 2.5vh;
     font-weight: bold;
     border: none;
-    margin-top: 4vh;
+    transform: translate(0, 7vh);
+}
+
+
+
+.advantages_tutor_email{
+    width: 80%;
+    height: 40%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: start;
+    padding: 2vw;
+    position: relative;
+    background-color: #fff;
+    z-index: 1;
+    background-color: #1b263b;
+    margin-left: 5vw;
+    border-radius: 20px;
+    color: white;
+    margin-top: 20vh;
+    
+}
+
+.advantages_title_email {
+    font-size: 35px;
+    font-weight: bold;
+    width: 100%;
+    padding: 2vh;
+}
+
+.advantages_title_email_mini {
+    font-size: 20px;
+    font-style: italic;
+    width: 100%;
+    color:#ff725e;
+    padding-left: 2vh;
+}
+
+.contact_us_email {
+    font-size: 20px;
+    padding: 5vh 2vh 2vh 2vh;
+
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+
+
+
+
+.line-svg {
+    position:absolute;
+    padding-left: 20vw;
+    z-index: 1;
+    margin-top: -20vh;
+    height: 170vh;
 }
