@@ -3,6 +3,10 @@
 } */
 
 
+body {
+    background-color: #1b263b; /* Set the background color to blue */
+}
+
 .how_it_works {
     height: 315vh;
     width: 100%;
@@ -24,6 +28,7 @@
     height: 100vh;
     position: relative;
     z-index: 1;
+    border: 2px solid red;
 }
 
 .all_in_one_title_div {

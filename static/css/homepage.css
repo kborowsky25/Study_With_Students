@@ -6,9 +6,9 @@
     font-family: "Noto Sans JP", sans-serif; /* be careful cuz this overwrites everything i believe */
 }
 
-.body {
-    background-color: #fff; /* changes safari overflow to this color */
-} 
+body {
+    background-color: #1b263b; /* Set the background color to blue */
+}
 
 a {
     text-decoration: none; /* Removes the underline from all anchor tags*/
@@ -857,6 +857,7 @@ This allows us to change these properties without changing the child elements' p
     width: 100%;
     font-size: 12px;
     margin-top: -20vh;
+    background-color: #fff;
 }
 
 .reviews_container {

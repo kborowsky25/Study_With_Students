@@ -66,7 +66,7 @@ def signup():
                 if result: 
                     cursor.close()
                     connection.close()
-                    return redirect("/login") #should find a better way to do this !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    return redirect("/login") #should find a better way to do this !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! say you aleady have account
             
                 else: #doesnt exist
                     sql_insert = "INSERT INTO users (name, email, password) VALUES (%s, %s, %s)"
