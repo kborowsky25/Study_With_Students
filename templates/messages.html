@@ -1,24 +1,74 @@
-{% extends "template.html" %}
-
-{% block body %}
-
-</body>
-    <h1>Your Inbox</h1>
-    <div id="messages">
-        {% if messages %}
-                {% for message in messages %}
-                    <li>
-                        Sender ID: {{ message[1] }} - Message: {{ message[3] }}
-                    </li>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messaging App</title>
+    <link rel="stylesheet" href="styles.css">  <!-- External CSS -->
+</head>
+<body>
+    <div class="container">
+        <!-- Left sidebar with sender IDs -->
+        <div class="sidebar">
+            <h2>Senders</h2>
+            <ul id="sender-list">
+                {% for sender_id, sender_messages in grouped_messages.items() %}
+                    <button class="sender-box" data-sender-id="{{ sender_id }}">
+                        Sender {{ sender_id }}
+                    </button>
                 {% endfor %}
             </ul>
-        {% else %}
-            <p>Your inbox is empty.</p>
-        {% endif %}
-    </div>
-    <div class="temp">
-        <a href="/send-message">send message</a>
-    </div>
-</body>
+        </div>
 
-{% endblock %}
+        <!-- Right section with messages -->
+        <div class="messages">
+            <h2>Messages</h2>
+            <div id="message-area">
+                <p>Select a sender to view their messages.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add event listener to each sender box in the sidebar
+        document.querySelectorAll('.sender-box').forEach((senderBox) => {
+            senderBox.addEventListener('click', function(event) {
+                const senderId = event.target.dataset.senderId;  // Get the sender_id from the clicked box
+                fetchMessages(senderId); // Fetch messages for this sender
+            });
+        });
+
+        // Function to fetch messages for a sender
+        function fetchMessages(senderId) {
+            fetch("/messages", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ sender_id: senderId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const messageArea = document.getElementById('message-area');
+                messageArea.innerHTML = '';  // Clear previous messages
+
+                if (data.messages.length === 0) {
+                    messageArea.innerHTML = '<p>No messages found for this sender.</p>';
+                } else {
+                    data.messages.forEach((message) => {
+                        const messageDiv = document.createElement('div');
+                        messageDiv.classList.add('message');
+                        messageDiv.innerHTML = `
+                            <strong>Sender ${message[1]}:</strong> ${message[3]} <br><small>${message[4]}</small>
+                        `;
+                        messageArea.appendChild(messageDiv);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching messages:', error);
+            });
+        }
+    </script>
+</body>
+</html>

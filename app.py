@@ -36,8 +36,6 @@ def route5():
 
 
 
-
-
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "GET":
@@ -124,7 +122,7 @@ def login():
                     return redirect("/hub")  # Redirect to hub 
                 else:
                     # Login failed
-                    return render_template("login.html", error=True) #need to find a better way of doing this!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    return render_template("login.html", error=True) #need to find a better way of doing this! explain what happenned
         
         except Error as error_message:
             print(f"Error: {error_message}")
@@ -133,12 +131,13 @@ def login():
     return redirect("/") #prob will never be needed
 
 
-#FROM HERE ON, NEED TO BE CAREFUL THAT YOU ARE LOGGED IN BEFORE YOU DO ANYTHING ###########################################################
+#FROM HERE ON, NEED TO BE CAREFUL THAT YOU ARE LOGGED IN BEFORE YOU DO ANYTHING ########################################################### 
+# could just type route in and not be logged in (should throw errors anyways cuz sql wont find anything)
 
 
 @app.route("/hub")
 def hub():
-    if 'user_id' in session: #check to see if session is active just in case someone /hubs 
+    if 'user_id' in session: #check to see if session is active just in case someone types /hub
         name = session["name"]
 
         return render_template("hub.html", name=name) #customize the hub
@@ -434,16 +433,66 @@ def messages():
                 cursor.execute(query, (receiver_user_id,))
                 messages = cursor.fetchall()
 
+                # Initialize a dictionary to group messages by sender_id
+                grouped_messages = {}
+
+                for message in messages:
+                    sender_id = message[1]  # assuming message[1] is the sender_id
+                    if sender_id not in grouped_messages:
+                        grouped_messages[sender_id] = []  # Initialize an empty list for the sender if it doesn't exist
+                    grouped_messages[sender_id].append(message)
+
+
+                print(grouped_messages)
                 connection.commit()  # Commit the transaction
                 cursor.close()
                 connection.close()
 
 
-                return render_template("messages.html", messages=messages) 
+                # Pass the grouped messages to the template -- which is a dict of lists {4 : [(...), (...)]}
+                return render_template("messages.html", grouped_messages=grouped_messages)
             
         except Error as error_message:
             print(f"Error: {error_message}")
             return render_template("homepage.html")
+        
+    #need to start chaginginhere ##################################################################################
+    elif request.method == "POST":
+        receiver_user_id = session["user_id"]
+        if request.content_type != 'application/json':
+            return jsonify({'error': 'Invalid Content-Type. Expected application/json'}), 400
+
+        data = request.get_json()  # Get the JSON data sent from the client
+        sender_id = data.get('sender_id', '').strip()  # Get selected university
+        
+        try:
+            # Connect to the database
+            connection = mysql.connector.connect(
+                host='localhost',
+                user='root',
+                password='Kikidi25',
+                database='users_tutoring'
+            )
+
+            if connection.is_connected():
+                cursor = connection.cursor()
+
+                query = "SELECT * FROM messages WHERE id_receiver = %s AND id_sender = %s ORDER BY message_timestamp" #give you all messages ordered by person
+
+                cursor.execute(query, (receiver_user_id, sender_id))
+                messages = cursor.fetchall()
+
+                # Return the data as a JSON response
+                return jsonify({'messages': messages})
+
+        except mysql.connector.Error as err:
+            return jsonify({'error': str(err)}), 500
+
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()
+    
 
 
 
@@ -481,38 +530,38 @@ def send_message():
             redirect("/homepage")
     elif request.method == "POST":
         data = request.get_json()  # Get the JSON data from the request
-    receiver_id = data.get('receiver_id').strip()  # Extract receiver_id from the JSON data
-    message_content = data.get('message').strip()  # Extract message_content from the JSON data
-    sender_id = session.get("user_id")      # Get sender ID from session
+        receiver_id = data.get('receiver_id').strip()  # Extract receiver_id from the JSON data
+        message_content = data.get('message').strip()  # Extract message_content from the JSON data
+        sender_id = session.get("user_id")      # Get sender ID from session
 
-    try:
-        # Connect to the database
-        connection = mysql.connector.connect(
-            host='localhost',
-            user='root',
-            password='Kikidi25',
-            database='users_tutoring'
-        )
+        try:
+            # Connect to the database
+            connection = mysql.connector.connect(
+                host='localhost',
+                user='root',
+                password='Kikidi25',
+                database='users_tutoring'
+            )
 
-        if connection.is_connected():
-            cursor = connection.cursor()
-            query = "INSERT INTO messages (message, id_sender, id_receiver) VALUES (%s, %s, %s)"
-            cursor.execute(query, (message_content, sender_id, receiver_id))  # Insert message into the database
-        
-            connection.commit()  # Commit the transaction
-            cursor.close()
-            connection.close()
+            if connection.is_connected():
+                cursor = connection.cursor()
+                query = "INSERT INTO messages (message, id_sender, id_receiver) VALUES (%s, %s, %s)"
+                cursor.execute(query, (message_content, sender_id, receiver_id))  # Insert message into the database
+            
+                connection.commit()  # Commit the transaction
+                cursor.close()
+                connection.close()
 
-            # Emit the new message
-            socketio.emit('new_message', {
-                'sender_id': sender_id,
-                'message_content': message_content,
-                'receiver_id': receiver_id
-            })
+                # Emit the new message
+                socketio.emit('new_message', {
+                    'sender_id': sender_id,
+                    'message_content': message_content,
+                    'receiver_id': receiver_id
+                })
 
-            return jsonify({'status': 'success'}), 200  # Return a JSON response
+                return jsonify({'status': 'success'}), 200  # Return a JSON response
 
-    except Error as error_message:
-        print(f"Error: {error_message}")
-        return redirect("/homepage")
+        except Error as error_message:
+            print(f"Error: {error_message}")
+            return redirect("/homepage")
     
