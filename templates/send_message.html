@@ -2,6 +2,23 @@
 
 {% block body %}
 
+    <div class="navbar_hub">
+        <div class="navbar_hub_container">
+            <div class="back_to_hub">
+                <span class="material-symbols-outlined"> hub </span>
+                <a href="/hub-student"> Back to Hub</a>
+            </div>
+            <div class="logo"> <span class="material-symbols-outlined"> rocket_launch
+                </span><a href="/"> Study with Students</a></div>
+            <ul class="elements_container_signup">
+                <li>
+                    <a href="/hub-tutor" id="switch_button">Switch Mode Tutor</a>
+                </li>
+            </ul>
+
+        </div>
+    </div>
+
     <div class="send_message">
         <div class="send_message_container" id="message-list">
             {% for message in messages %} 

@@ -100,27 +100,39 @@
                 <div class="hub_header_student">
                     <h1>Ready to study, {{ name }}? </h1>
                 </div>
+                <h class="progress_level">Level 1</h>
+                <div class="progress_bar_container">
+                    <div class="progress_bar" id="xp_student"></div>
+                </div>
                 <div class="hub_body_student">
-                    <div class="hub_select" id="find_tutor">
+                    <div class="hub_select_big" id="find_tutor">
                         <a href="/find-tutor" class="a_hub_student">Find a tutor</a>
                     </div>
-                    <div class="hub_select" id="personalize_profile">
-                        <a href="/student-profile" class="a_hub_student">Personalize profile</a>
+                    <div class="hub_body_small">
+                        <div class="hub_select" id="personalize_profile">
+                            <a href="/student-profile" class="a_hub_student">Personalize profile</a>
+                        </div>
+                        <div class="hub_select" id="create_thread">
+                            <a href="/messages" class="a_hub_student">Messages</a>
+                        </div>
+                        <div class="hub_select" id="find_event">
+                            <p>Find Events</p>
+                        </div>
+                        <div class="hub_select" id="dashboard_link">
+                            <p>dashboard</p>
+                        </div>
                     </div>
-                    <div class="hub_select" id="create_thread">
-                        <a href="/messages" class="a_hub_student">Messages</a>
-                    </div>
-                    <div class="hub_select" id="find_event">
-                        <p>Find Events</p>
-                    </div>
-                    <div class="hub_select" id="dashboard_link">
-                        <p>dashboard</p>
-                    </div>
+
                 </div>
             </div>
         </div>
     </div>
 
+    <script>
+        window.onload = function() {
+          document.getElementById('xp_student').style.width = '30%'; // Set XP here
+        }
+      </script>
 {% endblock %}
 
 

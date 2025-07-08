@@ -1,20 +1,40 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Messaging App</title>
-    <link rel="stylesheet" href="styles.css">  <!-- External CSS -->
-</head>
-<body>
+{% extends "template.html" %}
+
+{% block body %}
+
+    <div class="navbar_hub">
+        <div class="navbar_hub_container">
+            <div class="back_to_hub">
+                <span class="material-symbols-outlined"> hub </span>
+                <a href="/hub-student"> Back to Hub</a>
+            </div>
+            <div class="logo"> <span class="material-symbols-outlined"> rocket_launch
+                </span><a href="/"> Study with Students</a></div>
+            <ul class="elements_container_signup">
+                <li>
+                    <a href="/hub-tutor" id="switch_button">Switch Mode Tutor</a>
+                </li>
+            </ul>
+
+        </div>
+    </div>
+
+
+    <div class="inbox">
+        <div class="inbox_container">
+            <h class="inbox_h">Inbox</h>
+            <hr>
+        </div>
+    </div>
+
     <div class="container">
         <!-- Left sidebar with sender IDs -->
         <div class="sidebar">
-            <h2>Senders</h2>
+            <h2 class="senders_h">Senders</h2>
             <ul id="sender-list">
-                {% for sender_id, sender_messages in grouped_messages.items() %}
-                    <button class="sender-box" data-sender-id="{{ sender_id }}">
-                        Sender {{ sender_id }}
+                {% for receiver_id, sender_messages in grouped_messages.items() %}
+                    <button class="sender-box" data-sender-id="{{ receiver_id }}">
+                        Sender {{ sender_messages[-1][-1] }}
                     </button>
                 {% endfor %}
             </ul>
@@ -22,9 +42,9 @@
 
         <!-- Right section with messages -->
         <div class="messages">
-            <h2>Messages</h2>
+            <h2 class="messages_h">Messages</h2>
             <div id="message-area">
-                <p>Select a sender to view their messages.</p>
+                <p style="color: white">Select a sender to view their messages.</p>
             </div>
         </div>
     </div>
@@ -39,13 +59,13 @@
         });
 
         // Function to fetch messages for a sender
-        function fetchMessages(senderId) {
+        function fetchMessages(receiverId) {
             fetch("/messages", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ sender_id: senderId })
+                body: JSON.stringify({ receiver_id: receiverId })
             })
             .then(response => response.json())
             .then(data => {
@@ -53,13 +73,17 @@
                 messageArea.innerHTML = '';  // Clear previous messages
 
                 if (data.messages.length === 0) {
-                    messageArea.innerHTML = '<p>No messages found for this sender.</p>';
+                    messageArea.innerHTML = '<p style="color: white">No messages found for this sender.</p>';
                 } else {
                     data.messages.forEach((message) => {
                         const messageDiv = document.createElement('div');
                         messageDiv.classList.add('message');
                         messageDiv.innerHTML = `
-                            <strong>Sender ${message[1]}:</strong> ${message[3]} <br><small>${message[4]}</small>
+                           <div style="color: white;">
+                                <p>${message[3]}</p> 
+                                
+                                <small style="margin-left: 30vw">${message[4]}</small>
+                            </div>
                         `;
                         messageArea.appendChild(messageDiv);
                     });
@@ -70,5 +94,5 @@
             });
         }
     </script>
-</body>
-</html>
+
+{% endblock %}

@@ -1,19 +1,53 @@
 {% extends "template.html" %}
 
 {% block body %}
+
+
+    <div class="navbar_hub">
+        <div class="navbar_hub_container">
+            <div class="back_to_hub">
+                <span class="material-symbols-outlined"> hub </span>
+                <a href="/hub-student"> Back to Hub</a>
+            </div>
+            <div class="logo"> <span class="material-symbols-outlined"> rocket_launch
+                </span><a href="/"> Study with Students</a></div>
+            <ul class="elements_container_signup">
+                <li>
+                    <a href="/hub-tutor" id="switch_button">Switch Mode Tutor</a>
+                </li>
+            </ul>
+
+        </div>
+    </div>
+
+    <div class="find_tutors_pretext">
+        <h class="pretext_header">Find tutors that <span style="color: #ff725e">match</span> your vibe.</h>
+    </div>
+
     <div class="tutor_info">
         <div class="tutor_info_container">
-            <div class="tutor_info_summary" data-tutor-id="{{ tutor_info[0] }}">
-                <p><strong>Name:</strong> {{ tutor_info[1] }}</p>
-                <p><strong>Age:</strong> {{ tutor_info[6] }}</p>
-                <p><strong>Uni:</strong> {{ tutor_info[7] }}</p>
-                <p><strong>Course:</strong> {{ tutor_info[8] }}</p>
-                <p><strong>About me:</strong> {{ tutor_info[9] }}</p>
-                <p><strong>Subjects:</strong> {{ tutor_info[10] }}</p>
-                <p><strong>availability:</strong> {{ tutor_info[11] }}</p>
+            <div class="tutor_info_container_double">
+                <div class="tutor_info_summary" data-tutor-id="{{ tutor_info[0] }}">
+                    <h class="h_tutor_summary">Hi, my name is {{ tutor_info[1] }}. I'm {{ tutor_info[6] }} years old and I study {{ tutor_info[8] }} at <p><strong>Uni:</strong> {{ tutor_info[7] }}</p>
+                    A little bit about me...
+                    </h>
+                    
+                    <p><strong>Age:</strong> {{ tutor_info[6] }}</p>
+                    <p><strong>Uni:</strong> {{ tutor_info[7] }}</p>
+                    <p><strong>Course:</strong> {{ tutor_info[8] }}</p>
+                    <p><strong>About me:</strong> {{ tutor_info[9] }}</p>
+                    <p><strong>Subjects:</strong> {{ tutor_info[10] }}</p>
+                    <p><strong>availability:</strong> {{ tutor_info[11] }}</p>
+                </div>
             </div>
-            <button class="tutor_contact_btn" id ="tutor_contact_btn">Contact Tutor</button>
         </div>
+
+        <img src="/static/images/findtutors/tutor.png" alt="no image available" class="tutor_info_img">
+    </div>
+
+    <div class="tutor_info_a_dv">
+        <a class="see_more_tutors_a" href="/find-tutor">See More Tutors</a>
+        <button class="tutor_contact_btn" id ="tutor_contact_btn">Contact Tutor</button>
     </div>
 
 

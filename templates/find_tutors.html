@@ -3,51 +3,74 @@
 {% block body %}
 
 
+    <div class="navbar_hub">
+        <div class="navbar_hub_container">
+            <div class="back_to_hub">
+                <span class="material-symbols-outlined"> hub </span>
+                <a href="/hub-student"> Back to Hub</a>
+            </div>
+            <div class="logo"> <span class="material-symbols-outlined"> rocket_launch
+                </span><a href="/"> Study with Students</a></div>
+            <ul class="elements_container_signup">
+                <li>
+                    <a href="/hub-tutor" id="switch_button">Switch Mode Tutor</a>
+                </li>
+            </ul>
+
+        </div>
+    </div>
+
     <div class="find_tutor">
+
+        <div class="find_tutors_pretext">
+            <h class="pretext_header">Find tutors that <span style="color: #ff725e">match</span> your vibe.</h>
+        </div>
+
         <div class="tutors_filter">
             <div class="tutors_filter_container">
                 <form class="filter_form" id="filter_form_id" method="POST" action="/find-tutor"> <!--action not important as we are using AJAX -->
+                    <div class="filter_uni">
+                        <label for="university" >Filter by University: &nbsp </label>
+                        <select name="university" class="filter_option" id="uni">
+                            <option value="">All Universities</option>
+                            {% for uni in unis %}
+                            <option value="{{ uni[0] }}">{{ uni[0]}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                     
-                    <label for="university">Filter by University:</label>
-                    <select name="university" class="filter_option" id="uni">
-                        <option value="">All Universities</option>
-                        {% for uni in unis %}
-                        <option value="{{ uni[0] }}">{{ uni[0]}}</option>
-                        {% endfor %}
-                    </select>
-    
-    
-                    <label for="subject">Filter by Subject:</label>
-                    <select name="subject" class="filter_option" id="subject">
-                        <option value="">All Subjects</option>
-                        {% for subject in subjects %}
-                        <option value="{{ subject[0] }}">{{ subject[0] }}</option>
-                        {% endfor %}
-                    </select>
-    
-                    <button type="submit">Filter</button>
-
+                    <div class="filter_subject">
+                        <label for="subject">Filter by Subject: &nbsp  </label>
+                        <select name="subject" class="filter_option" id="subject">
+                            <option value="">All Subjects</option>
+                            {% for subject in subjects %}
+                            <option value="{{ subject[0] }}">{{ subject[0] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </form>
             </div>
         </div>
         <div class="find_tutor_main">
             <div class="find_tutor_main_container" id="tutor_results">
                 {% for tutor in tutors %}
+                    
                     <div class="tutor_card" data-tutor-id = " {{ tutor[4] }} "> <!-- including data for tutors id for likes and stuff -->
+                       
+                        <img src="/static/images/findtutors/tutor.png" alt="text" class="tutor_img">
+                       
                         <div class="tutor_card_info">
                             <p><strong>Name:</strong> {{ tutor[1] }}</p>
                             <p><strong>Age:</strong> {{ tutor[6] }}</p>
                             <p><strong>Uni:</strong> {{ tutor[7] }}</p>
                             <p><strong>Course:</strong> {{ tutor[8] }}</p>
-                            <p><strong>About me:</strong> {{ tutor[9] }}</p>
                             <p><strong>Subjects:</strong> {{ tutor[10] }}</p>
-                            <p><strong>availability:</strong> {{ tutor[11] }}</p>
+                            <p><strong>Availability:</strong> {{ tutor[11] }}</p>
+                            <p><strong>About me:</strong> {{ tutor[9] }}</p>
                         </div>
-                        <div class="tutor_card_img">
-                            <button class="tutor_like" id="tutor_like_btn">Like Tutor</button>
-                        </div>
+                        
+                        <button class="tutor_like" id="tutor_like_btn"> ❤️ </button>
                     </div>
-                    <hr>
                 {% else %}
                     <p>No tutors available at the moment.</p>
                 {% endfor %}
@@ -57,15 +80,11 @@
     </div>
 
     <script>
-        // for filtering using AJAX in Find Tutor.html 
-        document.getElementById('filter_form_id').addEventListener('submit', function(event) {
-            event.preventDefault(); // Prevent the form from submitting normally
-
-            // Get selected filter values
+                // Function to fetch and update tutors based on selected filters
+        function filterTutors() {
             const university = document.getElementById('uni').value;
             const subject = document.getElementById('subject').value;
 
-            // Send the data via AJAX
             fetch("/find-tutor-ajax", {
                 method: 'POST',
                 headers: {
@@ -73,47 +92,50 @@
                 },
                 body: JSON.stringify({ university: university, subject: subject })
             })
-            .then(response => response.json()) //get your vars (notably tutors) converted back from json
-            .then(data => { //data stores all info
+            .then(response => response.json())
+            .then(data => {
                 const resultsContainer = document.getElementById('tutor_results');
-                resultsContainer.innerHTML = ''; // Clear current results   (all children (innerHTML))
+                resultsContainer.innerHTML = ''; // Clear previous results
 
                 if (data.tutors.length > 0) {
                     data.tutors.forEach(tutor => {
-                        const tutorCard = ` 
-                            <div class="tutor_card" data-tutor-id ="${tutor[4]}">
+                        const tutorCard = `
+                            <div class="tutor_card" data-tutor-id="${tutor[4]}">
+                                <img src="" alt="text" class="tutor_img">
                                 <div class="tutor_card_info">
+                                    
                                     <p><strong>Name:</strong> ${tutor[1]}</p>
                                     <p><strong>Age:</strong> ${tutor[6]}</p>
                                     <p><strong>Uni:</strong> ${tutor[7]}</p>
                                     <p><strong>Course:</strong> ${tutor[8]}</p>
-                                    <p><strong>About me:</strong> ${tutor[9]}</p>
                                     <p><strong>Subjects:</strong> ${tutor[10]}</p>
                                     <p><strong>Availability:</strong> ${tutor[11]}</p>
+                                    <p><strong>About me:</strong> ${tutor[9]}</p>
                                 </div>
-
-                                <div class="tutor_card_img">
-                                    <button class="tutor_like" id="tutor_like_btn">Like Tutor</button>
-                                </div>
+                                <button class="tutor_like" id="tutor_like_btn"> ❤️ </button>
                             </div>
-                            <hr>
-                        `; //inverted commas used for multi-line strings, with vars being inserted using ${}
-
-                        resultsContainer.insertAdjacentHTML('beforeend', tutorCard); //beforeend adds only after all exisiting content in tutorcard
+                        `;
+                        resultsContainer.insertAdjacentHTML('beforeend', tutorCard);
                     });
                 } else {
                     resultsContainer.innerHTML = '<p>No tutors available at the moment.</p>';
                 }
             })
             .catch(error => console.error('Error:', error));
-        });
+        }
+
+        // Add event listeners to both filter dropdowns
+        document.getElementById('uni').addEventListener('change', filterTutors);
+        document.getElementById('subject').addEventListener('change', filterTutors);
 
 
-        // to add liked tutor
-        document.querySelectorAll(".tutor_like").forEach(button => {
-            button.addEventListener('click', function(event) {
+
+                // Event delegation for like buttons
+        document.getElementById('tutor_results').addEventListener('click', function(event) {
+            if (event.target.classList.contains('tutor_like')) {
                 event.stopPropagation();
-                const tutorCard = this.closest('.tutor_card');
+                const button = event.target;
+                const tutorCard = button.closest('.tutor_card');
                 const tutorId = tutorCard.getAttribute('data-tutor-id');
 
                 fetch('/like-tutor-ajax', {
@@ -130,23 +152,24 @@
                         button.style.backgroundColor = 'grey';
                     } else if (data.message === 'Tutor like removed') {
                         alert('You have unliked this tutor.');
-                        button.style.backgroundColor = 'orange'
+                        button.style.backgroundColor = 'orange';
                     } else if (data.error) {
                         alert(`Error: ${data.error}`);
                     }
                 })
                 .catch(error => console.error('Error:', error));
-            });
+            }
         });
 
-        // to redirect on click (could have also used anchor tag)
-        document.querySelectorAll(".tutor_card").forEach(card => {
-            card.addEventListener("click", function() {
-                const tutorCard = this.closest('.tutor_card');
-                const tutorId = tutorCard.getAttribute('data-tutor-id');
+        // Event delegation for tutor cards click (to redirect)
+        document.getElementById('tutor_results').addEventListener('click', function(event) {
+            let card = event.target.closest('.tutor_card');
+            if (card && !event.target.classList.contains('tutor_like')) {
+                const tutorId = card.getAttribute('data-tutor-id');
                 window.location.href = `/tutor-info?tutor_id=${tutorId}`;
-            });
+            }
         });
+
     </script>
     
 {% endblock %}

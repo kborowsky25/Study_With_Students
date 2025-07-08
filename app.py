@@ -428,23 +428,28 @@ def messages():
             if connection.is_connected():
                 cursor = connection.cursor()
 
-                query = "SELECT * FROM messages WHERE id_receiver = %s ORDER BY message_timestamp" #give you all messages ordered by person
+                query = """SELECT messages.*, users.name AS sender_name
+                            FROM messages
+                            JOIN users ON messages.id_receiver = users.id_user
+                            WHERE messages.id_receiver = %s OR messages.id_sender = %s
+                            ORDER BY messages.message_timestamp DESC
+                            """ #give you all messages ordered by person
 
-                cursor.execute(query, (receiver_user_id,))
+                cursor.execute(query, (receiver_user_id, receiver_user_id))
                 messages = cursor.fetchall()
+
 
                 # Initialize a dictionary to group messages by sender_id
                 grouped_messages = {}
 
                 for message in messages:
-                    sender_id = message[1]  # assuming message[1] is the sender_id
-                    if sender_id not in grouped_messages:
-                        grouped_messages[sender_id] = []  # Initialize an empty list for the sender if it doesn't exist
-                    grouped_messages[sender_id].append(message)
+                    receiver_id = message[2]  # assuming message[1] is the sender_id
+                    if receiver_id not in grouped_messages:
+                        grouped_messages[receiver_id] = []  # Initialize an empty list for the sender if it doesn't exist
+                    grouped_messages[receiver_id].append(message)
 
-
-                print(grouped_messages)
                 connection.commit()  # Commit the transaction
+
                 cursor.close()
                 connection.close()
 
@@ -458,13 +463,14 @@ def messages():
         
     #need to start chaginginhere ##################################################################################
     elif request.method == "POST":
-        receiver_user_id = session["user_id"]
+        sender_user_id = session["user_id"]
         if request.content_type != 'application/json':
             return jsonify({'error': 'Invalid Content-Type. Expected application/json'}), 400
 
         data = request.get_json()  # Get the JSON data sent from the client
-        sender_id = data.get('sender_id', '').strip()  # Get selected university
+        receiver_user_id = data.get('receiver_id', '').strip()  # Get selected university
         
+        print(receiver_user_id)
         try:
             # Connect to the database
             connection = mysql.connector.connect(
@@ -477,10 +483,12 @@ def messages():
             if connection.is_connected():
                 cursor = connection.cursor()
 
-                query = "SELECT * FROM messages WHERE id_receiver = %s AND id_sender = %s ORDER BY message_timestamp" #give you all messages ordered by person
+                query = "SELECT * FROM messages WHERE id_receiver = %s AND id_sender = %s ORDER BY message_timestamp DESC" #give you all messages ordered by person
 
-                cursor.execute(query, (receiver_user_id, sender_id))
+                cursor.execute(query, (receiver_user_id, sender_user_id))
                 messages = cursor.fetchall()
+
+                print(messages)
 
                 # Return the data as a JSON response
                 return jsonify({'messages': messages})
