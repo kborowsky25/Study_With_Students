@@ -48,6 +48,12 @@
 }
 
 #message-area {
-    margin: 2vw 2vw 2vw 0vw;
-}
+    position: fixed;
+    bottom: 2vw;
+    right: 5vw;
+    height: 60vh;
+    width: 50vw;
+    padding: 1vh;
 
+    overflow-y: auto;
+}
