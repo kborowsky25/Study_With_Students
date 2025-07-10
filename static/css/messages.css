@@ -33,7 +33,21 @@
 }
 
 #sender-list {
-    margin: 2vw 0vw 2vw 2vw;
+    margin: 0vw 0vw 2vw 0vw;
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    align-items: start;
+}
+
+.sender-box {
+    background: none;     /* explicitly remove background */
+    border: none; 
+    font-size: 20px;
+    font-weight: bold;
+    color: white;
+    margin-top: 4vh;
+    
 }
 
 .messages {

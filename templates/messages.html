@@ -32,7 +32,7 @@
             <ul id="sender-list">
                 {% for receiver_id, sender_messages in grouped_messages.items() %}
                     <button class="sender-box" data-sender-id="{{ receiver_id }}">
-                        Sender {{ sender_messages[-1][-1] }}
+                       {{ sender_messages[-1][-1] }}
                     </button>
                 {% endfor %}
             </ul>
@@ -47,49 +47,116 @@
         </div>
     </div>
 
-    <script>
-        // Add event listener to each sender box in the sidebar
-        document.querySelectorAll('.sender-box').forEach((senderBox) => {
-            senderBox.addEventListener('click', function(event) {
-                const senderId = event.target.dataset.senderId;  // Get the sender_id from the clicked box
-                fetchMessages(senderId); // Fetch messages for this sender
-            });
+
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+
+<script>
+    const socket = io();  // Connect to the Socket.IO server
+
+    // Add event listeners to sender buttons
+    document.querySelectorAll('.sender-box').forEach((senderBox) => {
+        senderBox.addEventListener('click', function(event) {
+            const senderId = event.target.dataset.senderId;
+            fetchMessages(senderId);
         });
+    });
 
-        // Function to fetch messages for a sender
-        function fetchMessages(receiverId) {
-            fetch("/messages", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ receiver_id: receiverId })
-            })
-            .then(response => response.json())
-            .then(data => {
-                const messageArea = document.getElementById('message-area');
-                messageArea.innerHTML = '';  // Clear previous messages
+    function fetchMessages(receiverId) {
+        fetch("/messages", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ receiver_id: receiverId })  // No "message" key = fetch
+        })
+        .then(response => response.json())
+        .then(data => {
+            const messageArea = document.getElementById('message-area');
+            messageArea.innerHTML = '';
 
-                if (data.messages.length === 0) {
-                    messageArea.innerHTML = '<p style="color: white">No messages found for this sender.</p>';
-                } else {
-                    data.messages.forEach((message) => {
-                        const messageDiv = document.createElement('div');
-                        messageDiv.classList.add('message');
-                        messageDiv.innerHTML = `
-                           <div style="color: white;">
-                                <p>${message[3]}</p> 
-                                
-                                <small style="margin-left: 30vw">${message[4]}</small>
-                            </div>
-                        `;
-                        messageArea.appendChild(messageDiv);
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching messages:', error);
+            const textbar_div = document.createElement('div');
+            textbar_div.classList.add('textbar');
+            textbar_div.innerHTML = `
+                <div class="send_message_text">
+                    <form class="send_message_form" id="message-form" data-receiver-id="${receiverId}">
+                        <input type="text" class="send_message_input" placeholder="Type message..." id="message-input">
+                        <button class="send_message_btn">Send Message</button>
+                    </form>
+                </div>`;
+            messageArea.appendChild(textbar_div);
+
+            // Attach submit handler after form is in DOM
+            document.getElementById('message-form').addEventListener('submit', function(event) {
+                event.preventDefault();
+                const message = document.getElementById('message-input').value;
+
+                fetch('/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        receiver_id: receiverId,
+                        message: message
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to send');
+                    return response.json();
+                })
+                .then(data => {
+                    document.getElementById('message-input').value = '';
+                    // fetchMessages(receiverId);  // Refresh messages
+                })
+                .catch(err => console.error('Send failed:', err));
             });
-        }
-    </script>
+
+            // Display previous messages
+            if (data.messages.length === 0) {
+                const noMsg = document.createElement('p');
+                noMsg.style.color = "white";
+                noMsg.textContent = "No messages found for this sender.";
+                messageArea.appendChild(noMsg);
+            } else {
+                data.messages.forEach((message) => {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.classList.add('message');
+                    messageDiv.innerHTML = `
+                        <div style="color: white;">
+                            <p>${message[3]}</p>
+                            <small style="margin-left: 30vw">${message[4]}</small>
+                        </div>
+                    `;
+                    messageArea.appendChild(messageDiv);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching messages:', error);
+        });
+    }
+
+    // Handle real-time incoming messages ---------------------- Haven't tested yet
+    socket.on('new_message', function(data) {
+        const currentReceiverId = document.getElementById('message-form')?.getAttribute('data-receiver-id');
+        if (data.receiver_id !== currentReceiverId) return;
+
+        const messageArea = document.getElementById('message-area');
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message');
+        messageDiv.innerHTML = `
+            <div style="color: white;">
+                <p>${data.message_content}</p>
+                <small style="margin-left: 30vw">${new Date().toLocaleTimeString()}</small>
+            </div>`;
+
+        // ✅ Insert message right after the input bar
+        const textbarDiv = document.querySelector('.textbar');
+        messageArea.insertBefore(messageDiv, textbarDiv.nextSibling);
+
+    });
+</script>
+
+    
 {% endblock %}

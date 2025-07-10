@@ -2,6 +2,7 @@ from flask import Flask, redirect, render_template, request, session, jsonify
 import mysql.connector
 from mysql.connector import Error
 from flask_socketio import SocketIO, emit
+from datetime import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here' #need to see what this is for later
@@ -463,16 +464,17 @@ def messages():
         
     #need to start chaginginhere ##################################################################################
     elif request.method == "POST":
-        sender_user_id = session["user_id"]
+       
+        sender_user_id = session.get("user_id")
+
         if request.content_type != 'application/json':
             return jsonify({'error': 'Invalid Content-Type. Expected application/json'}), 400
 
-        data = request.get_json()  # Get the JSON data sent from the client
-        receiver_user_id = data.get('receiver_id', '').strip()  # Get selected university
-        
-        print(receiver_user_id)
+        data = request.get_json()
+        receiver_user_id = data.get('receiver_id', '').strip()
+        message_content = data.get('message', '').strip()
+
         try:
-            # Connect to the database
             connection = mysql.connector.connect(
                 host='localhost',
                 user='root',
@@ -480,17 +482,32 @@ def messages():
                 database='users_tutoring'
             )
 
-            if connection.is_connected():
-                cursor = connection.cursor()
+            if not connection.is_connected():
+                return jsonify({'error': 'Failed to connect to DB'}), 500
 
-                query = "SELECT * FROM messages WHERE id_receiver = %s AND id_sender = %s ORDER BY message_timestamp DESC" #give you all messages ordered by person
+            cursor = connection.cursor()
 
-                cursor.execute(query, (receiver_user_id, sender_user_id))
+            if message_content:
+                # INSERT message
+                query = "INSERT INTO messages (message, id_sender, id_receiver) VALUES (%s, %s, %s)"
+                cursor.execute(query, (message_content, sender_user_id, receiver_user_id))
+                connection.commit()
+
+                # Real-time update
+                socketio.emit('new_message', {
+                    'sender_id': sender_user_id,
+                    'receiver_id': receiver_user_id,
+                    'message_content': message_content,
+                    'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                })
+
+                return jsonify({'status': 'success'}), 200
+
+            else:
+                # FETCH messages
+                query = "SELECT * FROM messages WHERE id_receiver = %s AND id_sender = %s OR id_receiver = %s AND id_sender = %s ORDER BY message_timestamp DESC"
+                cursor.execute(query, (receiver_user_id, sender_user_id, sender_user_id, receiver_user_id))
                 messages = cursor.fetchall()
-
-                print(messages)
-
-                # Return the data as a JSON response
                 return jsonify({'messages': messages})
 
         except mysql.connector.Error as err:
@@ -501,7 +518,6 @@ def messages():
                 cursor.close()
                 connection.close()
     
-
 
 
 @app.route('/send-message', methods=["GET", "POST"])
