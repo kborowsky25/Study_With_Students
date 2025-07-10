@@ -41,9 +41,11 @@
         <!-- Right section with messages -->
         <div class="messages">
             <h2 class="messages_h">Messages</h2>
+            <div id="message-textbar"></div>
             <div id="message-area">
                 <p style="color: white">Select a sender to view their messages.</p>
             </div>
+            
         </div>
     </div>
 
@@ -74,6 +76,8 @@
         .then(data => {
             const messageArea = document.getElementById('message-area');
             messageArea.innerHTML = '';
+            const messageTextbar = document.getElementById('message-textbar')
+            messageTextbar.innerHTML = ''
 
             const textbar_div = document.createElement('div');
             textbar_div.classList.add('textbar');
@@ -84,7 +88,7 @@
                         <button class="send_message_btn">Send Message</button>
                     </form>
                 </div>`;
-            messageArea.appendChild(textbar_div);
+            messageTextbar.appendChild(textbar_div);
 
             // Attach submit handler after form is in DOM
             document.getElementById('message-form').addEventListener('submit', function(event) {
@@ -151,9 +155,7 @@
                 <small style="margin-left: 30vw">${new Date().toLocaleTimeString()}</small>
             </div>`;
 
-        // ✅ Insert message right after the input bar
-        const textbarDiv = document.querySelector('.textbar');
-        messageArea.insertBefore(messageDiv, textbarDiv.nextSibling);
+        messageArea.insertBefore(messageDiv, messageArea.firstChild);
 
     });
 </script>
