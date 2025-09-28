@@ -1,0 +1,40 @@
+.dashboard_main {
+    height: 100%;
+    width: 100%;
+}
+
+.dashboard_calendar {
+    height: 20%;
+    width: 100%;
+    border: 2px solid red;
+}
+
+.dashboard_flex_container {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    flex-direction: row;
+    padding: 10vh;
+    border-bottom: 1px solid white;
+    flex-wrap: wrap;
+}
+
+
+.dashboard_tasks {
+    height: 40%;
+    width: 20%;
+    border: 2px solid red;
+}
+
+.dashboard_piechart {
+    height: 30%;
+    width: 30%;
+    border: 2px solid red;
+}
+
+.dashboard_help {
+    height: 30%;
+    width: 20%;
+    border: 2px solid red;
+}
+

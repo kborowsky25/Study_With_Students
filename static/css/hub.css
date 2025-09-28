@@ -54,6 +54,7 @@ a {
     color:#ff725e;
 }
 
+
 .choose_tutor {
     width: 50%;
     height: 100%;
@@ -153,6 +154,20 @@ a {
 
 /* main for student */
 
+.hub_student_main {
+    display: flex;
+    flex-direction: row;
+    width: 100vw;
+    height: 100vh;
+}
+
+.hub_student_rightside {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+}
+
 .div_hub_student {
     width: 100%;
     height: 92vh;
@@ -170,19 +185,22 @@ a {
 }
 
 .hub_sidebar_student_collapsed {
-    width: 5vw;
-    height: 100%;
+    width: 8vw;
+    height: 90%;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     font-weight: bold;
-    padding: 20px;
-    margin-bottom: 5vh;
     z-index: 10;
     overflow-y:hidden;
-    padding-bottom: 300px;
+    z-index: 1000;
+    border-right: 1px solid white;
+    overflow-y: auto;
+    overflow-x: hidden;
+    color:#1b263b;
 }
+
 
 .hub_sidebar_student {
     width: 15vw;
@@ -191,21 +209,38 @@ a {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    font-weight: bold;
-    border-right: 3px solid white;
+    border-right: 1px solid white;
     padding: 20px;
     margin-bottom: 5vh;
+    color: white;
 }
 
 #toggle_btn_collapsed {
     background-color: transparent;
     border: none;
+    font-size: 15px;
+    color: white;
+}
+
+#toggle_btn_expanded {
+    background-color: transparent;
+    border: none;
+    padding-bottom: 3vh;
 }
 
 .sidebar_element_student {
     height: 100px;
     width: 100%;
     text-align: center;
+    background-color: transparent;
+    transition: transform 1s ease, background-color 0.5s ease;
+    padding: 2vh 2vh 0vh 2vh;
+}
+
+.sidebar_element_student:hover {
+    transform: scale(1.05); /* grows 5% bigger */
+    background-color: white; /* text color changes */
+    color:#1b263b;
 }
 
 
@@ -215,7 +250,8 @@ a {
     justify-content: center;
     align-items: center;
     flex-grow: 1;
-    height: 100%;
+    height: 101.5%;
+    border-bottom: 1px solid white;
 }
 
 .hub_header_student {
@@ -254,7 +290,7 @@ a {
     padding: 2vh;
     flex-direction: row;
     margin-top: 5vh;
-}
+}    
 
 
 
@@ -279,6 +315,9 @@ a {
     margin-left: -10vw;
 }
 
+
+
+
 .hub_select {
     width: 50%;
     height: 40%;
@@ -288,6 +327,7 @@ a {
     align-items: center;
     border-radius: 20px;
     flex-wrap: wrap;
+    
 }
 
 .a_hub_student{
@@ -298,18 +338,21 @@ a {
     color:white;
 }
 
+
 #find_tutor {
     background-image: url("/static/images/hub/tutor.svg");
     background-size: 50%;
     background-position: center;
     background-repeat: no-repeat; /* Prevents the image from repeating */
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* smooth animation */
 }
 
 #personalize_profile {
-    background-image: url("/static/images/hub/profile.svg");
+    background-image: url("/static/images/hub/student_profile.svg");
     background-size: 90%;
     background-position: center;
     background-repeat: no-repeat; /* Prevents the image from repeating */
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* smooth animation */
 }
 
 #create_thread {
@@ -317,22 +360,34 @@ a {
     background-size: 70%;
     background-position: center;
     background-repeat: no-repeat; /* Prevents the image from repeating */
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* smooth animation */
 }
 
 #find_event{
-    background-image: url("/static/images/hub/profile.svg");
+    background-image: url("/static/images/hub/event.svg");
     background-size: 50%;
     background-position: center;
     background-repeat: no-repeat; /* Prevents the image from repeating */
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* smooth animation */
 }
 
 #dashboard_link{
-    background-image: url("/static/images/hub/profile.svg");
+    background-image: url("/static/images/hub/dashboard.svg");
     background-size: 70%;
     background-position: center;
     background-repeat: no-repeat; /* Prevents the image from repeating */
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* smooth animation */
 }
 
+#find_tutor:hover,
+#personalize_profile:hover,
+#create_thread:hover,
+#find_event:hover,
+#dashboard_link:hover {
+    transform: scale(1.05); /* grows 5% bigger */
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3); /* nice shadow */
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
 
 
 
@@ -396,10 +451,11 @@ a {
 .hub_content_tutor {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: space-around;
     align-items: center;
-    flex-grow: 1;
-    height: 100%;
+    height: 94vh;
+    color: white;
+    width: 100%;
 }
 
 .hub_header_tutor {
@@ -414,12 +470,20 @@ a {
 
 .hub_body_tutor {
     width: 100%;
-    margin-top: 50px;
     display: flex;
-    justify-content: space-evenly;
-    align-items: center;
     height: 100%;
+    flex-direction: column;
+    border-bottom: 1px solid white;
 }
+
+.tutor_container_flex {
+    display: flex;
+    width: 100%;
+    height: 50%;
+    padding: 5vh;
+}
+
+
 
 .tutor_profile_link {
     width: 50%;
@@ -447,6 +511,58 @@ a {
     background-repeat: no-repeat; /* Prevents the image from repeating */
 }
 
+
+.active_students {
+    width: 50%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-image: url("/static/images/hub/students.svg");
+    background-size: 50%;
+    background-position: center;
+    background-repeat: no-repeat; /* Prevents the image from repeating */
+}
+
+.payments {
+    width: 50%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-image: url("/static/images/hub/students.svg");
+    background-size: 50%;
+    background-position: center;
+    background-repeat: no-repeat; /* Prevents the image from repeating */
+}
+
+.messages_tutor_container {
+    width: 50%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-image: url("/static/images/hub/students.svg");
+    background-size: 50%;
+    background-position: center;
+    background-repeat: no-repeat; /* Prevents the image from repeating */
+}
+
+.schedule {
+    width: 50%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-image: url("/static/images/hub/students.svg");
+    background-size: 50%;
+    background-position: center;
+    background-repeat: no-repeat; /* Prevents the image from repeating */
+}
 
 
 

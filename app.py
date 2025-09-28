@@ -1,7 +1,7 @@
 from flask import Flask, redirect, render_template, request, session, jsonify
 import mysql.connector
 from mysql.connector import Error
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, join_room
 from datetime import datetime
 
 app = Flask(__name__)
@@ -538,7 +538,7 @@ def send_message():
             
             if connection.is_connected():
                 cursor = connection.cursor()
-                query = "SELECT * FROM messages WHERE id_sender = %s AND id_receiver = %s ORDER BY message_timestamp"
+                query = "SELECT * FROM messages WHERE id_sender = %s AND id_receiver = %s ORDER BY message_timestamp DESC"
 
                 cursor.execute(query, (sender_id, receiver_id))  #need to add message to database, but also need to update it live for the user in case they are using platform and need to receive message while they are there.
                 messages = cursor.fetchall()
@@ -589,3 +589,101 @@ def send_message():
             print(f"Error: {error_message}")
             return redirect("/homepage")
     
+
+
+
+@app.route("/dashboard")
+def routedash():
+    return render_template("dashboard.html")
+
+
+from flask import session, render_template
+import mysql.connector
+from mysql.connector import Error
+
+
+
+
+@app.route("/calendar")
+def calendar():
+    user_id = session["user_id"]  # logged-in user
+
+    try:
+        # Connect to the database
+        connection = mysql.connector.connect(
+            host='localhost',
+            user='root',
+            password='Kikidi25',
+            database='users_tutoring'
+        )
+
+        if connection.is_connected():
+            cursor = connection.cursor(dictionary=True)  # dict results for easier template use
+
+            query = """
+                SELECT events.*, tutor_profiles.id_tutor, student_profiles.id_student
+                FROM events
+                LEFT JOIN tutor_profiles ON events.tutor_id = tutor_profiles.id_tutor
+                LEFT JOIN student_profiles ON events.student_id = student_profiles.id_student
+                WHERE events.user_id = %s
+                ORDER BY events.start_time ASC
+            """
+            cursor.execute(query, (user_id,))
+            events = cursor.fetchall()
+
+            cursor.close()
+            connection.close()
+
+            return render_template("calendar.html", events=events)
+
+    except Error as error_message:
+        print(f"Error: {error_message}")
+        return render_template("calendar.html", events=[])
+
+# When a user connects, join their personal room
+@socketio.on("join_calendar")
+def join_calendar(data):
+    user_id = session.get("user_id")
+    if not user_id:
+        return
+    join_room(f"user_{user_id}")  # their personal room
+    print(f"User {user_id} joined room user_{user_id}")
+
+# When a new event is created
+@socketio.on("create_event")
+def create_event(data):
+    user_id = session.get("user_id")
+    if not user_id:
+        emit("error", {"msg": "not authenticated"})
+        return
+
+    title = data.get("title", "Session")
+    start = data.get("start")
+    end = data.get("end")
+    tutor_id = data.get("tutor_id")  # optional
+    student_id = data.get("student_id")  # optional
+
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO events (user_id, tutor_id, student_id, title, start_time, end_time, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (user_id, tutor_id, student_id, title, start, end, "pending"))
+        conn.commit()
+        event_id = cursor.lastrowid
+        cursor.close()
+        conn.close()
+
+        event = {"id": event_id, "title": title, "start": start, "end": end}
+
+        # Emit only to relevant rooms: creator + tutor + student
+        emit("event_created", event, room=f"user_{user_id}")
+        if tutor_id and tutor_id != user_id:
+            emit("event_created", event, room=f"user_{tutor_id}")
+        if student_id and student_id != user_id:
+            emit("event_created", event, room=f"user_{student_id}")
+
+    except Error as e:
+        print("DB error:", e)
+        emit("error", {"msg": "db error"})

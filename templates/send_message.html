@@ -2,6 +2,8 @@
 
 {% block body %}
 
+
+
     <div class="navbar_hub">
         <div class="navbar_hub_container">
             <div class="back_to_hub">
@@ -19,65 +21,97 @@
         </div>
     </div>
 
-    <div class="send_message">
-        <div class="send_message_container" id="message-list">
-            {% for message in messages %} 
-            <p class="message_p"> {{ message }}</p>
-            {% endfor %}
-        </div>
-        <div class="send_message_text">
-            <form class="send_message_form" id ="message-form" data-receiver-id="{{ receiver_id }}">
-                <input type="text" class="send_message_input" placeholder="Type message..." id="message-input">
-                <button class="send_message_btn">Send Message</button>
-            </form>
-        </div>
+    <div class="find_tutors_pretext">
+        <h class="pretext_header">Find tutors that <span style="color: #ff725e">match</span> your vibe.</h>
     </div>
+
+    <div class="tutor_info">
+        <div class="tutor_info_container">
+            <div class="tutor_info_container_double">
+                <div class="send_message">
+                    <div class="send_message_container">
+                        <div id="message-list" class="message-list">
+                            {% for message in messages %} 
+                                <p class="message_p">{{ message }}</p>
+                            {% endfor %}
+                        </div>
+                        <div class="send_message_text">
+                            <form class="send_message_form" id="message-form" data-receiver-id="{{ receiver_id }}">
+                                <input type="text" class="send_message_input" placeholder="Type message..." id="message-input">
+                                <button class="send_message_btn">Send</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+
+        <img src="/static/images/findtutors/tutor.png" alt="no image available" class="tutor_info_img">
+    </div>
+
+    <div class="tutor_info_a_dv">
+        <a class="see_more_tutors_a" href="/find-tutor">See More Tutors</a>
+        <button class="tutor_contact_btn" id ="tutor_contact_btn">Contact Tutor</button>
+    </div>
+
+
+    <script>
+
+        document.getElementById("tutor_contact_btn").addEventListener("click", function() {
+            const tutorInfo = document.getElementsByClassName('tutor_info_summary');
+            
+            // Check if there are any elements with the class 'tutor_info_summary'
+            if (tutorInfo.length > 0) {
+                const tutorId = tutorInfo[0].getAttribute('data-tutor-id');  // Access the first element
+                console.log(`Redirecting to /send-message?tutor_id=${tutorId}`);  // Debugging log
+                window.location.href = `/send-message?tutor_id=${tutorId}`;  // Redirect
+            } else {
+                console.error('No elements found with class tutor_info_summary');  // Error log
+            }
+        });
+
+
+    </script>
+
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
     <script>
         const socket = io();  // Connect to the SocketIO server
+    
         // Handle form submission
         document.getElementById('message-form').addEventListener('submit', function(event) {
-            event.preventDefault(); // Prevent the default form submission
-
-            // Ensure variables are properly declared
-            const receiverId = this.getAttribute('data-receiver-id'); // Get receiver ID from data attribute
-            const message = document.getElementById('message-input').value; // Get message from input by ID
-
-            // Log the form data for debugging
-            console.log('Form Data:', { receiver_id: receiverId, message: message });
-
-            // Send the message using Fetch
+            event.preventDefault();
+    
+            const receiverId = this.getAttribute('data-receiver-id');
+            const message = document.getElementById('message-input').value;
+    
             fetch('/send-message', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json' // Sending JSON data
-                },
-                body: JSON.stringify({ receiver_id: receiverId, message: message }) // Convert the form data to JSON
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ receiver_id: receiverId, message: message })
             })
             .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok.'); // Handle errors
-                }
-                return response.json(); // Parse JSON response
+                if (!response.ok) throw new Error('Network response was not ok.');
+                return response.json();
             })
             .then(data => {
-                console.log('Message sent successfully:', data); // Handle success response
-                // Optionally, clear the input after sending
-                document.getElementById('message-input').value = ''; // Clear the input
+                document.getElementById('message-input').value = ''; // Clear input
             })
-            .catch(error => {
-                console.error('Error sending message:', error); // Handle error
-            });
+            .catch(error => console.error('Error sending message:', error));
         });
-
+    
         // Listen for new messages
         socket.on('new_message', function(data) {
-                const messageList = document.getElementById('message-list');
-                const newMessageItem = document.createElement('p');
-                newMessageItem.textContent = `Message from ${data.sender_id}: ${data.message_content}`;
-                messageList.appendChild(newMessageItem);
-            });
+            const messageList = document.getElementById('message-list');
+            const newMessageItem = document.createElement('p');
+            newMessageItem.classList.add('message_p');
+            newMessageItem.textContent = `Message from ${data.sender_id}: ${data.message_content}`;
+            
+            // Insert at the top instead of bottom
+            messageList.insertBefore(newMessageItem, messageList.firstChild);
+        });
     </script>
+    
 
 {% endblock %}
