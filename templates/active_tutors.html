@@ -30,15 +30,25 @@
                             <!-- Upcoming Events for this tutor -->
                             <h6 class="mt-3">Upcoming Events:</h6>
                             <ul class="list-group list-group-flush">
-                                {% for event in upcoming_events %}
-                                    {% if event.tutor_id == tutor.id_tutor %}
-                                        <li class="list-group-item">
+                                {% set tutor_events = upcoming_events|selectattr("tutor_id","equalto",tutor.id_tutor)|list %}
+                                {% if tutor_events %}
+                                    {% for event in tutor_events %}
+                                        <li class="list-group-item"
+                                            data-event='{{ {
+                                                "id": event.id,
+                                                "title": event.title,
+                                                "tutor_name": tutor.tutor_name,
+                                                "start_time": event.start_time|string,
+                                                "end_time": event.end_time|string,
+                                                "description": event.description or "",
+                                                "status": event.status
+                                            } | tojson | safe }}'
+                                            onclick="openEventModalFromData(this)">
                                             <strong>{{ event.title }}</strong> - {{ event.status | capitalize }} <br>
                                             {{ event.start_time | datetimeformat }} - {{ event.end_time | datetimeformat }}
                                         </li>
-                                    {% endif %}
-                                {% endfor %}
-                                {% if not upcoming_events|selectattr("tutor_id","equalto",tutor.id_tutor)|list %}
+                                    {% endfor %}
+                                {% else %}
                                     <li class="list-group-item text-muted">No upcoming events</li>
                                 {% endif %}
                             </ul>
@@ -52,6 +62,43 @@
         <p>You don’t have any active tutors yet.</p>
     {% endif %}
 </div>
+
+<!-- Event Modal -->
+<div id="event-modal-overlay" style="display:none;"></div>
+<div id="event-modal" style="display:none;">
+    <h4 id="event-modal-title"></h4>
+    <p><strong>Tutor:</strong> <span id="event-modal-tutor"></span></p>
+    <p><strong>Start:</strong> <span id="event-modal-start"></span></p>
+    <p><strong>End:</strong> <span id="event-modal-end"></span></p>
+    <p><strong>Description:</strong> <span id="event-modal-desc"></span></p>
+    <p><strong>Status:</strong> <span id="event-modal-status"></span></p>
+
+    <button id="accept-event-btn">Accept</button>
+    <button id="decline-event-btn">Decline</button>
+    <button onclick="closeEventModal()">Close</button>
+</div>
+
+<style>
+#event-modal-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+    z-index: 999;
+}
+#event-modal {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    z-index: 1000;
+    width: 350px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+</style>
 
 <script>
     // Redirect to send-message page
@@ -81,5 +128,52 @@
             }
         });
     });
+
+    // Event Modal Logic
+    let currentEventId = null;
+
+    function openEventModalFromData(li) {
+        const event = JSON.parse(li.dataset.event);
+        openEventModal(event);
+    }
+
+    function openEventModal(event) {
+        currentEventId = event.id;
+        document.getElementById('event-modal-title').innerText = event.title;
+        document.getElementById('event-modal-tutor').innerText = event.tutor_name;
+        document.getElementById('event-modal-start').innerText = event.start_time;
+        document.getElementById('event-modal-end').innerText = event.end_time;
+        document.getElementById('event-modal-desc').innerText = event.description || "N/A";
+        document.getElementById('event-modal-status').innerText = event.status;
+
+        document.getElementById('event-modal-overlay').style.display = 'block';
+        document.getElementById('event-modal').style.display = 'block';
+    }
+
+    function closeEventModal() {
+        currentEventId = null;
+        document.getElementById('event-modal-overlay').style.display = 'none';
+        document.getElementById('event-modal').style.display = 'none';
+    }
+
+    document.getElementById('accept-event-btn').addEventListener('click', () => updateEventStatus('confirmed'));
+    document.getElementById('decline-event-btn').addEventListener('click', () => updateEventStatus('canceled'));
+
+    function updateEventStatus(status) {
+        if (!currentEventId) return;
+
+        fetch('/update-event-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ event_id: currentEventId, status: status })
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) location.reload();
+            closeEventModal();
+        })
+        .catch(err => console.error(err));
+    }
 </script>
 {% endblock %}

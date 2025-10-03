@@ -11,6 +11,15 @@ socketio = SocketIO(app)
 # Set sessions to be permanent (not cleared on browser close)
 app.config['SESSION_PERMANENT'] = False  # False means the session lasts as long as the browser is open.
 
+
+@app.template_filter('datetimeformat')
+def datetimeformat(value, format='%Y-%m-%d %H:%M'):
+    if isinstance(value, datetime):
+        return value.strftime(format)
+    return value  # if it's already a string
+
+
+
 @app.route("/")
 def index():
     return render_template("homepage.html")
@@ -435,12 +444,22 @@ def make_tutor_active():
         )
         cursor = connection.cursor()
 
-        # Insert tutor into active_tutors (ignore if duplicate)
+        print(user_id)
+        # Step 1: Get id_student from student_profiles
+        cursor.execute("SELECT id_student FROM student_profiles WHERE id_user = %s", (user_id,))
+        student_row = cursor.fetchone()
+        print(student_row)
+        if not student_row:
+            return jsonify({"success": False, "message": "Student profile not found"}), 404
+
+        id_student = student_row[0]
+
+        # Step 2: Insert into active_tutors (ignore duplicates)
         query = """
-            INSERT INTO active_tutors (id_user, id_tutor)
-            VALUES (%s, %s)
+            INSERT IGNORE INTO active_tutors (id_user, id_student, id_tutor)
+            VALUES (%s, %s, %s)
         """
-        cursor.execute(query, (user_id, tutor_id))
+        cursor.execute(query, (user_id, id_student, tutor_id))
         connection.commit()
 
         return jsonify({"success": True, "message": "Tutor has been added to your Active Tutors."})
@@ -456,11 +475,12 @@ def make_tutor_active():
             connection.close()
 
 
-@app.route("/active-tutors", methods=["GET"])
-def active_tutors():
+
+@app.route("/active-tutors")
+def active_tutors_page():
     user_id = session.get("user_id")
     if not user_id:
-        return redirect("/login")  # or wherever your login page is
+        return redirect("/login")
 
     try:
         connection = mysql.connector.connect(
@@ -471,26 +491,243 @@ def active_tutors():
         )
         cursor = connection.cursor(dictionary=True)
 
-        # Join active_tutors -> tutor_profiles -> users to get tutor info
-        query = """
-            SELECT tp.id_tutor, tp.age, tp.university, tp.course, 
-                   tp.about_me, tp.subjects, tp.availability, u.name AS tutor_name
+        # 1. Get active tutors for this user
+        cursor.execute("""
+            SELECT at.id_tutor, u.name AS tutor_name, tp.age, tp.university, tp.course, tp.subjects,
+                   tp.availability, tp.about_me
             FROM active_tutors at
-            JOIN tutor_profiles tp ON at.id_tutor = tp.id_tutor
-            JOIN users u ON tp.id_user = u.id_user
+            JOIN tutor_profiles tp ON tp.id_tutor = at.id_tutor
+            JOIN users u ON u.id_user = tp.id_user
             WHERE at.id_user = %s
-        """
-        cursor.execute(query, (user_id,))
-        active_tutors_list = cursor.fetchall()
+        """, (user_id,))
+        active_tutors = cursor.fetchall()
+
+        # 2. Get upcoming events for these tutors
+        tutor_ids = [t['id_tutor'] for t in active_tutors]
+        upcoming_events = []
+        if tutor_ids:
+            format_strings = ','.join(['%s'] * len(tutor_ids))
+            cursor.execute(f"""
+                SELECT e.id_event, e.tutor_id, e.student_id, e.title, e.description, e.start_time, e.end_time, e.status
+                FROM events e
+                WHERE e.tutor_id IN ({format_strings})
+            """, tuple(tutor_ids))
+            events_raw = cursor.fetchall()
+
+            # 3. Clean and serialize events for JS
+            for e in events_raw:
+                upcoming_events.append({
+                    "id": e['id_event'],
+                    "tutor_id": e['tutor_id'],
+                    "student_id": e['student_id'],
+                    "title": e['title'] or "",
+                    "description": e['description'] or "",
+                    "start_time": str(e['start_time']),
+                    "end_time": str(e['end_time']),
+                    "status": e['status'] or ""
+                })
 
         cursor.close()
         connection.close()
 
-        return render_template("active_tutors.html", active_tutors=active_tutors_list)
+        return render_template("active_tutors.html",
+                               active_tutors=active_tutors,
+                               upcoming_events=upcoming_events)
+
+    except mysql.connector.Error as err:
+        print("DB error:", err)
+        return "Database error", 500
+        
+@app.route("/update-event-status", methods=["POST"])
+def update_event_status():
+    data = request.get_json()
+    event_id = data.get("event_id")
+    status = data.get("status")
+
+    if not event_id or not status:
+        return jsonify({"success": False, "message": "Missing event ID or status"}), 400
+
+    try:
+        conn = mysql.connector.connect(
+            host="localhost", user="root", password="Kikidi25", database="users_tutoring"
+        )
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE events SET status = %s WHERE id_event = %s
+        """, (status, event_id))
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+        return jsonify({"success": True, "message": f"Event {status}"})
 
     except mysql.connector.Error as e:
         print("DB error:", e)
-        return "Database error", 500
+        return jsonify({"success": False, "message": "Database error"}), 500
+
+
+
+
+
+
+
+@app.route("/active-students", methods=["GET"])
+def active_students():
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect("/login")
+
+    try:
+        connection = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="Kikidi25",
+            database="users_tutoring"
+        )
+        cursor = connection.cursor(dictionary=True)
+
+        # Step 1: Get tutor_id from tutor_profiles
+        cursor.execute("SELECT id_tutor FROM tutor_profiles WHERE id_user = %s", (user_id,))
+        tutor = cursor.fetchone()
+        if not tutor:
+            return "Tutor profile not found", 404
+
+        tutor_id = tutor["id_tutor"]
+
+        # Step 2: Get all active students for this tutor
+        cursor.execute("""
+            SELECT a.id_student, sp.id_user, u.name
+            FROM active_students a
+            JOIN student_profiles sp ON sp.id_student = a.id_student
+            JOIN users u ON u.id_user = sp.id_user
+            WHERE a.id_tutor = %s AND a.is_active = TRUE
+        """, (tutor_id,))
+        active_students = cursor.fetchall()
+
+        # Step 3: Get potential students from active_tutors who are not yet active
+        cursor.execute("""
+            SELECT at.id_user, at.id_student, u.name
+            FROM active_tutors at
+            JOIN users u ON u.id_user = at.id_user
+            WHERE at.id_tutor = %s
+              AND at.id_student NOT IN (
+                  SELECT id_student FROM active_students WHERE id_tutor = %s
+              )
+        """, (tutor_id, tutor_id))
+        potential_students = cursor.fetchall()
+
+        cursor.close()
+        connection.close()
+
+        return render_template(
+            "active_students.html",
+            active_students=active_students,
+            potential_students=potential_students
+        )
+
+    except mysql.connector.Error as err:
+        print("Database error:", err)
+        return "Database connection error", 500
+
+
+@app.route("/add-active-student", methods=["POST"])
+def add_active_student():
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "message": "Not logged in"}), 403
+
+    data = request.get_json()
+    student_id = data.get("id_student")
+    if not student_id:
+        return jsonify({"success": False, "message": "Missing student ID"}), 400
+
+    try:
+        connection = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="Kikidi25",
+            database="users_tutoring"
+        )
+        cursor = connection.cursor()
+
+        # Get tutor_id
+        cursor.execute("SELECT id_tutor FROM tutor_profiles WHERE id_user = %s", (user_id,))
+        tutor = cursor.fetchone()
+        if not tutor:
+            return jsonify({"success": False, "message": "Tutor profile not found"}), 404
+        tutor_id = tutor[0]
+
+        # Insert into active_students (ignore duplicates)
+        cursor.execute("""
+            INSERT IGNORE INTO active_students (id_student, id_tutor)
+            VALUES (%s, %s)
+        """, (student_id, tutor_id))
+        connection.commit()
+
+        return jsonify({"success": True, "message": "Student added successfully"})
+
+    except mysql.connector.Error as e:
+        print("DB error:", e)
+        return jsonify({"success": False, "message": "Database error"}), 500
+
+    finally:
+        if 'cursor' in locals() and cursor:
+            cursor.close()
+        if 'connection' in locals() and connection.is_connected():
+            connection.close()
+
+@app.route("/schedule-session", methods=["POST"])
+def schedule_session():
+    user_id = session.get("user_id")  # tutor's user_id
+    if not user_id:
+        return jsonify({"success": False, "message": "Not logged in"}), 403
+
+    data = request.get_json()
+    student_id = data.get("student_id")
+    title = data.get("title") or "Tutoring Session"
+    description = data.get("description") or ""
+    start_time = data.get("start_time")
+    end_time = data.get("end_time")
+
+    # Validate required fields
+    if not student_id or not start_time or not end_time:
+        return jsonify({"success": False, "message": "Missing required fields"}), 400
+
+    try:
+        connection = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="Kikidi25",
+            database="users_tutoring"
+        )
+        cursor = connection.cursor()
+
+        # Get tutor_id from tutor_profiles
+        cursor.execute("SELECT id_tutor FROM tutor_profiles WHERE id_user = %s", (user_id,))
+        tutor = cursor.fetchone()
+        if not tutor:
+            return jsonify({"success": False, "message": "Tutor profile not found"}), 404
+        tutor_id = tutor[0]
+
+        # Insert new event with provided details
+        cursor.execute("""
+            INSERT INTO events (user_id, tutor_id, student_id, title, description, start_time, end_time, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (user_id, tutor_id, student_id, title, description, start_time, end_time, "pending"))
+        connection.commit()
+
+        return jsonify({"success": True, "message": "Tutoring session scheduled!"})
+
+    except mysql.connector.Error as e:
+        print("DB error:", e)
+        return jsonify({"success": False, "message": "Database error"}), 500
+
+    finally:
+        if 'cursor' in locals() and cursor:
+            cursor.close()
+        if 'connection' in locals() and connection.is_connected():
+            connection.close()
+
 
 
 
@@ -773,6 +1010,12 @@ def calendar():
         print(f"Error: {error_message}")
         return render_template("calendar.html", events=[])
 
+
+
+
+
+
+
 # When a user connects, join their personal room
 @socketio.on("join_calendar")
 def join_calendar(data):
@@ -827,13 +1070,6 @@ def create_event(data):
     except Error as e:
         print("DB error:", e)
         emit("error", {"msg": "db error"})
-
-
-
-
-
-
-
 
 
 

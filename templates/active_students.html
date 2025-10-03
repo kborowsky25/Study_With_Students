@@ -2,11 +2,141 @@
 
 {% block body %}
 
-<div class="active_students_main">
+<!-- Active Students List -->
+<h2>My Active Students</h2>
+<ul id="active-students-list">
+  {% for student in active_students %}
+    <li id="active-{{ student.id_student }}">
+      {{ student.name }} (ID: {{ student.id_student }})
+      <button onclick="openScheduleModal('{{ student.id_student }}', '{{ student.name }}')">Schedule Session</button>
+    </li>
+  {% endfor %}
+</ul>
 
-    
-    <!-- if none -- no active students -- find a student?? -->
+<!-- Modal overlay -->
+<div id="modal-overlay" style="display:none;"></div>
 
+<!-- Modal box -->
+<div id="schedule-modal">
+  <h3>Schedule Tutoring Session for <span id="modal-student-name"></span></h3>
+  <label>Title:</label>
+  <input type="text" id="session-title" placeholder="Tutoring Session"><br><br>
+
+  <label>Description:</label>
+  <textarea id="session-description" placeholder="Optional description"></textarea><br><br>
+
+  <label>Start Time:</label>
+  <input type="datetime-local" id="session-start" required><br><br>
+
+  <label>End Time:</label>
+  <input type="datetime-local" id="session-end" required><br><br>
+
+  <button onclick="submitSession()">Submit</button>
+  <button onclick="closeScheduleModal()">Cancel</button>
 </div>
+
+
+
+<h2>Requests / Potential Students</h2>
+<ul id="potential-students-list">
+  {% for student in potential_students %}
+    <li id="potential-{{ student.id_student }}">
+        (Name: {{ student.name if student.name else "Unknown" }})(ID: {{ student.id_student }})
+      <button onclick="addActiveStudent('{{ student.id_student }}')">Add as Active Student</button>
+    </li>
+  {% endfor %}
+</ul>
+
+<script>
+function addActiveStudent(studentId) {
+    fetch('/add-active-student', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ id_student: studentId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Move student from potential list to active list
+            const li = document.getElementById(`potential-${studentId}`);
+            if (li) {
+                document.getElementById('active-students-list').appendChild(li);
+                li.querySelector('button').remove(); // remove the button
+                li.id = `active-${studentId}`; // update id
+            }
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert("Something went wrong");
+    });
+}
+
+</script>
+
+
+<script>
+    let selectedStudentId = null;
+    
+    function openScheduleModal(studentId, studentName) {
+        selectedStudentId = studentId;
+        document.getElementById('modal-student-name').innerText = studentName;
+        document.getElementById('modal-overlay').style.display = 'block';
+        document.getElementById('schedule-modal').style.display = 'block';
+    }
+    
+    function closeScheduleModal() {
+        selectedStudentId = null;
+        document.getElementById('modal-overlay').style.display = 'none';
+        document.getElementById('schedule-modal').style.display = 'none';
+        // clear input fields
+        document.getElementById('session-title').value = '';
+        document.getElementById('session-description').value = '';
+        document.getElementById('session-start').value = '';
+        document.getElementById('session-end').value = '';
+    }
+    
+    function submitSession() {
+        const title = document.getElementById('session-title').value || "Tutoring Session";
+        const description = document.getElementById('session-description').value || "";
+        const startTime = document.getElementById('session-start').value;
+        const endTime = document.getElementById('session-end').value;
+    
+        if (!startTime || !endTime) {
+            alert("Please select both start and end time.");
+            return;
+        }
+    
+        fetch('/schedule-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                student_id: selectedStudentId,
+                title: title,
+                description: description,
+                start_time: startTime,
+                end_time: endTime
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert("Tutoring session scheduled!");
+                closeScheduleModal();
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Error scheduling session");
+        });
+    }
+    </script>
+    
 
 {% endblock %}
