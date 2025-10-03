@@ -1,0 +1,54 @@
+/* Container grid for the month */
+#calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr); /* 7 days per week */
+    gap: 1vh;
+    width: 95%;
+    max-width: 100%;
+    margin: 2vh auto;
+    font-family: sans-serif;
+    border: 2px solid red;
+    height: 92vh;
+    width: 100vw;
+  }
+  
+  /* Each day box */
+  .day-box {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    min-height: 12vh;
+    position: relative;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    padding: 1vh;
+    transition: 0.2s;
+  }
+  
+  /* Highlight today */
+  .day-box.today {
+    border: 2px solid #4cafef;
+  }
+  
+  /* Day number in corner */
+  .day-number {
+    font-weight: bold;
+    font-size: 1rem;
+    position: absolute;
+    top: 0.5vh;
+    right: 0.5vh;
+  }
+  
+  /* Event inside box */
+  .event {
+    background: #4cafef;
+    color: white;
+    font-size: 0.75rem;
+    margin-top: 0.5vh;
+    padding: 0.5vh 1%;
+    border-radius: 3px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  

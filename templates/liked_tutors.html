@@ -1,0 +1,32 @@
+{% extends "template.html" %}
+
+{% block body %}
+
+
+<div class="container mt-4">
+    <h2 class="mb-3">Your Liked Tutors</h2>
+
+    {% if liked_tutors %}
+        <div class="liked_tutors_flex">
+            {% for tutor in liked_tutors %}
+                <div class="liked_tutors_indiv">
+                    <a class="liked_tutors_indiv_container" href="{{ url_for('tutor_info', tutor_id=tutor.id_tutor) }}">
+                        <h4 class="card-title">Tutor name: {{ tutor.tutor_name }}</h4>
+                        <p><strong>Age:</strong> {{ tutor.age }}</p>
+                        <p><strong>University:</strong> {{ tutor.university or "N/A" }}</p>
+                        <p><strong>Course:</strong> {{ tutor.course or "N/A" }}</p>
+                        <p><strong>Subjects:</strong> {{ tutor.subjects or "N/A" }}</p>
+                        <p><strong>Availability:</strong> {{ tutor.availability or "N/A" }}</p>
+                        <p><strong>About Me:</strong> {{ tutor.about_me or "N/A" }}</p>
+                    </a>
+                 
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>You haven't liked any tutors yet.</p>
+    {% endif %}
+</div>
+
+
+{% endblock %}

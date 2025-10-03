@@ -48,6 +48,8 @@
     <div class="tutor_info_a_dv">
         <a class="see_more_tutors_a" href="/find-tutor">See More Tutors</a>
         <button class="tutor_contact_btn" id ="tutor_contact_btn">Contact Tutor</button>
+        <button id="make_tutor_btn" data-tutor-id="{{ tutor_info[4] }}">Make Tutor Active</button>
+        <a class="back_to_liked_a" href="/liked-tutors">See Liked Tutors</a>
     </div>
 
 
@@ -68,4 +70,30 @@
 
 
     </script>
+
+<script>
+    document.getElementById("make_tutor_btn").addEventListener("click", function() {
+        const tutorId = this.dataset.tutorId;  // Read from data attribute
+        if (!tutorId) {
+            alert("Tutor not found");
+            return;
+        }
+    
+        if (confirm("Are you sure you want to make this tutor an active tutor? This will only be visible to you and will help you organise your tutors.")) {
+            fetch("/make-tutor-active", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ tutor_id: tutorId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+            })
+            .catch(err => {
+                console.error("Error:", err);
+            });
+        }
+    });
+    </script>
+    
 {% endblock %}

@@ -58,18 +58,39 @@
 
     <script>
 
-        document.getElementById("tutor_contact_btn").addEventListener("click", function() {
-            const tutorInfo = document.getElementsByClassName('tutor_info_summary');
-            
-            // Check if there are any elements with the class 'tutor_info_summary'
-            if (tutorInfo.length > 0) {
-                const tutorId = tutorInfo[0].getAttribute('data-tutor-id');  // Access the first element
-                console.log(`Redirecting to /send-message?tutor_id=${tutorId}`);  // Debugging log
-                window.location.href = `/send-message?tutor_id=${tutorId}`;  // Redirect
-            } else {
-                console.error('No elements found with class tutor_info_summary');  // Error log
-            }
-        });
+document.getElementById('message-form').addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    const receiverId = this.getAttribute('data-receiver-id');
+    const message = document.getElementById('message-input').value;
+    const messageList = document.getElementById('message-list');
+
+    fetch('/send-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receiver_id: receiverId, message: message })
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('Network response was not ok.');
+        return response.json();
+    })
+    .then(data => {
+        document.getElementById('message-input').value = ''; // Clear input
+
+        // If this was the very first message, show the "Continue" link
+        if (!document.getElementById("continue-link")) {
+            const continueDiv = document.createElement("div");
+            continueDiv.id = "continue-link";
+            continueDiv.innerHTML = `
+                <p style="margin-top:10px;">
+                    ✅ Message sent. <a href="/messages">Continue by message</a>
+                </p>`;
+            messageList.insertAdjacentElement("afterend", continueDiv);
+        }
+    })
+    .catch(error => console.error('Error sending message:', error));
+});
+
 
 
     </script>

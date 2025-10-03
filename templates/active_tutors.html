@@ -1,0 +1,85 @@
+{% extends "template.html" %}
+
+{% block body %}
+<div class="container mt-4">
+    <h2 class="mb-3">Your Active Tutors</h2>
+
+    {% if active_tutors %}
+        <div class="liked_tutors_flex">
+            {% for tutor in active_tutors %}
+                <div class="liked_tutors_indiv">
+                    <div class="liked_tutors_indiv_container" data-tutor-id="{{ tutor.id_tutor }}">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ tutor.tutor_name }}</h5>
+                            <p><strong>Age:</strong> {{ tutor.age }}</p>
+                            <p><strong>University:</strong> {{ tutor.university or "N/A" }}</p>
+                            <p><strong>Course:</strong> {{ tutor.course or "N/A" }}</p>
+                            <p><strong>Subjects:</strong> {{ tutor.subjects or "N/A" }}</p>
+                            <p><strong>Availability:</strong> {{ tutor.availability or "N/A" }}</p>
+                            <p><strong>About Me:</strong> {{ tutor.about_me or "N/A" }}</p>
+
+                            <div class="d-flex justify-content-between mt-2">
+                                <button class="btn btn-primary message_tutor_btn" data-tutor-id="{{ tutor.id_tutor }}">
+                                    Message Tutor
+                                </button>
+                                <button class="btn btn-danger deactivate_tutor_btn" data-tutor-id="{{ tutor.id_tutor }}">
+                                    Remove from Active
+                                </button>
+                            </div>
+
+                            <!-- Upcoming Events for this tutor -->
+                            <h6 class="mt-3">Upcoming Events:</h6>
+                            <ul class="list-group list-group-flush">
+                                {% for event in upcoming_events %}
+                                    {% if event.tutor_id == tutor.id_tutor %}
+                                        <li class="list-group-item">
+                                            <strong>{{ event.title }}</strong> - {{ event.status | capitalize }} <br>
+                                            {{ event.start_time | datetimeformat }} - {{ event.end_time | datetimeformat }}
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+                                {% if not upcoming_events|selectattr("tutor_id","equalto",tutor.id_tutor)|list %}
+                                    <li class="list-group-item text-muted">No upcoming events</li>
+                                {% endif %}
+                            </ul>
+
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>You don’t have any active tutors yet.</p>
+    {% endif %}
+</div>
+
+<script>
+    // Redirect to send-message page
+    document.querySelectorAll('.message_tutor_btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const tutorId = this.dataset.tutorId;
+            window.location.href = `/send-message?tutor_id=${tutorId}`;
+        });
+    });
+
+    // Remove from active tutors
+    document.querySelectorAll('.deactivate_tutor_btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const tutorId = this.dataset.tutorId;
+            if (confirm("Are you sure you want to remove this tutor from your Active Tutors?")) {
+                fetch("/deactivate-tutor", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ tutor_id: tutorId })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    alert(data.message);
+                    if (data.success) location.reload();
+                })
+                .catch(err => console.error(err));
+            }
+        });
+    });
+</script>
+{% endblock %}

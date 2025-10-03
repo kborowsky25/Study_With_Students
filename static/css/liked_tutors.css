@@ -1,0 +1,16 @@
+.liked_tutors_flex {
+    display: flex;
+    width: 100vw;
+    height: 92vh;
+}
+
+.liked_tutors_indiv {
+    height: 30%;
+    width:  50%;
+    border: 2px solid white;
+}
+
+.liked_tutors_indiv_container {
+    padding: 1vw;
+}
+

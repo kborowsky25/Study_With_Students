@@ -347,7 +347,7 @@ a {
     transition: transform 0.3s ease, box-shadow 0.3s ease; /* smooth animation */
 }
 
-#personalize_profile {
+#active_tutors {
     background-image: url("/static/images/hub/student_profile.svg");
     background-size: 90%;
     background-position: center;
@@ -363,7 +363,7 @@ a {
     transition: transform 0.3s ease, box-shadow 0.3s ease; /* smooth animation */
 }
 
-#find_event{
+#liked_tutors{
     background-image: url("/static/images/hub/event.svg");
     background-size: 50%;
     background-position: center;
@@ -380,9 +380,9 @@ a {
 }
 
 #find_tutor:hover,
-#personalize_profile:hover,
+#active_tutors:hover,
 #create_thread:hover,
-#find_event:hover,
+#liked_tutors:hover,
 #dashboard_link:hover {
     transform: scale(1.05); /* grows 5% bigger */
     box-shadow: 0 8px 25px rgba(0,0,0,0.3); /* nice shadow */

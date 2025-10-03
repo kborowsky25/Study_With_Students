@@ -1,0 +1,25 @@
+.events_container {
+    height: 92vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.events_title {
+    width: 100%;
+    height: 30%;
+
+}
+
+.events_body {
+    height: 70%;
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.event_block {
+    width: 20%;
+    height: 20%;
+    border: 2px solid red;
+}

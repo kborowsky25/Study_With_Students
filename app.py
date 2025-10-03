@@ -401,8 +401,9 @@ def tutor_info():
             connection.commit()  # Commit the transaction
             cursor.close()
             connection.close()
-
+            # we need like for tutor in distinct tutor_id whatever and then use jinja to fix it yeah...
             # Pass the list of tutors to the template
+            print(tutor_info)
             return render_template('tutor_info.html', tutor_info=tutor_info)
             
             
@@ -410,6 +411,87 @@ def tutor_info():
         print(f"Error: {error_message}")
         return render_template("homepage.html")
     
+
+from flask import request, jsonify
+
+@app.route("/make-tutor-active", methods=["POST"])
+def make_tutor_active():
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "message": "Not logged in"}), 403
+
+    data = request.get_json()
+    tutor_id = data.get("tutor_id")
+
+    if not tutor_id:
+        return jsonify({"success": False, "message": "Missing tutor ID"}), 400
+
+    try:
+        connection = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="Kikidi25",
+            database="users_tutoring"
+        )
+        cursor = connection.cursor()
+
+        # Insert tutor into active_tutors (ignore if duplicate)
+        query = """
+            INSERT INTO active_tutors (id_user, id_tutor)
+            VALUES (%s, %s)
+        """
+        cursor.execute(query, (user_id, tutor_id))
+        connection.commit()
+
+        return jsonify({"success": True, "message": "Tutor has been added to your Active Tutors."})
+
+    except Error as e:
+        print(f"DB error: {e}")
+        return jsonify({"success": False, "message": "Database error"}), 500
+
+    finally:
+        if 'cursor' in locals() and cursor:
+            cursor.close()
+        if 'connection' in locals() and connection.is_connected():
+            connection.close()
+
+
+@app.route("/active-tutors", methods=["GET"])
+def active_tutors():
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect("/login")  # or wherever your login page is
+
+    try:
+        connection = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="Kikidi25",
+            database="users_tutoring"
+        )
+        cursor = connection.cursor(dictionary=True)
+
+        # Join active_tutors -> tutor_profiles -> users to get tutor info
+        query = """
+            SELECT tp.id_tutor, tp.age, tp.university, tp.course, 
+                   tp.about_me, tp.subjects, tp.availability, u.name AS tutor_name
+            FROM active_tutors at
+            JOIN tutor_profiles tp ON at.id_tutor = tp.id_tutor
+            JOIN users u ON tp.id_user = u.id_user
+            WHERE at.id_user = %s
+        """
+        cursor.execute(query, (user_id,))
+        active_tutors_list = cursor.fetchall()
+
+        cursor.close()
+        connection.close()
+
+        return render_template("active_tutors.html", active_tutors=active_tutors_list)
+
+    except mysql.connector.Error as e:
+        print("DB error:", e)
+        return "Database error", 500
+
 
 
 @app.route("/messages", methods=["GET", "POST"])
@@ -592,14 +674,65 @@ def send_message():
 
 
 
+@app.route("/liked-tutors")
+def routelikedtutors():
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect(url_for("homepage"))
+
+    liked_tutors = []
+
+    try:
+        connection = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="Kikidi25",
+            database="users_tutoring"   # ✅ make sure this is correct
+        )
+
+        cursor = connection.cursor(dictionary=True)
+        query = """
+            SELECT tp.id_tutor,
+                u.name AS tutor_name,
+                tp.age,
+                tp.university,
+                tp.course,
+                tp.about_me,
+                tp.subjects,
+                tp.availability
+            FROM liked_tutors lt
+            JOIN tutor_profiles tp ON lt.id_tutor = tp.id_tutor
+            JOIN users u ON tp.id_user = u.id_user
+            WHERE lt.id_user = %s AND lt.liked = %s
+        """
+        cursor.execute(query, (user_id, 1))
+        liked_tutors = cursor.fetchall()
+        print(liked_tutors)
+
+    except Error as error_message:
+        print(f"Database error: {error_message}")
+        return redirect(url_for("homepage"))
+
+    finally:
+        if 'cursor' in locals() and cursor:
+            cursor.close()
+        if 'connection' in locals() and connection.is_connected():
+            connection.close()
+
+    return render_template("liked_tutors.html", liked_tutors=liked_tutors)
+
+
+
 @app.route("/dashboard")
 def routedash():
     return render_template("dashboard.html")
 
 
-from flask import session, render_template
-import mysql.connector
-from mysql.connector import Error
+
+
+
+
+
 
 
 
@@ -649,7 +782,6 @@ def join_calendar(data):
     join_room(f"user_{user_id}")  # their personal room
     print(f"User {user_id} joined room user_{user_id}")
 
-# When a new event is created
 @socketio.on("create_event")
 def create_event(data):
     user_id = session.get("user_id")
@@ -664,26 +796,48 @@ def create_event(data):
     student_id = data.get("student_id")  # optional
 
     try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO events (user_id, tutor_id, student_id, title, start_time, end_time, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (user_id, tutor_id, student_id, title, start, end, "pending"))
-        conn.commit()
-        event_id = cursor.lastrowid
-        cursor.close()
-        conn.close()
+        # Connect to the database (same as first try block)
+        connection = mysql.connector.connect(
+            host='localhost',
+            user='root',
+            password='Kikidi25',
+            database='users_tutoring'
+        )
 
-        event = {"id": event_id, "title": title, "start": start, "end": end}
+        if connection.is_connected():
+            cursor = connection.cursor()
+            cursor.execute("""
+                INSERT INTO events (user_id, tutor_id, student_id, title, start_time, end_time, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (user_id, tutor_id, student_id, title, start, end, "pending"))
+            connection.commit()
+            event_id = cursor.lastrowid
+            cursor.close()
+            connection.close()
 
-        # Emit only to relevant rooms: creator + tutor + student
-        emit("event_created", event, room=f"user_{user_id}")
-        if tutor_id and tutor_id != user_id:
-            emit("event_created", event, room=f"user_{tutor_id}")
-        if student_id and student_id != user_id:
-            emit("event_created", event, room=f"user_{student_id}")
+            event = {"id": event_id, "title": title, "start": start, "end": end}
+
+            # Emit only to relevant rooms: creator + tutor + student
+            emit("event_created", event, room=f"user_{user_id}")
+            if tutor_id and tutor_id != user_id:
+                emit("event_created", event, room=f"user_{tutor_id}")
+            if student_id and student_id != user_id:
+                emit("event_created", event, room=f"user_{student_id}")
 
     except Error as e:
         print("DB error:", e)
         emit("error", {"msg": "db error"})
+
+
+
+
+
+
+
+
+
+
+@app.route("/create-event")
+def createevent():
+    return render_template("create_event.html")
+
