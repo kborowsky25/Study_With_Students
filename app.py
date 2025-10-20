@@ -10,10 +10,10 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here' #need to see what this is for later
 socketio = SocketIO(app) 
 
-# Hardcoded Stripe test keys (local/dev only)
-STRIPE_SECRET_KEY = "REMOVED_STRIPE_SECRET"
-STRIPE_PUBLISHABLE_KEY = "pk_test_51SKJFFF1jY7UrWMjwVDYHzGJIJn0ek6exLO2Cios5iPtsiGftjxkeCyHCe85dCP3cQVjmIX1WgiClR9r0uCnKuWR00XjNBMaVD"
-stripe.api_key = STRIPE_SECRET_KEY
+# # Hardcoded Stripe test keys (local/dev only)
+# STRIPE_SECRET_KEY = "REMOVED_STRIPE_SECRET"
+# STRIPE_PUBLISHABLE_KEY = "pk_test_51SKJFFF1jY7UrWMjwVDYHzGJIJn0ek6exLO2Cios5iPtsiGftjxkeCyHCe85dCP3cQVjmIX1WgiClR9r0uCnKuWR00XjNBMaVD"
+# stripe.api_key = STRIPE_SECRET_KEY
 
 
 # Set sessions to be permanent (not cleared on browser close)
