@@ -1,0 +1,18 @@
+{% extends "template.html" %}
+{% block body %}
+<h2>{{ category.name }}</h2>
+<a href="/forum/category/{{ category.id }}/new" class="btn btn-primary">+ New Thread</a>
+
+{% if threads %}
+<ul style="margin-top:20px;">
+  {% for t in threads %}
+  <li>
+    <a href="/forum/thread/{{ t.id }}"><b>{{ t.title }}</b></a><br>
+    <small>By {{ t.username or "Unknown" }} on {{ t.created_at }}</small>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>No threads yet. Be the first to post!</p>
+{% endif %}
+{% endblock %}

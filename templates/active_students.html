@@ -31,6 +31,9 @@
   <label>End Time:</label>
   <input type="datetime-local" id="session-end" required><br><br>
 
+  <label>Amount ($):</label>
+  <input type="number" id="session-amount" placeholder="Leave empty for Free" step="0.01" min="0"><br><br>
+
   <button onclick="submitSession()">Submit</button>
   <button onclick="closeScheduleModal()">Cancel</button>
 </div>
@@ -98,44 +101,54 @@ function addActiveStudent(studentId) {
         document.getElementById('session-description').value = '';
         document.getElementById('session-start').value = '';
         document.getElementById('session-end').value = '';
-    }
+    }function submitSession() {
+    const title = document.getElementById('session-title').value || "Tutoring Session";
+    const description = document.getElementById('session-description').value || "";
+    const startTime = document.getElementById('session-start').value;
+    const endTime = document.getElementById('session-end').value;
+    const amountInput = document.getElementById('session-amount').value;
     
-    function submitSession() {
-        const title = document.getElementById('session-title').value || "Tutoring Session";
-        const description = document.getElementById('session-description').value || "";
-        const startTime = document.getElementById('session-start').value;
-        const endTime = document.getElementById('session-end').value;
-    
-        if (!startTime || !endTime) {
-            alert("Please select both start and end time.");
+    let amount = null;
+    if (amountInput && amountInput.trim() !== "") {
+        amount = parseFloat(amountInput);
+        if (isNaN(amount) || amount < 0) {
+            alert("Please enter a valid amount or leave empty for free.");
             return;
         }
-    
-        fetch('/schedule-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                student_id: selectedStudentId,
-                title: title,
-                description: description,
-                start_time: startTime,
-                end_time: endTime
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                alert("Tutoring session scheduled!");
-                closeScheduleModal();
-            } else {
-                alert(data.message);
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            alert("Error scheduling session");
-        });
     }
+
+    if (!startTime || !endTime) {
+        alert("Please select both start and end time.");
+        return;
+    }
+
+    fetch('/schedule-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            student_id: selectedStudentId,
+            title: title,
+            description: description,
+            start_time: startTime,
+            end_time: endTime,
+            amount: amount  // <-- NEW FIELD
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert("Tutoring session scheduled!");
+            closeScheduleModal();
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert("Error scheduling session");
+    });
+}
+
     </script>
     
 

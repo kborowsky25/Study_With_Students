@@ -1,12 +1,20 @@
-from flask import Flask, redirect, render_template, request, session, jsonify
+from flask import Flask, redirect, render_template, request, session, jsonify, flash, request, abort
 import mysql.connector
 from mysql.connector import Error
 from flask_socketio import SocketIO, emit, join_room
 from datetime import datetime
+import calendar
+import stripe
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here' #need to see what this is for later
 socketio = SocketIO(app) 
+
+# Hardcoded Stripe test keys (local/dev only)
+STRIPE_SECRET_KEY = "REMOVED_STRIPE_SECRET"
+STRIPE_PUBLISHABLE_KEY = "pk_test_51SKJFFF1jY7UrWMjwVDYHzGJIJn0ek6exLO2Cios5iPtsiGftjxkeCyHCe85dCP3cQVjmIX1WgiClR9r0uCnKuWR00XjNBMaVD"
+stripe.api_key = STRIPE_SECRET_KEY
+
 
 # Set sessions to be permanent (not cleared on browser close)
 app.config['SESSION_PERMANENT'] = False  # False means the session lasts as long as the browser is open.
@@ -537,7 +545,7 @@ def active_tutors_page():
     except mysql.connector.Error as err:
         print("DB error:", err)
         return "Database error", 500
-        
+
 @app.route("/update-event-status", methods=["POST"])
 def update_event_status():
     data = request.get_json()
@@ -688,10 +696,20 @@ def schedule_session():
     description = data.get("description") or ""
     start_time = data.get("start_time")
     end_time = data.get("end_time")
+    amount = data.get("amount")  # new field
 
     # Validate required fields
     if not student_id or not start_time or not end_time:
         return jsonify({"success": False, "message": "Missing required fields"}), 400
+
+    # Convert amount to float or None (Free)
+    if amount:
+        try:
+            amount = float(amount)
+        except ValueError:
+            return jsonify({"success": False, "message": "Invalid amount"}), 400
+    else:
+        amount = None  # Free
 
     try:
         connection = mysql.connector.connect(
@@ -709,11 +727,11 @@ def schedule_session():
             return jsonify({"success": False, "message": "Tutor profile not found"}), 404
         tutor_id = tutor[0]
 
-        # Insert new event with provided details
+        # Insert new event with amount
         cursor.execute("""
-            INSERT INTO events (user_id, tutor_id, student_id, title, description, start_time, end_time, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """, (user_id, tutor_id, student_id, title, description, start_time, end_time, "pending"))
+            INSERT INTO events (user_id, tutor_id, student_id, title, description, start_time, end_time, status, amount)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (user_id, tutor_id, student_id, title, description, start_time, end_time, "pending", amount))
         connection.commit()
 
         return jsonify({"success": True, "message": "Tutoring session scheduled!"})
@@ -727,7 +745,6 @@ def schedule_session():
             cursor.close()
         if 'connection' in locals() and connection.is_connected():
             connection.close()
-
 
 
 
@@ -965,65 +982,192 @@ def routedash():
     return render_template("dashboard.html")
 
 
-
-
-
-
-
-
-
-
-
-@app.route("/calendar")
-def calendar():
-    user_id = session["user_id"]  # logged-in user
-
-    try:
-        # Connect to the database
-        connection = mysql.connector.connect(
-            host='localhost',
-            user='root',
-            password='Kikidi25',
-            database='users_tutoring'
-        )
-
-        if connection.is_connected():
-            cursor = connection.cursor(dictionary=True)  # dict results for easier template use
-
-            query = """
-                SELECT events.*, tutor_profiles.id_tutor, student_profiles.id_student
-                FROM events
-                LEFT JOIN tutor_profiles ON events.tutor_id = tutor_profiles.id_tutor
-                LEFT JOIN student_profiles ON events.student_id = student_profiles.id_student
-                WHERE events.user_id = %s
-                ORDER BY events.start_time ASC
-            """
-            cursor.execute(query, (user_id,))
-            events = cursor.fetchall()
-
-            cursor.close()
-            connection.close()
-
-            return render_template("calendar.html", events=events)
-
-    except Error as error_message:
-        print(f"Error: {error_message}")
-        return render_template("calendar.html", events=[])
-
-
-
-
-
-
-
-# When a user connects, join their personal room
-@socketio.on("join_calendar")
-def join_calendar(data):
+@app.route("/calendar-app-tutor")
+def calendar_page_tutor():
     user_id = session.get("user_id")
     if not user_id:
-        return
-    join_room(f"user_{user_id}")  # their personal room
-    print(f"User {user_id} joined room user_{user_id}")
+        return redirect("/login")
+
+    now = datetime.now()
+    year = now.year
+    month = now.month
+    today = now.day
+    month_name = calendar.month_name[month]
+
+    first_day_weekday = datetime(year, month, 1).weekday()
+    last_day_of_month = calendar.monthrange(year, month)[1]
+
+    # Connect to database
+    connection = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="Kikidi25",
+        database="users_tutoring"
+    )
+    cursor = connection.cursor(dictionary=True)
+
+    # STEP 1: Get tutor_id from tutor_profiles
+    cursor.execute("""
+        SELECT id_tutor
+        FROM tutor_profiles
+        WHERE id_user = %s
+    """, (user_id,))
+    tutor_row = cursor.fetchone()
+    print("Tutor row:", tutor_row)
+
+    if not tutor_row:
+        cursor.close()
+        connection.close()
+        return "Tutor profile not found", 404
+
+    tutor_id = tutor_row["id_tutor"]
+
+    # STEP 2: Fetch events for this tutor
+    cursor.execute("""
+        SELECT 
+            e.id_event,
+            e.title,
+            e.description,
+            e.start_time,
+            e.end_time,
+            e.student_id,
+            DATE(e.start_time) AS event_date
+        FROM events e
+        WHERE e.tutor_id = %s
+          AND MONTH(e.start_time) = %s
+          AND YEAR(e.start_time) = %s
+        ORDER BY e.start_time
+    """, (tutor_id, month, year))
+
+    events_raw = cursor.fetchall()
+    cursor.close()
+    connection.close()
+    print("Events:", events_raw)
+
+    # STEP 3: Organize events by day
+    events_by_day = {}
+    for e in events_raw:
+        day = e["event_date"].day
+        if day not in events_by_day:
+            events_by_day[day] = []
+        events_by_day[day].append({
+            "title": e["title"],
+            "description": e["description"],
+            "start_time": e["start_time"].strftime("%H:%M"),
+            "end_time": e["end_time"].strftime("%H:%M"),
+            "student_id": e["student_id"],
+            "tutor_id": tutor_id
+        })
+
+    # STEP 4: Render the calendar
+    return render_template(
+        "calendar_tutor.html",
+        year=year,
+        month=month,
+        today=today,
+        month_name=month_name,
+        first_day_weekday=first_day_weekday,
+        last_day_of_month=last_day_of_month,
+        events_by_day=events_by_day
+    )
+
+
+
+
+
+@app.route("/calendar-app-student")
+def calendar_page_student():
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect("/login")
+
+    now = datetime.now()
+    year = now.year
+    month = now.month
+    today = now.day
+    month_name = calendar.month_name[month]
+
+    first_day_weekday = datetime(year, month, 1).weekday()
+    last_day_of_month = calendar.monthrange(year, month)[1]
+
+    # Connect to database
+    connection = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="Kikidi25",
+        database="users_tutoring"
+    )
+    cursor = connection.cursor(dictionary=True)
+
+    # STEP 1: Get student_id from student_profiles
+    cursor.execute("""
+        SELECT id_student
+        FROM student_profiles
+        WHERE id_user = %s
+    """, (user_id,))
+    student_row = cursor.fetchone()
+    print("Student row:", student_row)
+
+    if not student_row:
+        cursor.close()
+        connection.close()
+        return "Student profile not found", 404
+
+    student_id = student_row["id_student"]
+
+
+    # STEP 2: Fetch events for this student
+    cursor.execute("""
+        SELECT 
+            e.id_event,
+            e.title,
+            e.description,
+            e.start_time,
+            e.end_time,
+            e.tutor_id,
+            DATE(e.start_time) AS event_date
+        FROM events e
+        WHERE e.student_id = %s
+          AND MONTH(e.start_time) = %s
+          AND YEAR(e.start_time) = %s
+        ORDER BY e.start_time
+    """, (student_id, month, year))
+
+    events_raw = cursor.fetchall()
+    cursor.close()
+    connection.close()
+    print("Events:", events_raw)
+
+
+    # STEP 3: Organize events by day
+    events_by_day = {}
+    for e in events_raw:
+        day = e["event_date"].day
+        if day not in events_by_day:
+            events_by_day[day] = []
+        events_by_day[day].append({
+            "title": e["title"],
+            "description": e["description"],
+            "start_time": e["start_time"].strftime("%H:%M"),
+            "end_time": e["end_time"].strftime("%H:%M"),
+            "tutor_id": e["tutor_id"],
+            "student_id": student_id
+        })
+
+    # STEP 4: Render the calendar
+    return render_template(
+        "calendar_student.html",
+        year=year,
+        month=month,
+        today=today,
+        month_name=month_name,
+        first_day_weekday=first_day_weekday,
+        last_day_of_month=last_day_of_month,
+        events_by_day=events_by_day
+    )
+
+
+
 
 @socketio.on("create_event")
 def create_event(data):
@@ -1077,3 +1221,352 @@ def create_event(data):
 def createevent():
     return render_template("create_event.html")
 
+
+# Database connection helper
+def get_db_connection():
+    return mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="Kikidi25",
+        database="users_tutoring"
+    )
+
+
+# 🏫 FORUM HOME - Show categories
+@app.route("/forum")
+def forum_home():
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM forum_categories")
+    categories = cursor.fetchall()
+    cursor.close()
+    connection.close()
+
+    return render_template("forum_home.html", categories=categories)
+
+
+# 📂 VIEW CATEGORY - List threads in category
+@app.route("/forum/category/<int:category_id>")
+def view_category(category_id):
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    # Get category info
+    cursor.execute("SELECT * FROM forum_categories WHERE id = %s", (category_id,))
+    category = cursor.fetchone()
+
+    # Get threads in this category
+    cursor.execute("""
+        SELECT t.*, u.name
+        FROM forum_threads t
+        LEFT JOIN users u ON u.id_user = t.user_id
+        WHERE category_id = %s
+        ORDER BY created_at DESC
+    """, (category_id,))
+    threads = cursor.fetchall()
+
+    cursor.close()
+    connection.close()
+
+    return render_template("forum_category.html", category=category, threads=threads)
+
+
+# ➕ CREATE THREAD
+@app.route("/forum/category/<int:category_id>/new", methods=["GET", "POST"])
+def new_thread(category_id):
+    if "user_id" not in session:
+        return redirect("/login")
+
+    if request.method == "POST":
+        title = request.form["title"]
+        content = request.form["content"]
+        user_id = session["user_id"]
+
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute("""
+            INSERT INTO forum_threads (category_id, user_id, title, content)
+            VALUES (%s, %s, %s, %s)
+        """, (category_id, user_id, title, content))
+        connection.commit()
+        cursor.close()
+        connection.close()
+
+        return redirect(f"/forum/category/{category_id}")
+
+    return render_template("new_thread.html", category_id=category_id)
+
+
+# 💬 VIEW THREAD (with posts)
+@app.route("/forum/thread/<int:thread_id>", methods=["GET", "POST"])
+def view_thread(thread_id):
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    # Fetch thread details
+    cursor.execute("""
+        SELECT t.*, u.name
+        FROM forum_threads t
+        LEFT JOIN users u ON u.id_user = t.user_id
+        WHERE t.id = %s
+    """, (thread_id,))
+    thread = cursor.fetchone()
+
+    # Fetch posts under the thread
+    cursor.execute("""
+        SELECT p.*, u.name
+        FROM forum_posts p
+        LEFT JOIN users u ON u.id_user = p.user_id
+        WHERE p.thread_id = %s
+        ORDER BY p.created_at ASC
+    """, (thread_id,))
+    posts = cursor.fetchall()
+
+    # Handle new post
+    if request.method == "POST":
+        if "user_id" not in session:
+            return redirect("/login")
+        content = request.form["content"]
+        user_id = session["user_id"]
+
+        cursor.execute("""
+            INSERT INTO forum_posts (thread_id, user_id, content)
+            VALUES (%s, %s, %s)
+        """, (thread_id, user_id, content))
+        connection.commit()
+        return redirect(f"/forum/thread/{thread_id}")
+
+    cursor.close()
+    connection.close()
+
+    return render_template("forum_thread.html", thread=thread, posts=posts)
+
+
+
+
+@app.route("/study-rooms-tutor", methods=["GET", "POST"])
+def study_rooms_tutor():
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect("/login")
+
+    # Connect to DB
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+
+    # Get tutor_id
+    cur.execute("SELECT id_tutor FROM tutor_profiles WHERE id_user = %s", (user_id,))
+    tutor_row = cur.fetchone()
+    if not tutor_row:
+        cur.close(); conn.close()
+        return "Tutor profile not found", 404
+    tutor_id = tutor_row["id_tutor"]
+
+    # Add new study room
+    if request.method == "POST":
+        subject = request.form["subject"]
+        description = request.form["description"]
+        start_time = request.form["start_time"]
+        end_time = request.form["end_time"]
+        zoom_link = request.form.get("zoom_link", "")
+
+        cur.execute("""
+            INSERT INTO study_rooms (tutor_id, subject, description, start_time, end_time, zoom_link)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (tutor_id, subject, description, start_time, end_time, zoom_link))
+        conn.commit()
+        flash("Study room created successfully!", "success")
+        return redirect(url_for("study_rooms_tutor"))
+
+    # Fetch tutor’s existing rooms
+    cur.execute("""
+        SELECT * FROM study_rooms WHERE tutor_id = %s ORDER BY start_time DESC
+    """, (tutor_id,))
+    rooms = cur.fetchall()
+
+    cur.close(); conn.close()
+    return render_template("study_rooms_tutor.html", rooms=rooms)
+
+
+
+@app.route("/study-rooms-student", methods=["GET"])
+def study_rooms_student():
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect("/login")
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+
+    # Find student_id
+    cur.execute("SELECT id_student FROM student_profiles WHERE id_user = %s", (user_id,))
+    student_row = cur.fetchone()
+    if not student_row:
+        cur.close(); conn.close()
+        return "Student profile not found", 404
+    student_id = student_row["id_student"]
+
+    # Filters
+    subject_filter = request.args.get("subject", "")
+    date_filter = request.args.get("date", "")
+
+    query = "SELECT * FROM study_rooms WHERE 1=1"
+    params = []
+    if subject_filter:
+        query += " AND subject LIKE %s"
+        params.append(f"%{subject_filter}%")
+    if date_filter:
+        query += " AND DATE(start_time) = %s"
+        params.append(date_filter)
+    query += " ORDER BY start_time ASC"
+
+    cur.execute(query, params)
+    rooms = cur.fetchall()
+
+    # Get IDs of rooms already added to events
+    cur.execute("""
+        SELECT title, start_time
+        FROM events
+        WHERE student_id = %s
+    """, (student_id,))
+    saved_rooms = {(row["title"], row["start_time"]) for row in cur.fetchall()}
+
+    cur.close()
+    conn.close()
+
+    return render_template(
+        "study_rooms_student.html",
+        rooms=rooms,
+        subject_filter=subject_filter,
+        date_filter=date_filter,
+        saved_rooms=saved_rooms
+    )
+
+
+@app.route("/save-to-calendar/<int:room_id>", methods=["POST"])
+def save_to_calendar(room_id):
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect("/login")
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+
+    # Find student_id for this user
+    cur.execute("SELECT id_student FROM student_profiles WHERE id_user = %s", (user_id,))
+    student_row = cur.fetchone()
+    if not student_row:
+        cur.close(); conn.close()
+        return "Student profile not found", 404
+    student_id = student_row["id_student"]
+
+    # Get the study room info
+    cur.execute("SELECT * FROM study_rooms WHERE id = %s", (room_id,))
+    room = cur.fetchone()
+    if not room:
+        cur.close(); conn.close()
+        return "Study room not found", 404
+
+    # Check if already added to events
+    cur.execute("""
+        SELECT * FROM events
+        WHERE student_id = %s AND tutor_id = %s
+          AND title = %s AND start_time = %s
+    """, (student_id, room["tutor_id"], room["subject"], room["start_time"]))
+    existing = cur.fetchone()
+
+    if existing:
+        flash("This study room is already in your calendar!", "info")
+    else:
+        cur.execute("""
+            INSERT INTO events (user_id, tutor_id, student_id, title, description, start_time, end_time, status, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+        """, (
+            user_id,
+            room["tutor_id"],
+            student_id,
+            room["subject"],
+            room["description"],
+            room["start_time"],
+            room["end_time"],
+            "pending"  # ✅ changed from "scheduled"
+        ))
+
+        conn.commit()
+        flash("Study room added to your calendar!", "success")
+
+    cur.close()
+    conn.close()
+    return redirect("/study-rooms-student")
+
+
+#  stripeeeee for payments;;;;
+
+@app.route("/student-payments")
+def student_payments():
+    user_id = session.get("user_id")
+    if not user_id:
+        return redirect("/login")
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+
+    # Get student profile
+    cur.execute("SELECT id_student, stripe_customer_id FROM student_profiles WHERE id_user=%s", (user_id,))
+    student = cur.fetchone()
+    student_id = student['id_student']
+    stripe_customer_id = student.get('stripe_customer_id')
+
+    # Fetch events + payments
+    cur.execute("""
+        SELECT e.id_event, e.title, e.start_time, e.tutor_id, e.amount,
+               p.id_payment, p.status, p.method
+        FROM events e
+        LEFT JOIN payments p
+          ON p.event_id = e.id_event AND p.student_id = %s
+        WHERE e.student_id = %s
+        ORDER BY e.start_time ASC
+    """, (student_id, student_id))
+    events = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    return render_template(
+        "student_payments.html",
+        events=events,
+        stripe_customer_id=stripe_customer_id,
+        STRIPE_PUBLISHABLE_KEY="pk_test_YOUR_PUBLISHABLE_KEY"
+    )
+
+
+
+@app.route("/student/setup-payment", methods=["POST"])
+def setup_payment():
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Not logged in"}), 401
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+
+    # Get student profile
+    cur.execute("SELECT id_student, stripe_customer_id FROM student_profiles WHERE id_user=%s", (user_id,))
+    student = cur.fetchone()
+    student_id = student['id_student']
+    stripe_customer_id = student.get('stripe_customer_id')
+
+    # Create Stripe customer if missing
+    if not stripe_customer_id:
+        customer = stripe.Customer.create(
+            metadata={"student_id": student_id}
+        )
+        stripe_customer_id = customer.id
+        cur.execute("UPDATE student_profiles SET stripe_customer_id=%s WHERE id_student=%s",
+                    (stripe_customer_id, student_id))
+        conn.commit()
+
+    # Create a SetupIntent for saving card
+    setup_intent = stripe.SetupIntent.create(customer=stripe_customer_id)
+    cur.close()
+    conn.close()
+    return jsonify({"client_secret": setup_intent.client_secret})

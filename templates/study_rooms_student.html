@@ -1,0 +1,39 @@
+{% extends "template.html" %}
+{% block body %}
+<h2>Find a Study Room</h2>
+
+<form method="get" style="margin-bottom:20px;">
+  <input type="text" name="subject" placeholder="Search by subject" value="{{ subject_filter or '' }}">
+  <input type="date" name="date" value="{{ date_filter or '' }}">
+  <button type="submit">Search</button>
+  <a href="{{ url_for('study_rooms_student') }}">Clear</a>
+</form>
+
+{% if rooms %}
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;">
+    {% for r in rooms %}
+      <div style="border:1px solid #ccc;padding:12px;border-radius:10px;background:white;">
+        <b>{{ r.subject }}</b><br>
+        <small>{{ r.start_time }} → {{ r.end_time }}</small><br>
+        <p>{{ r.description }}</p>
+
+        {% if r.zoom_link %}
+          <a href="{{ r.zoom_link }}" target="_blank">Join via Zoom</a><br>
+        {% else %}
+          <em>Zoom link not yet available</em><br>
+        {% endif %}
+
+        {% if (r.subject, r.start_time) in saved_rooms %}
+          <button disabled style="background:#00b894;color:white;border:none;padding:6px 12px;border-radius:5px;">Saved ✓</button>
+        {% else %}
+          <form action="{{ url_for('save_to_calendar', room_id=r.id) }}" method="post" style="display:inline;">
+            <button type="submit" style="background:#0984e3;color:white;border:none;padding:6px 12px;border-radius:5px;">Save to Calendar</button>
+          </form>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p>No study rooms found.</p>
+{% endif %}
+{% endblock %}

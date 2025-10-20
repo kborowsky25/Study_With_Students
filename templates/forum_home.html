@@ -1,0 +1,16 @@
+{% extends "template.html" %}
+{% block body %}
+<h2>Forum Categories</h2>
+
+<div class="grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
+  {% for cat in categories %}
+  <a href="/forum/category/{{ cat.id }}" style="text-decoration:none;">
+    <div style="border:1px solid #ccc;padding:15px;border-radius:10px;">
+      <h3>{{ cat.name }}</h3>
+      <p>{{ cat.description }}</p>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "template.html" %}
+
+{% block body %}
+<h2>{{ month_name }} {{ year }}</h2>
+
+<div class="calendar-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;">
+
+    {# Empty cells before first day #}
+    {% for i in range(first_day_weekday) %}
+        <div class="calendar-cell empty"></div>
+    {% endfor %}
+
+    {# Days of the month #}
+    {% for day in range(1, last_day_of_month + 1) %}
+        {% set classes = "calendar-cell" %}
+        {% if day == today %}{% set classes = classes + " today" %}{% endif %}
+        {% if day in events_by_day %}{% set classes = classes + " has-event" %}{% endif %}
+
+        <div class="{{ classes }}" style="border:1px solid #aaa;min-height:80px;padding:5px;position:relative;">
+            <span><strong>{{ day }}</strong></span>
+
+            {% if day in events_by_day %}
+                <ul style="font-size:0.8em;margin:4px 0 0 10px;padding:0;list-style-type:disc;">
+                    {% for event in events_by_day[day] %}
+                        <li>
+                            <b>{{ event.title }}</b><br>
+                            <small>{{ event.start_time }} - {{ event.end_time }}</small><br>
+                            <small>{{ event.description }}</small><br>
+                            <small>Student ID: {{ event.student_id }}</small><br>
+                            <small>Tutor ID: {{ event.tutor_id }}</small>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </div>
+    {% endfor %}
+</div>
+
+<style>
+.calendar-cell {
+    background: rgba(255,255,255,0.2);
+}
+.calendar-cell.today {
+    background: #ffeaa7;
+}
+.calendar-cell.has-event {
+    border: 2px solid #00b894;
+}
+</style>
+{% endblock %}

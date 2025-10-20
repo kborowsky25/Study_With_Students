@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Payments</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        body { font-family: Arial; margin: 40px; }
+        .event-card { border: 1px solid #ccc; padding: 20px; margin-bottom: 15px; border-radius: 5px; }
+        .paid { color: green; font-weight: bold; }
+        .pending { color: orange; font-weight: bold; }
+        #card-element { margin-top: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; max-width: 400px; }
+        .save-button { padding: 8px 15px; background: #6772e5; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .save-button:hover { background: #5469d4; }
+    </style>
+</head>
+<body>
+<h2>Save Your Card</h2>
+
+<div id="payment-setup">
+    <div id="card-element"></div>
+    <button class="save-button" id="save-card">Save Card</button>
+    <p id="setup-result"></p>
+</div>
+
+<hr>
+
+<h2>Upcoming Sessions & Payments</h2>
+<div id="events-list">
+    {% for event in events %}
+    <div class="event-card">
+        <h3>{{ event.title }}</h3>
+        <p>Date/Time: {{ event.start_time }}</p>
+        <p>Amount: ${{ event.amount }}</p>
+        <p>Status: 
+            {% if event.status == 'paid' %}
+                <span class="paid">Paid ✅</span>
+            {% elif event.status == 'pending' %}
+                <span class="pending">Pending ⏳</span>
+            {% else %}
+                <span class="pending">Unpaid ⏳</span>
+            {% endif %}
+        </p>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+var stripe = Stripe('{{ STRIPE_PUBLISHABLE_KEY }}');
+var elements = stripe.elements();
+var card = elements.create('card');
+card.mount('#card-element');
+
+document.getElementById('save-card').addEventListener('click', function(){
+    fetch("/student/setup-payment", { method: "POST" })
+    .then(res => res.json())
+    .then(data => {
+        stripe.confirmCardSetup(data.client_secret, { payment_method: { card: card } })
+        .then(function(result){
+            let resultEl = document.getElementById('setup-result');
+            if(result.error){
+                resultEl.textContent = result.error.message;
+                resultEl.style.color = "red";
+            } else {
+                resultEl.textContent = "Card saved successfully!";
+                resultEl.style.color = "green";
+            }
+        });
+    });
+});
+</script>
+</body>
+</html>

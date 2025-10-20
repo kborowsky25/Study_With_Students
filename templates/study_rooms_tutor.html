@@ -1,0 +1,32 @@
+{% extends "template.html" %}
+{% block body %}
+<h2>Your Study Rooms</h2>
+
+<form method="post" style="margin-bottom:20px;">
+  <input type="text" name="subject" placeholder="Subject" required><br>
+  <textarea name="description" placeholder="Description" required></textarea><br>
+  <label>Start:</label> <input type="datetime-local" name="start_time" required><br>
+  <label>End:</label> <input type="datetime-local" name="end_time" required><br>
+  <label>Zoom link (optional):</label> <input type="url" name="zoom_link"><br>
+  <button type="submit">Create Study Room</button>
+</form>
+
+<h3>Upcoming Study Rooms</h3>
+{% if rooms %}
+  <ul>
+    {% for r in rooms %}
+      <li>
+        <b>{{ r.subject }}</b> ({{ r.start_time }} → {{ r.end_time }})<br>
+        {{ r.description }}<br>
+        {% if r.zoom_link %}
+          <a href="{{ r.zoom_link }}" target="_blank">Join via Zoom</a>
+        {% else %}
+          <em>No Zoom link yet</em>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>You haven't created any study rooms yet.</p>
+{% endif %}
+{% endblock %}

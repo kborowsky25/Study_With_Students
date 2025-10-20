@@ -1,0 +1,26 @@
+{% extends "template.html" %}
+{% block body %}
+<h2>{{ thread.title }}</h2>
+<p><b>By {{ thread.username or "Unknown" }}</b></p>
+<p>{{ thread.content }}</p>
+<hr>
+
+<h3>Replies</h3>
+{% for p in posts %}
+<div style="margin-bottom:15px;padding:10px;border:1px solid #ccc;border-radius:8px;">
+  <b>{{ p.username or "Anonymous" }}</b> <small>{{ p.created_at }}</small><br>
+  {{ p.content }}
+</div>
+{% else %}
+<p>No replies yet.</p>
+{% endfor %}
+
+{% if session.user_id %}
+<form method="post">
+  <textarea name="content" rows="3" placeholder="Write a reply..." required style="width:100%;"></textarea><br>
+  <button type="submit">Post Reply</button>
+</form>
+{% else %}
+<p><a href="/login">Log in</a> to reply.</p>
+{% endif %}
+{% endblock %}
