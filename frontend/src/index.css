@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-navy-500 text-white font-sans antialiased;
+    min-height: 100vh;
+  }
+
+  a {
+    text-decoration: none;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl;
+  }
+
+  .glass-hover {
+    @apply glass transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:shadow-lg;
+  }
+
+  .btn-primary {
+    @apply bg-coral-400 hover:bg-coral-500 text-white font-bold px-6 py-2.5 rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-coral-400/25 active:scale-95;
+  }
+
+  .btn-secondary {
+    @apply bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-2.5 rounded-xl border border-white/10 transition-all duration-200 active:scale-95;
+  }
+
+  .btn-outline {
+    @apply border border-coral-400 text-coral-400 hover:bg-coral-400 hover:text-white font-semibold px-6 py-2.5 rounded-xl transition-all duration-200 active:scale-95;
+  }
+
+  .input-field {
+    @apply w-full bg-navy-600 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:border-coral-400 focus:ring-1 focus:ring-coral-400 transition-colors;
+  }
+
+  .card {
+    @apply glass p-6 shadow-xl;
+  }
+
+  .section-title {
+    @apply text-3xl md:text-4xl font-bold text-white;
+  }
+
+  .section-sub {
+    @apply text-white/60 text-lg mt-2;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition-all duration-200 font-medium;
+  }
+
+  .sidebar-link.active {
+    @apply text-coral-400 bg-coral-400/10 border border-coral-400/20;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-coral-400 to-orange-400 bg-clip-text text-transparent;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
