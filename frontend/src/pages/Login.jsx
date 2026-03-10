@@ -27,58 +27,66 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-navy-500 flex items-center justify-center px-4">
-      {/* Ambient */}
-      <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-coral-400/5 rounded-full blur-3xl pointer-events-none" />
+    <div style={{ minHeight: '100vh', backgroundColor: '#1b263b', display: 'flex', fontFamily: '"Noto Sans JP", sans-serif' }}>
 
-      <div className="w-full max-w-md relative">
+      {/* Left — illustration */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4vw' }}>
+        <img
+          src="/static/images/login/login.svg"
+          alt="Study With Students"
+          style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
+        />
+      </div>
+
+      {/* Right — form */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4vw' }}>
+
         {/* Logo */}
-        <Link to="/" className="flex justify-center mb-8">
-          <span className="text-2xl font-black">
-            Study<span className="text-coral-400">WithStudents</span>
+        <Link to="/" style={{ textDecoration: 'none', marginBottom: '3vh' }}>
+          <span style={{ fontSize: '22px', fontWeight: '900', color: 'white' }}>
+            Study<span style={{ color: '#ff725e' }}>WithStudents</span>
           </span>
         </Link>
 
-        <div className="glass p-8">
-          <h1 className="text-2xl font-black text-white mb-1">Welcome back</h1>
-          <p className="text-white/50 mb-8">Sign in to continue learning</p>
+        <div style={{ width: '100%', maxWidth: '420px' }}>
+          <h1 style={{ fontSize: '32px', fontWeight: '900', color: 'white', marginBottom: '4px', letterSpacing: '-0.5px' }}>
+            LOG IN
+          </h1>
+          <p style={{ color: '#b0bec5', marginBottom: '32px', fontSize: '15px' }}>
+            One day or day one?
+          </p>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-white/60 mb-1.5">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                placeholder="you@university.ac.uk"
-                className="input-field"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-white/60 mb-1.5">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                placeholder="••••••••"
-                className="input-field"
-              />
-            </div>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              placeholder="Email"
+              className="input-field"
+            />
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              placeholder="Password"
+              className="input-field"
+            />
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary"
+              style={{ padding: '14px', fontSize: '16px', marginTop: '4px', opacity: loading ? 0.6 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
             >
-              {loading ? 'Signing in…' : 'Sign in →'}
+              {loading ? 'Signing in…' : 'Login'}
             </button>
           </form>
 
-          <p className="text-center text-white/40 text-sm mt-6">
-            Don't have an account?{' '}
-            <Link to="/signup" className="text-coral-400 hover:text-coral-300 font-medium">
-              Sign up free
+          <p style={{ color: '#b0bec5', fontSize: '14px', marginTop: '24px', textAlign: 'center' }}>
+            Don&apos;t have an account yet?{' '}
+            <Link to="/signup" style={{ color: '#ff725e', fontWeight: '600', textDecoration: 'none' }}>
+              Sign up here
             </Link>
           </p>
         </div>

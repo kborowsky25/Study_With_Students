@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useAuth } from '../../context/AuthContext'
 import Sidebar from './Sidebar'
 
-export default function HubLayout({ children, initialMode }) {
+export default function HubLayout({ children, initialMode, raw = false }) {
   const { isTutor } = useAuth()
   const navigate    = useNavigate()
 
@@ -22,9 +22,11 @@ export default function HubLayout({ children, initialMode }) {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 animate-fade-in">
-          {children}
-        </div>
+        {raw ? children : (
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 animate-fade-in">
+            {children}
+          </div>
+        )}
       </main>
     </div>
   )
