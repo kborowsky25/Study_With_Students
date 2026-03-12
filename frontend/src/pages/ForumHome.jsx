@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { getCategories } from '../api/forum'
 import HubLayout from '../components/layout/HubLayout'
+import PaywallGate from '../components/features/PaywallGate'
 import toast from 'react-hot-toast'
 
 const CATEGORY_ICONS = ['📚', '💡', '🔬', '📐', '💬', '🌍', '🏛️', '🎓']
@@ -19,6 +20,7 @@ export default function ForumHome() {
 
   return (
     <HubLayout>
+      <PaywallGate feature="Community Forum">
       <div className="mb-8">
         <h1 className="text-3xl font-black text-white mb-1">Community Forum</h1>
         <p className="text-white/50">Ask questions, share knowledge, and connect with peers</p>
@@ -55,6 +57,7 @@ export default function ForumHome() {
           ))}
         </div>
       )}
+      </PaywallGate>
     </HubLayout>
   )
 }

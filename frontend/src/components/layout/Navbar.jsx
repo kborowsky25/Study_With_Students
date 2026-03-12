@@ -1,9 +1,11 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 
 export default function Navbar() {
   const { isAuthenticated, logout } = useAuth()
+  const { dark, toggle } = useTheme()
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -12,78 +14,190 @@ export default function Navbar() {
     navigate({ to: '/' })
   }
 
+  const linkStyle = {
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: '14px',
+    fontWeight: '500',
+    textDecoration: 'none',
+    transition: 'color 0.2s',
+  }
+
   return (
-    <nav className="sticky top-0 z-50 bg-navy-500/90 backdrop-blur-md border-b border-white/5">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <span className="text-xl font-black tracking-tight">
-              Study<span className="text-coral-400">WithStudents</span>
-            </span>
-          </Link>
+    <nav style={{
+      position: 'sticky',
+      top: 0,
+      zIndex: 50,
+      background: 'rgba(27,38,59,0.93)',
+      backdropFilter: 'blur(14px)',
+      WebkitBackdropFilter: 'blur(14px)',
+      borderBottom: '1px solid rgba(255,255,255,0.06)',
+    }}>
+      <div style={{
+        maxWidth: '1280px',
+        margin: '0 auto',
+        padding: '0 24px',
+        height: '64px',
+        display: 'flex',
+        alignItems: 'center',
+        position: 'relative',
+      }}>
 
-          {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-8">
-            <Link to="/about"       className="text-white/70 hover:text-white transition-colors font-medium">About</Link>
-            <Link to="/how-it-works"className="text-white/70 hover:text-white transition-colors font-medium">How It Works</Link>
-            <Link to="/become-tutor"className="text-white/70 hover:text-white transition-colors font-medium">Become a Tutor</Link>
-          </div>
-
-          {/* CTA */}
-          <div className="hidden md:flex items-center gap-3">
-            {isAuthenticated ? (
-              <>
-                <Link to="/hub" className="btn-secondary text-sm py-2">Dashboard</Link>
-                <button onClick={handleLogout} className="btn-outline text-sm py-2">Log out</button>
-              </>
-            ) : (
-              <>
-                <Link to="/login"  className="text-white/70 hover:text-white font-medium transition-colors">Log in</Link>
-                <Link to="/signup" className="btn-primary text-sm py-2">Get started</Link>
-              </>
-            )}
-          </div>
-
-          {/* Mobile hamburger */}
-          <button
-            className="md:hidden p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10"
-            onClick={() => setMobileOpen(o => !o)}
-            aria-label="Toggle menu"
+        {/* ── Left nav links (desktop) ── */}
+        <div className="hidden md:flex" style={{ alignItems: 'center', gap: '28px' }}>
+          <Link
+            to="/how-it-works"
+            style={linkStyle}
+            onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+            onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.65)'}
           >
-            {mobileOpen ? (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            )}
-          </button>
+            How It Works
+          </Link>
+          <Link
+            to="/about"
+            style={linkStyle}
+            onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+            onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.65)'}
+          >
+            About Us
+          </Link>
+          <Link
+            to="/become-tutor"
+            style={linkStyle}
+            onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+            onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.65)'}
+          >
+            Become a Tutor
+          </Link>
         </div>
+
+        {/* ── Logo — absolutely centered ── */}
+        <Link
+          to="/"
+          style={{
+            position: 'absolute',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            textDecoration: 'none',
+          }}
+        >
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: '26px', color: '#ff725e' }}
+          >
+            rocket_launch
+          </span>
+          <span style={{ fontWeight: 900, fontSize: '18px', color: 'white', letterSpacing: '-0.02em' }}>
+            Study<span style={{ color: '#ff725e' }}>WithStudents</span>
+          </span>
+        </Link>
+
+        {/* ── Right: theme + auth (desktop) ── */}
+        <div className="hidden md:flex" style={{ marginLeft: 'auto', alignItems: 'center', gap: '12px' }}>
+          {/* Theme toggle */}
+          <button
+            onClick={toggle}
+            title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+            style={{
+              background: 'rgba(255,255,255,0.08)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '10px',
+              padding: '6px 10px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              transition: 'background 0.2s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+          >
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: '20px', color: 'rgba(255,255,255,0.7)' }}
+            >
+              {dark ? 'light_mode' : 'dark_mode'}
+            </span>
+          </button>
+
+          {isAuthenticated ? (
+            <>
+              <Link to="/hub" className="btn-secondary" style={{ fontSize: '13px', padding: '6px 16px' }}>
+                Dashboard
+              </Link>
+              <button onClick={handleLogout} className="btn-outline" style={{ fontSize: '13px', padding: '6px 16px' }}>
+                Log out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                style={{ color: 'rgba(255,255,255,0.65)', fontSize: '14px', fontWeight: '500', textDecoration: 'none' }}
+                onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+                onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.65)'}
+              >
+                Log in
+              </Link>
+              <Link to="/signup" className="btn-primary" style={{ fontSize: '13px', padding: '7px 18px' }}>
+                Get started
+              </Link>
+            </>
+          )}
+        </div>
+
+        {/* ── Mobile hamburger ── */}
+        <button
+          className="md:hidden"
+          style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', padding: '8px' }}
+          onClick={() => setMobileOpen(o => !o)}
+          aria-label="Toggle menu"
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '26px', color: 'rgba(255,255,255,0.7)' }}>
+            {mobileOpen ? 'close' : 'menu'}
+          </span>
+        </button>
       </div>
 
-      {/* Mobile menu */}
+      {/* ── Mobile menu ── */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-white/5 bg-navy-600/95 backdrop-blur-md animate-fade-in">
-          <div className="px-4 py-4 space-y-2">
-            <Link to="/about"        onClick={() => setMobileOpen(false)} className="block px-4 py-2.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 font-medium">About</Link>
-            <Link to="/how-it-works" onClick={() => setMobileOpen(false)} className="block px-4 py-2.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 font-medium">How It Works</Link>
-            <Link to="/become-tutor" onClick={() => setMobileOpen(false)} className="block px-4 py-2.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 font-medium">Become a Tutor</Link>
-            <div className="pt-2 border-t border-white/10 flex flex-col gap-2">
-              {isAuthenticated ? (
-                <>
-                  <Link to="/hub" onClick={() => setMobileOpen(false)} className="btn-secondary text-center">Dashboard</Link>
-                  <button onClick={() => { handleLogout(); setMobileOpen(false) }} className="btn-outline">Log out</button>
-                </>
-              ) : (
-                <>
-                  <Link to="/login"  onClick={() => setMobileOpen(false)} className="btn-secondary text-center">Log in</Link>
-                  <Link to="/signup" onClick={() => setMobileOpen(false)} className="btn-primary text-center">Get started</Link>
-                </>
-              )}
-            </div>
+        <div
+          className="md:hidden animate-fade-in"
+          style={{
+            borderTop: '1px solid rgba(255,255,255,0.06)',
+            background: 'rgba(22,31,48,0.98)',
+            padding: '16px 24px 20px',
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '12px' }}>
+            {[
+              { to: '/how-it-works', label: 'How It Works' },
+              { to: '/about',        label: 'About Us' },
+              { to: '/become-tutor', label: 'Become a Tutor' },
+            ].map(({ to, label }) => (
+              <Link
+                key={to}
+                to={to}
+                onClick={() => setMobileOpen(false)}
+                style={{ padding: '10px 12px', borderRadius: '10px', color: 'rgba(255,255,255,0.7)', fontSize: '15px', fontWeight: '500', textDecoration: 'none' }}
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {isAuthenticated ? (
+              <>
+                <Link to="/hub"  onClick={() => setMobileOpen(false)} className="btn-secondary" style={{ textAlign: 'center' }}>Dashboard</Link>
+                <button onClick={() => { handleLogout(); setMobileOpen(false) }} className="btn-outline">Log out</button>
+              </>
+            ) : (
+              <>
+                <Link to="/login"  onClick={() => setMobileOpen(false)} className="btn-secondary" style={{ textAlign: 'center' }}>Log in</Link>
+                <Link to="/signup" onClick={() => setMobileOpen(false)} className="btn-primary"   style={{ textAlign: 'center' }}>Get started</Link>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getStudyRooms, saveToCalendar } from '../api/studyrooms'
 import HubLayout from '../components/layout/HubLayout'
+import PaywallGate from '../components/features/PaywallGate'
 import toast from 'react-hot-toast'
 
 export default function StudyRoomsStudent() {
@@ -29,6 +30,7 @@ export default function StudyRoomsStudent() {
 
   return (
     <HubLayout>
+      <PaywallGate feature="Study Rooms">
       <div className="mb-8">
         <h1 className="text-3xl font-black text-white mb-1">Study Rooms</h1>
         <p className="text-white/50">Join group study sessions hosted by tutors</p>
@@ -97,6 +99,7 @@ export default function StudyRoomsStudent() {
           })}
         </div>
       )}
+      </PaywallGate>
     </HubLayout>
   )
 }

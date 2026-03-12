@@ -42,10 +42,11 @@ export function AuthProvider({ children }) {
   }, [])
 
   const isAuthenticated = Boolean(token)
-  const isTutor = Boolean(user?.is_tutor)
+  const isTutor    = Boolean(user?.is_tutor)
+  const isPremium  = Boolean(user?.is_premium)
 
   return (
-    <AuthContext.Provider value={{ token, user, isAuthenticated, isTutor, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ token, user, isAuthenticated, isTutor, isPremium, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   )

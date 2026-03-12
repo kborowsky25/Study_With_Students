@@ -4,6 +4,7 @@ JWT-authenticated, CORS-enabled, returns JSON only.
 Run: python -m flask --app api run --debug
 """
 import os
+import traceback
 from datetime import timedelta
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -23,6 +24,12 @@ app.config['JWT_ACCESS_TOKEN_EXPIRES']     = timedelta(days=7)
 
 jwt  = JWTManager(app)
 CORS(app, origins=['http://localhost:5173'], supports_credentials=True)
+
+# ── Global error handler — returns JSON for ALL unhandled exceptions ──────────
+@app.errorhandler(Exception)
+def handle_exception(e):
+    traceback.print_exc()           # prints full stack trace to Flask terminal
+    return jsonify({'error': str(e)}), 500
 
 # ── DB ────────────────────────────────────────────────────────────────────────
 DB_CONFIG = {
@@ -62,10 +69,14 @@ def register():
     if not name or not email or not password:
         return jsonify({'error': 'All fields required'}), 400
 
-    conn = get_db(); cur = conn.cursor()
+    conn = None
     try:
+        conn = get_db()
+        cur  = conn.cursor()
+
         cur.execute("SELECT id_user FROM users WHERE email = %s", (email,))
         if cur.fetchone():
+            cur.close(); conn.close()
             return jsonify({'error': 'Email already registered'}), 409
 
         cur.execute(
@@ -77,9 +88,17 @@ def register():
         # Create a student profile automatically
         cur.execute("INSERT INTO student_profiles (id_user) VALUES (%s)", (user_id,))
         conn.commit()
-        return jsonify({'message': 'Account created'}), 201
-    finally:
         cur.close(); conn.close()
+        return jsonify({'message': 'Account created'}), 201
+
+    except Exception as e:
+        if conn:
+            try: conn.rollback()
+            except: pass
+            try: conn.close()
+            except: pass
+        import traceback; traceback.print_exc()   # prints real error to Flask console
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/auth/login', methods=['POST'])
@@ -103,13 +122,17 @@ def login():
         cur.execute("SELECT id_tutor FROM tutor_profiles WHERE id_user = %s", (user_id,))
         is_tutor = cur.fetchone() is not None
 
+        cur.execute("SELECT is_premium FROM users WHERE id_user = %s", (user_id,))
+        prem_row   = cur.fetchone()
+        is_premium = bool(prem_row[0]) if prem_row else False
+
         token = create_access_token(
             identity=str(user_id),
-            additional_claims={'name': name, 'email': user_email, 'is_tutor': is_tutor},
+            additional_claims={'name': name, 'email': user_email, 'is_tutor': is_tutor, 'is_premium': is_premium},
         )
         return jsonify({
             'access_token': token,
-            'user': {'id': user_id, 'name': name, 'email': user_email, 'is_tutor': is_tutor},
+            'user': {'id': user_id, 'name': name, 'email': user_email, 'is_tutor': is_tutor, 'is_premium': is_premium},
         })
     finally:
         cur.close(); conn.close()
@@ -122,10 +145,11 @@ def me():
     uid    = current_user_id()
     return jsonify({
         'user': {
-            'id':       uid,
-            'name':     claims.get('name'),
-            'email':    claims.get('email'),
-            'is_tutor': claims.get('is_tutor', False),
+            'id':         uid,
+            'name':       claims.get('name'),
+            'email':      claims.get('email'),
+            'is_tutor':   claims.get('is_tutor',   False),
+            'is_premium': claims.get('is_premium', False),
         }
     })
 
@@ -412,7 +436,7 @@ def get_events():
     try:
         cur.execute("""
             SELECT e.id_event, e.title, e.description, e.start_time, e.end_time,
-                   e.status, e.amount, e.tutor_id, e.student_id, e.created_at,
+                   e.status, e.amount, e.tutor_id, e.student_id,
                    u_t.name AS tutor_name, u_s.name AS student_name
             FROM events e
             LEFT JOIN tutor_profiles tp ON tp.id_tutor = e.tutor_id
@@ -425,7 +449,7 @@ def get_events():
         events = cur.fetchall()
         # Convert datetimes to strings
         for ev in events:
-            for key in ('start_time', 'end_time', 'created_at'):
+            for key in ('start_time', 'end_time'):
                 if ev.get(key) and hasattr(ev[key], 'isoformat'):
                     ev[key] = ev[key].isoformat()
         return jsonify({'events': events})
@@ -773,6 +797,72 @@ def get_payments():
 def setup_payment():
     # Stripe integration placeholder — add stripe keys via env vars
     return jsonify({'message': 'Payment setup endpoint — configure Stripe keys in environment'})
+
+
+# ── Users / Search ────────────────────────────────────────────────────────────
+
+@app.route('/api/users/search', methods=['GET'])
+@jwt_required()
+def search_users():
+    """Search users by name or email (for starting new message conversations)."""
+    q    = request.args.get('q', '').strip()
+    uid  = current_user_id()
+    if len(q) < 2:
+        return jsonify({'users': []})
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute(
+            """SELECT id_user, name, email
+               FROM users
+               WHERE (name LIKE %s OR email LIKE %s)
+                 AND id_user != %s
+               LIMIT 12""",
+            (f'%{q}%', f'%{q}%', uid)
+        )
+        users = cur.fetchall()
+        return jsonify({'users': users})
+    finally:
+        cur.close(); conn.close()
+
+
+# ── Membership ────────────────────────────────────────────────────────────────
+
+@app.route('/api/membership/upgrade', methods=['POST'])
+@jwt_required()
+def upgrade_membership():
+    """Upgrade the current user to Explorer (premium) plan.
+
+    This is a stub — in production, verify a Stripe payment before
+    setting is_premium.  For now it upgrades immediately (useful for testing).
+    """
+    uid  = current_user_id()
+    conn = get_db(); cur = conn.cursor()
+    try:
+        cur.execute(
+            "UPDATE users SET is_premium = TRUE WHERE id_user = %s",
+            (uid,)
+        )
+        conn.commit()
+        return jsonify({'message': 'Upgraded to Explorer plan'})
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/membership/downgrade', methods=['POST'])
+@jwt_required()
+def downgrade_membership():
+    """Remove premium status (cancel subscription stub)."""
+    uid  = current_user_id()
+    conn = get_db(); cur = conn.cursor()
+    try:
+        cur.execute(
+            "UPDATE users SET is_premium = FALSE WHERE id_user = %s",
+            (uid,)
+        )
+        conn.commit()
+        return jsonify({'message': 'Subscription cancelled'})
+    finally:
+        cur.close(); conn.close()
 
 
 # ── Run ───────────────────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useAuth } from '../context/AuthContext'
 import HubLayout from '../components/layout/HubLayout'
@@ -6,26 +6,16 @@ import { getActiveTutors } from '../api/tutors'
 import { getEvents } from '../api/events'
 import { getConversations } from '../api/messages'
 
-const CORAL  = '#ff725e'
-const NAVY   = '#1b263b'
-const GLASS  = 'rgba(255,255,255,0.06)'
-const BORDER = 'rgba(255,255,255,0.1)'
+const CORAL = '#ff725e'
 
-// ── Quick navigation cards (SVG background style, original hub inspired) ──────
-const QUICK_CARDS = [
-  { to: '/find-tutors',         label: 'Find a Tutor',   bg: '/static/images/hub/tutor.svg',          size: '55%' },
-  { to: '/active-tutors',       label: 'My Tutors',      bg: '/static/images/hub/student_profile.svg', size: '80%' },
-  { to: '/messages',            label: 'Messages',       bg: '/static/images/hub/profile.svg',         size: '65%' },
-  { to: '/liked-tutors',        label: 'Liked Tutors',   bg: '/static/images/hub/event.svg',           size: '55%' },
-  { to: '/study-rooms/student', label: 'Study Rooms',    bg: '/static/images/hub/students.svg',        size: '60%' },
-  { to: '/dashboard',           label: 'Dashboard',      bg: '/static/images/hub/dashboard.svg',       size: '65%' },
-  { to: '/calendar/student',    label: 'Calendar',       bg: '/static/images/hub/event.svg',           size: '55%' },
-  { to: '/payments',            label: 'Payments',       bg: '/static/images/hub/dashboard.svg',       size: '55%' },
-]
+function fmt(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
 
 export default function HubStudent() {
   const { user } = useAuth()
-  const barRef   = useRef(null)
 
   const [activeTutors,  setActiveTutors]  = useState([])
   const [events,        setEvents]        = useState([])
@@ -34,199 +24,204 @@ export default function HubStudent() {
 
   useEffect(() => {
     Promise.allSettled([
-      getActiveTutors().then(r   => setActiveTutors(r.data.tutors ?? [])),
-      getEvents().then(r         => setEvents(r.data.events ?? [])),
-      getConversations().then(r  => setConversations(r.data.conversations ?? [])),
+      getActiveTutors().then(r  => setActiveTutors(r.data.tutors ?? [])),
+      getEvents().then(r        => setEvents(r.data.events ?? [])),
+      getConversations().then(r => setConversations(r.data.conversations ?? [])),
     ]).finally(() => setLoading(false))
-  }, [])
-
-  // Animate progress bar
-  useEffect(() => {
-    const t = setTimeout(() => {
-      if (barRef.current) barRef.current.style.width = '30%'
-    }, 300)
-    return () => clearTimeout(t)
   }, [])
 
   const hour     = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
   const name     = user?.name?.split(' ')[0] ?? 'Student'
 
-  const upcoming = events.filter(e => e.status === 'confirmed' || e.status === 'pending')
-  const nextSession = upcoming[0]
+  const upcoming  = events.filter(e => e.status === 'confirmed' || e.status === 'pending')
+  const unreadCount = conversations.reduce((acc, c) => acc + (c.unread || 0), 0)
+
+  const quickActions = [
+    { to: '/find-tutors',      icon: 'search',           label: 'Find a Tutor', color: CORAL       },
+    { to: '/calendar/student', icon: 'calendar_month',   label: 'My Calendar',  color: '#34d399'   },
+    { to: '/messages',         icon: 'message',          label: 'Messages',     color: '#60a5fa'   },
+    { to: '/forum',            icon: 'forum',            label: 'Forum',        color: '#fbbf24'   },
+  ]
 
   return (
     <HubLayout initialMode="student">
 
-      {/* ── Welcome banner ────────────────────────────────────────────────── */}
-      <div style={{ background: `linear-gradient(135deg, ${CORAL}22 0%, transparent 60%)`, border: `1px solid ${CORAL}33`, borderRadius: '20px', padding: '28px 32px', marginBottom: '28px', position: 'relative', overflow: 'hidden' }}>
-        {/* Coral glow orb */}
-        <div style={{ position: 'absolute', right: '-60px', top: '-60px', width: '200px', height: '200px', background: `${CORAL}18`, borderRadius: '50%', filter: 'blur(40px)', pointerEvents: 'none' }} />
-
-        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', marginBottom: '4px' }}>{greeting} 👋</p>
-        <h1 style={{ fontSize: '32px', fontWeight: '900', color: 'white', marginBottom: '6px' }}>
-          Ready to study, {name}?
-        </h1>
-        <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '14px', marginBottom: '20px' }}>
-          {nextSession
-            ? `Next session: "${nextSession.title}" — ${fmt(nextSession.start_time)}`
-            : 'No upcoming sessions. Find a tutor to get started!'}
-        </p>
-
-        {/* XP Progress bar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ color: CORAL, fontSize: '12px', fontWeight: '700', whiteSpace: 'nowrap' }}>Level 1</span>
-          <div style={{ flex: 1, maxWidth: '380px', height: '10px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '10px', overflow: 'hidden' }}>
-            <div ref={barRef} style={{ width: '5%', height: '100%', backgroundColor: CORAL, borderRadius: '10px', transition: 'width 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55)' }} />
-          </div>
-          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px' }}>30 / 100 XP</span>
-        </div>
-      </div>
-
-      {/* ── Stats row ─────────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '28px' }}>
-        <StatCard icon="cast_for_education" label="Active Tutors"    value={loading ? '…' : activeTutors.length}   to="/active-tutors"   />
-        <StatCard icon="calendar_clock"     label="Upcoming Sessions" value={loading ? '…' : upcoming.length}       to="/calendar/student"/>
-        <StatCard icon="message"            label="Conversations"    value={loading ? '…' : conversations.length}  to="/messages"        />
-        <StatCard icon="forum"              label="Forum"            value="∞"                                      to="/forum"           />
-      </div>
-
-      {/* ── Main grid: nav cards + recent activity ────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '28px' }}>
-
-        {/* Navigation cards (SVG style, original inspired) */}
+      {/* ── Welcome banner ───────────────────────────────────────────── */}
+      <div style={{
+        background: `linear-gradient(135deg, ${CORAL}18 0%, rgba(255,114,94,0.03) 60%)`,
+        border: `1px solid ${CORAL}28`,
+        borderRadius: '16px',
+        padding: '20px 24px',
+        marginBottom: '16px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        <div style={{ position: 'absolute', right: '-40px', top: '-40px', width: '160px', height: '160px', background: `${CORAL}0e`, borderRadius: '50%', filter: 'blur(40px)', pointerEvents: 'none' }} />
         <div>
-          <SectionTitle>Quick Navigation</SectionTitle>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'repeat(4, 120px)', gap: '12px' }}>
-            {QUICK_CARDS.map(c => <SvgNavCard key={c.to} {...c} />)}
-          </div>
+          <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginBottom: '2px' }}>{greeting} 👋</p>
+          <h1 style={{ fontSize: '22px', fontWeight: '900', color: 'var(--text)', marginBottom: '4px' }}>
+            Ready to study, {name}?
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+            {upcoming[0]
+              ? `📅 Next: "${upcoming[0].title}" — ${fmt(upcoming[0].start_time)}`
+              : activeTutors.length > 0
+              ? `You have ${activeTutors.length} active tutor${activeTutors.length > 1 ? 's' : ''} — keep the momentum going!`
+              : 'No sessions yet — find a tutor and book your first session'}
+          </p>
         </div>
+        <Link to="/find-tutors" className="btn-primary" style={{ fontSize: '13px', padding: '9px 18px', flexShrink: 0, zIndex: 1 }}>
+          Find a Tutor →
+        </Link>
+      </div>
 
-        {/* Right column: upcoming sessions + active tutors */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* ── Stats row ────────────────────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '16px' }}>
+        <StatCard icon="cast_for_education" label="Active Tutors"     value={loading ? '…' : activeTutors.length}  to="/active-tutors"    />
+        <StatCard icon="calendar_clock"     label="Upcoming Sessions" value={loading ? '…' : upcoming.length}      to="/calendar/student" />
+        <StatCard icon="message"            label="Messages"          value={loading ? '…' : conversations.length} to="/messages"         highlight={unreadCount > 0} badge={unreadCount || null} />
+      </div>
 
-          {/* Upcoming sessions */}
-          <div>
-            <SectionTitle>
-              Upcoming Sessions
-              <Link to="/calendar/student" style={{ marginLeft: 'auto', color: CORAL, fontSize: '12px', textDecoration: 'none', fontWeight: '600' }}>View calendar →</Link>
-            </SectionTitle>
-            <div style={{ background: GLASS, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '16px', backdropFilter: 'blur(10px)' }}>
-              {loading ? (
-                <Skeleton rows={3} />
-              ) : upcoming.length === 0 ? (
-                <EmptyState icon="calendar_clock" text="No upcoming sessions" action={{ to: '/find-tutors', label: 'Book a session' }} />
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  {upcoming.slice(0, 4).map(ev => (
-                    <SessionRow key={ev.id_event} event={ev} />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* My active tutors */}
-          <div>
-            <SectionTitle>
-              My Tutors
-              <Link to="/active-tutors" style={{ marginLeft: 'auto', color: CORAL, fontSize: '12px', textDecoration: 'none', fontWeight: '600' }}>View all →</Link>
-            </SectionTitle>
-            <div style={{ background: GLASS, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '16px', backdropFilter: 'blur(10px)' }}>
-              {loading ? (
-                <Skeleton rows={3} />
-              ) : activeTutors.length === 0 ? (
-                <EmptyState icon="cast_for_education" text="No active tutors yet" action={{ to: '/find-tutors', label: 'Find a tutor' }} />
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  {activeTutors.slice(0, 4).map(t => (
-                    <TutorRow key={t.id_tutor} tutor={t} />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Recent messages */}
-          <div>
-            <SectionTitle>
-              Recent Messages
-              <Link to="/messages" style={{ marginLeft: 'auto', color: CORAL, fontSize: '12px', textDecoration: 'none', fontWeight: '600' }}>Open messages →</Link>
-            </SectionTitle>
-            <div style={{ background: GLASS, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '16px', backdropFilter: 'blur(10px)' }}>
-              {loading ? (
-                <Skeleton rows={2} />
-              ) : conversations.length === 0 ? (
-                <EmptyState icon="message" text="No messages yet" />
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  {conversations.slice(0, 3).map(c => (
-                    <ConvoRow key={c.user_id} convo={c} />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
+      {/* ── Quick Actions ─────────────────────────────────────────────── */}
+      <div style={{ marginBottom: '16px' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: '700', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>Quick Actions</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+          {quickActions.map(({ to, icon, label, color }) => (
+            <Link key={to} to={to} style={{ textDecoration: 'none' }}>
+              <div
+                style={{
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '12px',
+                  padding: '14px 12px',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
+                  backdropFilter: 'blur(10px)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  textAlign: 'center',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = color + '50' }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'var(--border)' }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '22px', color }}>{icon}</span>
+                <span style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)' }}>{label}</span>
+              </div>
+            </Link>
+          ))}
         </div>
       </div>
 
+      {/* ── Main content: 2 columns ──────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+
+        {/* Left: Upcoming sessions */}
+        <Panel
+          title="Upcoming Sessions"
+          extra={<Link to="/calendar/student" style={{ color: CORAL, fontSize: '12px', fontWeight: '600' }}>View calendar →</Link>}
+        >
+          {loading ? <Skeleton rows={4} /> : upcoming.length === 0 ? (
+            <EmptyState icon="calendar_clock" text="No upcoming sessions" action={{ to: '/find-tutors', label: 'Book a session' }} />
+          ) : (
+            upcoming.slice(0, 6).map(ev => <SessionRow key={ev.id_event} event={ev} />)
+          )}
+        </Panel>
+
+        {/* Right: My tutors + Recent messages */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+          <Panel
+            title="My Tutors"
+            extra={<Link to="/active-tutors" style={{ color: CORAL, fontSize: '12px', fontWeight: '600' }}>View all →</Link>}
+          >
+            {loading ? <Skeleton rows={3} /> : activeTutors.length === 0 ? (
+              <EmptyState icon="cast_for_education" text="No active tutors yet" action={{ to: '/find-tutors', label: 'Find a tutor' }} />
+            ) : (
+              activeTutors.slice(0, 4).map(t => <TutorRow key={t.id_tutor} tutor={t} />)
+            )}
+          </Panel>
+
+          <Panel
+            title="Recent Messages"
+            extra={<Link to="/messages" style={{ color: CORAL, fontSize: '12px', fontWeight: '600' }}>Open →</Link>}
+          >
+            {loading ? <Skeleton rows={2} /> : conversations.length === 0 ? (
+              <EmptyState icon="message" text="No messages yet" />
+            ) : (
+              conversations.slice(0, 3).map(c => <ConvoRow key={c.user_id} convo={c} />)
+            )}
+          </Panel>
+
+        </div>
+      </div>
     </HubLayout>
   )
 }
 
-// ── Sub-components ─────────────────────────────────────────────────────────────
+// ── Sub-components ─────────────────────────────────────────────────────────
 
-function SectionTitle({ children }) {
+function Panel({ title, extra, children }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
-      <h2 style={{ color: 'white', fontWeight: '700', fontSize: '15px' }}>{children}</h2>
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+        <h2 style={{ color: 'var(--text)', fontWeight: '700', fontSize: '14px' }}>{title}</h2>
+        {extra}
+      </div>
+      <div style={{
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border)',
+        borderRadius: '14px',
+        padding: '14px 16px',
+        backdropFilter: 'blur(10px)',
+      }}>
+        {children}
+      </div>
     </div>
   )
 }
 
-function StatCard({ icon, label, value, to }) {
+function StatCard({ icon, label, value, to, highlight, badge }) {
   return (
     <Link to={to} style={{ textDecoration: 'none' }}>
       <div
-        style={{ background: GLASS, border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '18px 16px', backdropFilter: 'blur(10px)', transition: 'transform 0.2s ease, box-shadow 0.2s ease', cursor: 'pointer' }}
-        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 12px 30px rgba(0,0,0,0.25)' }}
+        style={{
+          background: highlight ? 'rgba(96,165,250,0.07)' : 'var(--bg-card)',
+          border: `1px solid ${highlight ? 'rgba(96,165,250,0.25)' : 'var(--border)'}`,
+          borderRadius: '14px',
+          padding: '14px 16px',
+          backdropFilter: 'blur(10px)',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          position: 'relative',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)' }}
         onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
       >
-        <span className="material-symbols-outlined" style={{ color: CORAL, fontSize: '26px' }}>{icon}</span>
-        <div style={{ fontSize: '28px', fontWeight: '900', color: 'white', margin: '6px 0 2px' }}>{value}</div>
-        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>{label}</div>
+        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: `${CORAL}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <span className="material-symbols-outlined" style={{ color: CORAL, fontSize: '22px' }}>{icon}</span>
+        </div>
+        <div>
+          <div style={{ fontSize: '22px', fontWeight: '900', color: 'var(--text)', lineHeight: 1 }}>{value}</div>
+          <div style={{ color: 'var(--text-faint)', fontSize: '11px', marginTop: '3px' }}>{label}</div>
+        </div>
+        {badge && (
+          <div style={{
+            position: 'absolute', top: '10px', right: '10px',
+            width: '18px', height: '18px', borderRadius: '50%',
+            background: '#60a5fa', color: 'white',
+            fontSize: '10px', fontWeight: '700',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {badge}
+          </div>
+        )}
       </div>
-    </Link>
-  )
-}
-
-function SvgNavCard({ to, label, bg, size }) {
-  return (
-    <Link
-      to={to}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'flex-end',
-        alignItems: 'center',
-        borderRadius: '16px',
-        backgroundImage: `url(${bg})`,
-        backgroundSize: size,
-        backgroundPosition: 'center 25%',
-        backgroundRepeat: 'no-repeat',
-        backgroundColor: GLASS,
-        backdropFilter: 'blur(5px)',
-        border: `1px solid ${BORDER}`,
-        paddingBottom: '10px',
-        textDecoration: 'none',
-        transition: 'transform 0.25s ease, box-shadow 0.25s ease',
-        overflow: 'hidden',
-      }}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.04)'; e.currentTarget.style.boxShadow = `0 8px 24px rgba(0,0,0,0.35)` }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = 'none' }}
-    >
-      <span style={{ color: 'white', fontSize: '12px', fontWeight: '700', background: 'rgba(255,114,94,0.85)', padding: '4px 12px', borderRadius: '8px' }}>{label}</span>
     </Link>
   )
 }
@@ -234,11 +229,11 @@ function SvgNavCard({ to, label, bg, size }) {
 function SessionRow({ event }) {
   const STATUS_COLOR = { pending: '#fbbf24', confirmed: '#34d399', canceled: '#f87171', paid: '#60a5fa' }
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: `1px solid ${BORDER}` }}>
-      <span className="material-symbols-outlined" style={{ color: CORAL, fontSize: '20px', flexShrink: 0 }}>event</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
+      <span className="material-symbols-outlined" style={{ color: CORAL, fontSize: '18px', flexShrink: 0 }}>event</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ color: 'white', fontSize: '13px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.title}</div>
-        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px' }}>{fmt(event.start_time)}</div>
+        <div style={{ color: 'var(--text)', fontSize: '13px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.title}</div>
+        <div style={{ color: 'var(--text-faint)', fontSize: '11px' }}>{fmt(event.start_time)}</div>
       </div>
       <span style={{ color: STATUS_COLOR[event.status] ?? '#fbbf24', fontSize: '11px', fontWeight: '700', flexShrink: 0 }}>{event.status}</span>
     </div>
@@ -249,18 +244,19 @@ function TutorRow({ tutor }) {
   const initials = tutor.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
   return (
     <Link to="/tutor/$tutorId" params={{ tutorId: String(tutor.id_tutor) }} style={{ textDecoration: 'none' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: `1px solid ${BORDER}` }}
-        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+      <div
+        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 0', borderBottom: '1px solid var(--border)', borderRadius: '6px', transition: 'background 0.1s' }}
+        onMouseEnter={e => e.currentTarget.style.background = 'var(--border)'}
         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
       >
-        <div style={{ width: '34px', height: '34px', borderRadius: '50%', backgroundColor: `${CORAL}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: CORAL, fontSize: '12px', fontWeight: '700', flexShrink: 0 }}>
+        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: `${CORAL}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: CORAL, fontSize: '11px', fontWeight: '700', flexShrink: 0 }}>
           {initials}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: 'white', fontSize: '13px', fontWeight: '600' }}>{tutor.name}</div>
-          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tutor.subjects}</div>
+          <div style={{ color: 'var(--text)', fontSize: '13px', fontWeight: '600' }}>{tutor.name}</div>
+          <div style={{ color: 'var(--text-faint)', fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tutor.subjects}</div>
         </div>
-        <span className="material-symbols-outlined" style={{ color: 'rgba(255,255,255,0.2)', fontSize: '16px' }}>chevron_right</span>
+        <span className="material-symbols-outlined" style={{ color: 'var(--text-faint)', fontSize: '16px' }}>chevron_right</span>
       </div>
     </Link>
   )
@@ -270,14 +266,19 @@ function ConvoRow({ convo }) {
   const initials = convo.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
   return (
     <Link to="/messages" style={{ textDecoration: 'none' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', borderBottom: `1px solid ${BORDER}` }}>
-        <div style={{ width: '34px', height: '34px', borderRadius: '50%', backgroundColor: 'rgba(176,190,197,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#b0bec5', fontSize: '12px', fontWeight: '700', flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(176,190,197,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#b0bec5', fontSize: '11px', fontWeight: '700', flexShrink: 0 }}>
           {initials}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: 'white', fontSize: '13px', fontWeight: '600' }}>{convo.name}</div>
-          <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{convo.last_message ?? 'No messages yet'}</div>
+          <div style={{ color: 'var(--text)', fontSize: '13px', fontWeight: '600' }}>{convo.name}</div>
+          <div style={{ color: 'var(--text-faint)', fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{convo.last_message ?? 'No messages yet'}</div>
         </div>
+        {convo.unread > 0 && (
+          <span style={{ width: '18px', height: '18px', borderRadius: '50%', background: CORAL, color: 'white', fontSize: '10px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            {convo.unread}
+          </span>
+        )}
       </div>
     </Link>
   )
@@ -285,11 +286,13 @@ function ConvoRow({ convo }) {
 
 function EmptyState({ icon, text, action }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px 0', textAlign: 'center' }}>
-      <span className="material-symbols-outlined" style={{ color: 'rgba(255,255,255,0.2)', fontSize: '36px', marginBottom: '8px' }}>{icon}</span>
-      <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '13px', marginBottom: action ? '10px' : 0 }}>{text}</p>
+    <div style={{ textAlign: 'center', padding: '20px 0' }}>
+      <span className="material-symbols-outlined" style={{ fontSize: '28px', color: 'var(--text-faint)', display: 'block', marginBottom: '8px' }}>{icon}</span>
+      <p style={{ color: 'var(--text-faint)', fontSize: '13px', marginBottom: action ? '12px' : 0 }}>{text}</p>
       {action && (
-        <Link to={action.to} style={{ color: CORAL, fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>{action.label} →</Link>
+        <Link to={action.to} style={{ color: CORAL, fontSize: '12px', fontWeight: '600', textDecoration: 'none' }}>
+          {action.label} →
+        </Link>
       )}
     </div>
   )
@@ -298,20 +301,9 @@ function EmptyState({ icon, text, action }) {
 function Skeleton({ rows }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: '34px', height: '34px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.05)' }} />
-          <div style={{ flex: 1 }}>
-            <div style={{ height: '10px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '6px', marginBottom: '6px', width: '60%' }} />
-            <div style={{ height: '8px',  backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: '6px', width: '40%' }} />
-          </div>
-        </div>
+      {[...Array(rows)].map((_, i) => (
+        <div key={i} style={{ height: '38px', borderRadius: '8px', background: 'var(--border)', animation: 'pulse 1.5s infinite' }} />
       ))}
     </div>
   )
-}
-
-function fmt(iso) {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }

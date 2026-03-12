@@ -1,134 +1,207 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import { useAuth } from '../../context/AuthContext'
+import { useNavigate } from '@tanstack/react-router'
 
 const studentLinks = [
-  { to: '/hub/student',         label: 'Home',          icon: 'home' },
-  { to: '/payments',            label: 'Payments',      icon: 'payments' },
-  { to: '/study-rooms/student', label: 'Study Rooms',   icon: 'chair' },
-  { to: '/forum',               label: 'Forum',         icon: 'forum' },
-  { to: '/messages',            label: 'Messages',      icon: 'message' },
-  { to: '/calendar/student',    label: 'Calendar',      icon: 'calendar_clock' },
-  { to: '/active-tutors',       label: 'My Tutors',     icon: 'cast_for_education' },
-  { to: '/liked-tutors',        label: 'Liked',         icon: 'favorite' },
+  { to: '/hub/student',         label: 'Home',        icon: 'home' },
+  { to: '/messages',            label: 'Messages',    icon: 'message' },
+  { to: '/calendar/student',    label: 'Calendar',    icon: 'calendar_month' },
+  { to: '/active-tutors',       label: 'My Tutors',   icon: 'cast_for_education' },
+  { to: '/study-rooms/student', label: 'Study Rooms', icon: 'groups' },
+  { to: '/forum',               label: 'Forum',       icon: 'forum' },
+  { to: '/payments',            label: 'Payments',    icon: 'payments' },
 ]
 
 const tutorLinks = [
-  { to: '/hub/tutor',           label: 'Home',          icon: 'home' },
-  { to: '/payments',            label: 'Payments',      icon: 'payments' },
-  { to: '/active-students',     label: 'Students',      icon: 'cast_for_education' },
-  { to: '/study-rooms/tutor',   label: 'Study Rooms',   icon: 'chair' },
-  { to: '/forum',               label: 'Forum',         icon: 'forum' },
-  { to: '/messages',            label: 'Messages',      icon: 'message' },
-  { to: '/calendar/tutor',      label: 'Calendar',      icon: 'calendar_clock' },
-  { to: '/tutor-profile',       label: 'Account',       icon: 'account_circle' },
+  { to: '/hub/tutor',           label: 'Home',        icon: 'home' },
+  { to: '/active-students',     label: 'Students',    icon: 'people' },
+  { to: '/messages',            label: 'Messages',    icon: 'message' },
+  { to: '/calendar/tutor',      label: 'Calendar',    icon: 'calendar_month' },
+  { to: '/study-rooms/tutor',   label: 'Study Rooms', icon: 'groups' },
+  { to: '/payments',            label: 'Earnings',    icon: 'payments' },
+  { to: '/tutor-profile',       label: 'My Profile',  icon: 'account_circle' },
 ]
 
-export default function Sidebar({ mode = 'student', onToggleMode }) {
-  const { logout } = useAuth()
-  const router = useRouterState()
-  const pathname = router.location.pathname
+export default function Sidebar({ mode = 'student' }) {
+  const router    = useRouterState()
+  const pathname  = router.location.pathname
+  const links     = mode === 'tutor' ? tutorLinks : studentLinks
+  const { user, logout } = useAuth()
+  const navigate  = useNavigate()
 
-  const links = mode === 'tutor' ? tutorLinks : studentLinks
+  const initials = (user?.name ?? '?')
+    .split(' ')
+    .map(w => w[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
+
+  function handleLogout() {
+    logout()
+    navigate({ to: '/login' })
+  }
 
   return (
-    <>
-      {/* Desktop sidebar — white, narrow, original style */}
-      <aside
-        className="hidden lg:flex flex-col bg-white border-r border-gray-200 sticky top-0 h-screen overflow-y-auto"
-        style={{ width: '7vw', minWidth: '80px' }}
+    /* ── Sidebar (always visible, sticky, full height) ── */
+    <aside
+      style={{
+        width: '200px',
+        minWidth: '200px',
+        flexShrink: 0,
+        background: 'var(--sidebar-bg)',
+        borderRight: '1px solid var(--sidebar-border)',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        position: 'sticky',
+        top: 0,
+      }}
+      className="scrollbar-hide"
+    >
+      {/* ── Profile section ──────────────────────────── */}
+      <Link
+        to={mode === 'tutor' ? '/tutor-profile' : '/dashboard'}
+        style={{ textDecoration: 'none' }}
+        title="View profile"
       >
-        {/* Mode toggle */}
-        {onToggleMode && (
-          <button
-            onClick={onToggleMode}
-            title={`Switch to ${mode === 'tutor' ? 'Student' : 'Tutor'} view`}
-            className="flex flex-col items-center justify-center gap-1 py-3 px-1 hover:bg-gray-100 transition-all border-b border-gray-200"
-            style={{ height: '70px' }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '26px', color: '#ff725e' }}>
-              swap_horiz
-            </span>
-            <span className="font-medium text-center" style={{ color: '#1b263b', fontSize: '10px' }}>
-              {mode === 'tutor' ? 'Student' : 'Tutor'}
-            </span>
-          </button>
-        )}
-
-        {/* Nav links */}
-        <nav className="flex-1 flex flex-col">
-          {links.map(({ to, label, icon }) => {
-            const active = pathname === to || pathname.startsWith(to + '/')
-            return (
-              <Link
-                key={to}
-                to={to}
-                title={label}
-                className="flex flex-col items-center justify-center gap-1 py-3 px-1 transition-all duration-200 cursor-pointer"
-                style={{
-                  height: '80px',
-                  backgroundColor: active ? '#fff5f4' : 'transparent',
-                  borderLeft: active ? '3px solid #ff725e' : '3px solid transparent',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.transform = 'scale(1.05)'
-                  e.currentTarget.style.backgroundColor = '#fff5f4'
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = 'scale(1)'
-                  e.currentTarget.style.backgroundColor = active ? '#fff5f4' : 'transparent'
-                }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '28px', color: '#ff725e' }}>
-                  {icon}
-                </span>
-                <span className="text-center font-medium" style={{ color: '#1b263b', fontSize: '10px' }}>
-                  {label}
-                </span>
-              </Link>
-            )
-          })}
-        </nav>
-
-        {/* Logout */}
-        <button
-          onClick={logout}
-          title="Log out"
-          className="flex flex-col items-center justify-center gap-1 py-3 px-1 border-t border-gray-200 hover:bg-red-50 transition-all w-full"
-          style={{ height: '70px' }}
+        <div
+          style={{
+            padding: '20px 16px 16px',
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            marginBottom: '8px',
+            cursor: 'pointer',
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
         >
-          <span className="material-symbols-outlined text-red-400" style={{ fontSize: '26px' }}>logout</span>
-          <span className="font-medium text-red-400" style={{ fontSize: '10px' }}>Logout</span>
-        </button>
-      </aside>
-
-      {/* Mobile bottom nav */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200">
-        <div className="flex items-center justify-around px-2 py-1">
-          {links.slice(0, 5).map(({ to, label, icon }) => {
-            const active = pathname === to
-            return (
-              <Link
-                key={to}
-                to={to}
-                className="flex flex-col items-center gap-0.5 p-2 rounded-xl transition-all"
-              >
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontSize: '24px', color: active ? '#ff725e' : '#b0bec5' }}
-                >
-                  {icon}
-                </span>
-                <span
-                  className="font-medium"
-                  style={{ fontSize: '10px', color: active ? '#ff725e' : '#b0bec5' }}
-                >
-                  {label.split(' ')[0]}
-                </span>
-              </Link>
-            )
-          })}
+          {/* Avatar */}
+          <div style={{
+            width: '48px', height: '48px', borderRadius: '14px',
+            background: 'linear-gradient(135deg, #ff725e, #e05a48)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'white', fontWeight: '900', fontSize: '18px',
+            marginBottom: '10px',
+            boxShadow: '0 4px 14px rgba(255,114,94,0.35)',
+          }}>
+            {initials}
+          </div>
+          {/* Name */}
+          <p style={{ color: 'rgba(255,255,255,0.90)', fontWeight: '700', fontSize: '14px', lineHeight: 1.2, marginBottom: '3px' }}>
+            {user?.name ?? 'Student'}
+          </p>
+          {/* Role badge + premium badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+            <span style={{
+              display: 'inline-block',
+              background: mode === 'tutor' ? 'rgba(255,114,94,0.15)' : 'rgba(255,255,255,0.08)',
+              border: mode === 'tutor' ? '1px solid rgba(255,114,94,0.30)' : '1px solid rgba(255,255,255,0.10)',
+              borderRadius: '6px',
+              padding: '2px 8px',
+              fontSize: '10px', fontWeight: '700',
+              color: mode === 'tutor' ? '#ff725e' : 'rgba(255,255,255,0.50)',
+              letterSpacing: '0.05em', textTransform: 'uppercase',
+            }}>
+              {mode === 'tutor' ? 'Tutor' : 'Student'}
+            </span>
+            {user?.is_premium && (
+              <span style={{
+                display: 'inline-block',
+                background: 'rgba(251,191,36,0.18)',
+                border: '1px solid rgba(251,191,36,0.35)',
+                borderRadius: '6px',
+                padding: '2px 8px',
+                fontSize: '10px', fontWeight: '700',
+                color: '#fbbf24',
+                letterSpacing: '0.05em',
+              }}>
+                Explorer ✦
+              </span>
+            )}
+          </div>
         </div>
+      </Link>
+
+      {/* ── Nav links ───────────────────────────────── */}
+      <div style={{ flex: 1, padding: '4px 8px' }}>
+        {links.map(({ to, label, icon }) => {
+          const active = pathname === to || pathname.startsWith(to + '/')
+          return (
+            <Link
+              key={to}
+              to={to}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '10px 12px',
+                borderRadius: '10px',
+                marginBottom: '2px',
+                background: active ? 'rgba(255,114,94,0.12)' : 'transparent',
+                border: active ? '1px solid rgba(255,114,94,0.20)' : '1px solid transparent',
+                textDecoration: 'none',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={e => {
+                if (!active) {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
+                  e.currentTarget.style.border = '1px solid rgba(255,255,255,0.08)'
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = active ? 'rgba(255,114,94,0.12)' : 'transparent'
+                e.currentTarget.style.border = active ? '1px solid rgba(255,114,94,0.20)' : '1px solid transparent'
+              }}
+            >
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: '20px', color: active ? '#ff725e' : 'rgba(255,255,255,0.45)', flexShrink: 0 }}
+              >
+                {icon}
+              </span>
+              <span style={{
+                fontSize: '13px',
+                fontWeight: active ? '700' : '500',
+                color: active ? '#ff725e' : 'rgba(255,255,255,0.60)',
+                letterSpacing: '0.01em',
+              }}>
+                {label}
+              </span>
+            </Link>
+          )
+        })}
       </div>
-    </>
+
+      {/* ── Logout ──────────────────────────────────── */}
+      <div style={{ padding: '12px 8px 16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <button
+          onClick={handleLogout}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '10px',
+            width: '100%', padding: '10px 12px', borderRadius: '10px',
+            background: 'transparent', border: '1px solid transparent',
+            cursor: 'pointer', textAlign: 'left',
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'rgba(255,114,94,0.08)'
+            e.currentTarget.style.border = '1px solid rgba(255,114,94,0.15)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'transparent'
+            e.currentTarget.style.border = '1px solid transparent'
+          }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '20px', color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>
+            logout
+          </span>
+          <span style={{ fontSize: '13px', fontWeight: '500', color: 'rgba(255,255,255,0.40)' }}>
+            Log out
+          </span>
+        </button>
+      </div>
+    </aside>
   )
 }

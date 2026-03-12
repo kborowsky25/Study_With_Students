@@ -2,7 +2,7 @@ import {
   createRouter,
   createRoute,
   createRootRoute,
-  createRedirect,
+  redirect,
   Outlet,
 } from '@tanstack/react-router'
 import { AuthProvider, useAuth } from './context/AuthContext'
@@ -61,15 +61,15 @@ const rootRoute = createRootRoute({
 function requireAuth() {
   const token = localStorage.getItem('sws_token')
   if (!token) {
-    return createRedirect({ to: '/login' })
+    throw redirect({ to: '/login' })
   }
 }
 
 function requireTutor() {
   const raw = localStorage.getItem('sws_user')
-  if (!raw) return createRedirect({ to: '/login' })
+  if (!raw) throw redirect({ to: '/login' })
   const user = JSON.parse(raw)
-  if (!user.is_tutor) return createRedirect({ to: '/hub' })
+  if (!user.is_tutor) throw redirect({ to: '/hub' })
 }
 
 // ─── Public routes ────────────────────────────────────────────────────────────
