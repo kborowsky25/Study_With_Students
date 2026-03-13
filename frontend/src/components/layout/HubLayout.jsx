@@ -46,7 +46,7 @@ export default function HubLayout({ children, initialMode, raw = false, noScroll
 
         <div style={{ flex: 1 }} />
 
-        {/* Mode switch — always visible */}
+        {/* Mode switch — always visible. Shows the mode you're switching TO. */}
         {isTutor ? (
           <button
             onClick={toggleMode}
@@ -69,10 +69,11 @@ export default function HubLayout({ children, initialMode, raw = false, noScroll
               swap_horiz
             </span>
             <span style={{ fontSize: '12px', fontWeight: '700', color: '#ff725e' }}>
-              {mode === 'tutor' ? 'Tutor View' : 'Student View'}
+              {mode === 'tutor' ? 'Student View' : 'Tutor View'}
             </span>
           </button>
         ) : (
+          /* Non-tutors: Tutor View button navigates to become-a-tutor */
           <Link
             to="/become-tutor"
             style={{
@@ -91,10 +92,10 @@ export default function HubLayout({ children, initialMode, raw = false, noScroll
             onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,114,94,0.12)'}
           >
             <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#ff725e' }}>
-              school
+              swap_horiz
             </span>
             <span style={{ fontSize: '12px', fontWeight: '700', color: '#ff725e' }}>
-              Become a Tutor
+              Tutor View
             </span>
           </Link>
         )}

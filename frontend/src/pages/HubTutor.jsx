@@ -184,11 +184,12 @@ export default function HubTutor() {
             </Panel>
 
             <Panel
-              title="Earnings Overview"
+              title="Earnings"
               extra={<Link to="/payments" style={{ color: CORAL, fontSize: '12px', fontWeight: '600' }}>Details →</Link>}
               style={{ flexShrink: 0 }}
             >
-              <EarningsSummary
+              <EarningsGraph
+                events={events}
                 loading={loading}
                 thisMonth={thisMonthEarnings}
                 total={totalEarnings}
@@ -259,17 +260,81 @@ function StatCard({ icon, label, value, to, accent = CORAL, highlight, large }) 
   )
 }
 
-function EarningsSummary({ loading, thisMonth, total, thisWeek }) {
-  if (loading) return <Skeleton rows={3} />
+function EarningsGraph({ events, loading, thisMonth, total, thisWeek }) {
+  if (loading) return <Skeleton rows={4} />
+
+  // Build last-6-months buckets
+  const now    = new Date()
+  const months = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
+    return { year: d.getFullYear(), month: d.getMonth(), label: d.toLocaleDateString('en-GB', { month: 'short' }), total: 0 }
+  })
+  for (const ev of events) {
+    if ((ev.status !== 'confirmed' && ev.status !== 'paid') || !ev.start_time) continue
+    const d = new Date(ev.start_time)
+    const bucket = months.find(m => m.year === d.getFullYear() && m.month === d.getMonth())
+    if (bucket) bucket.total += Number(ev.amount || 0)
+  }
+
+  const peak   = Math.max(...months.map(m => m.total), 0.01)
+  const CHART_H = 60
+  const BAR_W   = 28
+  const GAP     = 8
+  const totalW  = months.length * (BAR_W + GAP) - GAP
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      <EarningsRow label="This month"        value={`£${thisMonth.toFixed(2)}`} icon="calendar_month"  color={GREEN} />
-      <EarningsRow label="Total earned"      value={`£${total.toFixed(2)}`}     icon="savings"         color={CORAL} />
-      <EarningsRow label="Sessions this week" value={String(thisWeek)}          icon="event_available" color={AMBER} />
-      <div style={{ paddingTop: '6px', borderTop: '1px solid var(--border)' }}>
-        <p style={{ color: 'var(--text-faint)', fontSize: '10px', textAlign: 'center' }}>
-          Payments released after session completion
-        </p>
+    <div>
+      {/* Bar chart */}
+      <div style={{ marginBottom: '10px' }}>
+        <svg
+          viewBox={`0 0 ${totalW} ${CHART_H + 18}`}
+          width="100%"
+          style={{ overflow: 'visible' }}
+        >
+          {months.map((m, i) => {
+            const barH  = Math.max(3, (m.total / peak) * CHART_H)
+            const x     = i * (BAR_W + GAP)
+            const y     = CHART_H - barH
+            const isCur = m.month === now.getMonth() && m.year === now.getFullYear()
+            return (
+              <g key={i}>
+                {/* Bar */}
+                <rect
+                  x={x} y={y} width={BAR_W} height={barH} rx={4}
+                  fill={isCur ? CORAL : 'rgba(255,114,94,0.30)'}
+                />
+                {/* Value label on current month */}
+                {isCur && m.total > 0 && (
+                  <text
+                    x={x + BAR_W / 2} y={y - 4}
+                    textAnchor="middle" fontSize="7" fontWeight="700"
+                    fill={CORAL}
+                  >
+                    £{m.total.toFixed(0)}
+                  </text>
+                )}
+                {/* Month label */}
+                <text
+                  x={x + BAR_W / 2} y={CHART_H + 14}
+                  textAnchor="middle" fontSize="8"
+                  fill={isCur ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.35)'}
+                  fontWeight={isCur ? '700' : '400'}
+                >
+                  {m.label}
+                </text>
+              </g>
+            )
+          })}
+          {/* Zero line */}
+          <line x1={0} y1={CHART_H} x2={totalW} y2={CHART_H} stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
+        </svg>
+      </div>
+
+      {/* Summary rows */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <EarningsRow label="This month"         value={`£${thisMonth.toFixed(2)}`} icon="calendar_month"  color={GREEN} />
+        <EarningsRow label="Total earned"       value={`£${total.toFixed(2)}`}     icon="savings"         color={CORAL} />
+        <EarningsRow label="Sessions this week" value={String(thisWeek)}           icon="event_available" color={AMBER} />
       </div>
     </div>
   )

@@ -182,8 +182,26 @@ def get_tutors():
             query += " AND tp.subjects LIKE %s"
             params.append(f'%{subject}%')
 
-        cur.execute(query, params)
-        tutors = cur.fetchall()
+        try:
+            cur.execute(query, params)
+            tutors = cur.fetchall()
+        except Exception:
+            # subjects / availability columns may not exist yet — retry with base columns only
+            conn.rollback()
+            fallback = """
+                SELECT tp.id_tutor, tp.id_user, u.name, tp.age, tp.university,
+                       tp.course, tp.about_me, '' AS subjects, '' AS availability
+                FROM tutor_profiles tp
+                JOIN users u ON u.id_user = tp.id_user
+                WHERE 1=1
+            """
+            fb_params = []
+            if university:
+                fallback  += " AND tp.university LIKE %s"
+                fb_params.append(f'%{university}%')
+            cur.execute(fallback, fb_params)
+            tutors = cur.fetchall()
+
         return jsonify({'tutors': tutors})
     finally:
         cur.close(); conn.close()
@@ -253,14 +271,25 @@ def liked_tutors():
     uid  = current_user_id()
     conn = get_db(); cur = conn.cursor(dictionary=True)
     try:
-        cur.execute("""
-            SELECT tp.id_tutor, tp.id_user, u.name, tp.age, tp.university,
-                   tp.course, tp.about_me, tp.subjects, tp.availability
-            FROM liked_tutors lt
-            JOIN tutor_profiles tp ON tp.id_tutor = lt.id_tutor
-            JOIN users u ON u.id_user = tp.id_user
-            WHERE lt.id_user = %s AND lt.liked = 1
-        """, (uid,))
+        try:
+            cur.execute("""
+                SELECT tp.id_tutor, tp.id_user, u.name, tp.age, tp.university,
+                       tp.course, tp.about_me, tp.subjects, tp.availability
+                FROM liked_tutors lt
+                JOIN tutor_profiles tp ON tp.id_tutor = lt.id_tutor
+                JOIN users u ON u.id_user = tp.id_user
+                WHERE lt.id_user = %s AND lt.liked = 1
+            """, (uid,))
+        except Exception:
+            conn.rollback()
+            cur.execute("""
+                SELECT tp.id_tutor, tp.id_user, u.name, tp.age, tp.university,
+                       tp.course, tp.about_me, '' AS subjects, '' AS availability
+                FROM liked_tutors lt
+                JOIN tutor_profiles tp ON tp.id_tutor = lt.id_tutor
+                JOIN users u ON u.id_user = tp.id_user
+                WHERE lt.id_user = %s AND lt.liked = 1
+            """, (uid,))
         return jsonify({'tutors': cur.fetchall()})
     finally:
         cur.close(); conn.close()
@@ -327,14 +356,25 @@ def active_tutors():
         row = cur.fetchone()
         if not row:
             return jsonify({'tutors': []})
-        cur.execute("""
-            SELECT tp.id_tutor, tp.id_user, u.name, tp.age, tp.university,
-                   tp.course, tp.about_me, tp.subjects, tp.availability
-            FROM active_tutors at2
-            JOIN tutor_profiles tp ON tp.id_tutor = at2.id_tutor
-            JOIN users u ON u.id_user = tp.id_user
-            WHERE at2.id_student = %s
-        """, (row['id_student'],))
+        try:
+            cur.execute("""
+                SELECT tp.id_tutor, tp.id_user, u.name, tp.age, tp.university,
+                       tp.course, tp.about_me, tp.subjects, tp.availability
+                FROM active_tutors at2
+                JOIN tutor_profiles tp ON tp.id_tutor = at2.id_tutor
+                JOIN users u ON u.id_user = tp.id_user
+                WHERE at2.id_student = %s
+            """, (row['id_student'],))
+        except Exception:
+            conn.rollback()
+            cur.execute("""
+                SELECT tp.id_tutor, tp.id_user, u.name, tp.age, tp.university,
+                       tp.course, tp.about_me, '' AS subjects, '' AS availability
+                FROM active_tutors at2
+                JOIN tutor_profiles tp ON tp.id_tutor = at2.id_tutor
+                JOIN users u ON u.id_user = tp.id_user
+                WHERE at2.id_student = %s
+            """, (row['id_student'],))
         return jsonify({'tutors': cur.fetchall()})
     finally:
         cur.close(); conn.close()
@@ -717,15 +757,19 @@ def create_post(thread_id):
 def get_study_rooms():
     conn = get_db(); cur = conn.cursor(dictionary=True)
     try:
-        cur.execute("""
-            SELECT sr.id, sr.subject, sr.description, sr.start_time, sr.end_time,
-                   sr.zoom_link, u.name AS tutor_name
-            FROM study_rooms sr
-            JOIN tutor_profiles tp ON tp.id_tutor = sr.tutor_id
-            JOIN users u ON u.id_user = tp.id_user
-            ORDER BY sr.start_time ASC
-        """)
-        rooms = cur.fetchall()
+        try:
+            cur.execute("""
+                SELECT sr.id, sr.subject, sr.description, sr.start_time, sr.end_time,
+                       sr.zoom_link, u.name AS tutor_name
+                FROM study_rooms sr
+                JOIN tutor_profiles tp ON tp.id_tutor = sr.tutor_id
+                JOIN users u ON u.id_user = tp.id_user
+                ORDER BY sr.start_time ASC
+            """)
+            rooms = cur.fetchall()
+        except Exception:
+            # study_rooms table may not exist yet
+            rooms = []
         for r in rooms:
             for key in ('start_time', 'end_time'):
                 if r.get(key) and hasattr(r[key], 'isoformat'):
