@@ -174,8 +174,42 @@ export default function Sidebar({ mode = 'student' }) {
         })}
       </div>
 
+      {/* ── Upgrade CTA (free users only) ───────────── */}
+      {!user?.is_premium && (
+        <div style={{ padding: '0 8px 8px' }}>
+          <Link
+            to="/payments"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '10px 12px',
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, rgba(255,114,94,0.14), rgba(255,154,60,0.10))',
+              border: '1px solid rgba(255,114,94,0.28)',
+              textDecoration: 'none',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255,114,94,0.22), rgba(255,154,60,0.16))' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255,114,94,0.14), rgba(255,154,60,0.10))' }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#ff725e', flexShrink: 0 }}>
+              workspace_premium
+            </span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: '11px', fontWeight: '800', color: '#ff725e', lineHeight: 1.2 }}>
+                Explorer Plan
+              </div>
+              <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)', marginTop: '1px' }}>
+                £2/mo · Upgrade now
+              </div>
+            </div>
+          </Link>
+        </div>
+      )}
+
       {/* ── Logout ──────────────────────────────────── */}
-      <div style={{ padding: '12px 8px 16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ padding: '0 8px 16px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '8px' }}>
         <button
           onClick={handleLogout}
           style={{

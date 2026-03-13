@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import Sidebar from './Sidebar'
 
-export default function HubLayout({ children, initialMode, raw = false }) {
+export default function HubLayout({ children, initialMode, raw = false, noScroll = false }) {
   const { isTutor } = useAuth()
   const { dark, toggle } = useTheme()
   const navigate = useNavigate()
@@ -46,8 +46,8 @@ export default function HubLayout({ children, initialMode, raw = false }) {
 
         <div style={{ flex: 1 }} />
 
-        {/* Mode switch badge (only for dual-role users) */}
-        {isTutor && (
+        {/* Mode switch — always visible */}
+        {isTutor ? (
           <button
             onClick={toggleMode}
             style={{
@@ -65,16 +65,38 @@ export default function HubLayout({ children, initialMode, raw = false }) {
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,114,94,0.20)'}
             onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,114,94,0.12)'}
           >
-            <span
-              className="material-symbols-outlined"
-              style={{ fontSize: '16px', color: '#ff725e' }}
-            >
+            <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#ff725e' }}>
               swap_horiz
             </span>
             <span style={{ fontSize: '12px', fontWeight: '700', color: '#ff725e' }}>
               {mode === 'tutor' ? 'Tutor View' : 'Student View'}
             </span>
           </button>
+        ) : (
+          <Link
+            to="/become-tutor"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'rgba(255,114,94,0.12)',
+              border: '1px solid rgba(255,114,94,0.25)',
+              borderRadius: '20px',
+              padding: '4px 14px',
+              marginRight: '12px',
+              textDecoration: 'none',
+              transition: 'background 0.2s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,114,94,0.20)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,114,94,0.12)'}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#ff725e' }}>
+              school
+            </span>
+            <span style={{ fontSize: '12px', fontWeight: '700', color: '#ff725e' }}>
+              Become a Tutor
+            </span>
+          </Link>
         )}
 
         {/* Theme toggle */}
@@ -114,15 +136,15 @@ export default function HubLayout({ children, initialMode, raw = false }) {
 
         <main style={{
           flex: 1,
-          overflowY: 'auto',
+          overflowY: noScroll ? 'hidden' : 'auto',
           minWidth: 0,
-          paddingBottom: '0',   /* no bottom nav padding needed on desktop */
         }}>
           {raw ? children : (
             <div style={{
               maxWidth: '1200px',
               margin: '0 auto',
-              padding: '24px 28px',
+              padding: '20px 24px',
+              ...(noScroll ? { height: '100%', boxSizing: 'border-box' } : {}),
             }}>
               {children}
             </div>

@@ -122,9 +122,13 @@ def login():
         cur.execute("SELECT id_tutor FROM tutor_profiles WHERE id_user = %s", (user_id,))
         is_tutor = cur.fetchone() is not None
 
-        cur.execute("SELECT is_premium FROM users WHERE id_user = %s", (user_id,))
-        prem_row   = cur.fetchone()
-        is_premium = bool(prem_row[0]) if prem_row else False
+        # Defensive: is_premium column may not exist yet (pending migration)
+        try:
+            cur.execute("SELECT is_premium FROM users WHERE id_user = %s", (user_id,))
+            prem_row   = cur.fetchone()
+            is_premium = bool(prem_row[0]) if prem_row else False
+        except Exception:
+            is_premium = False
 
         token = create_access_token(
             identity=str(user_id),
@@ -434,18 +438,34 @@ def get_events():
     uid  = current_user_id()
     conn = get_db(); cur = conn.cursor(dictionary=True)
     try:
-        cur.execute("""
-            SELECT e.id_event, e.title, e.description, e.start_time, e.end_time,
-                   e.status, e.amount, e.tutor_id, e.student_id,
-                   u_t.name AS tutor_name, u_s.name AS student_name
-            FROM events e
-            LEFT JOIN tutor_profiles tp ON tp.id_tutor = e.tutor_id
-            LEFT JOIN users u_t ON u_t.id_user = tp.id_user
-            LEFT JOIN student_profiles sp ON sp.id_student = e.student_id
-            LEFT JOIN users u_s ON u_s.id_user = sp.id_user
-            WHERE tp.id_user = %s OR sp.id_user = %s
-            ORDER BY e.start_time ASC
-        """, (uid, uid))
+        # Defensive: 'amount' column may not exist yet — retry without it if query fails
+        try:
+            cur.execute("""
+                SELECT e.id_event, e.title, e.description, e.start_time, e.end_time,
+                       e.status, e.amount, e.tutor_id, e.student_id,
+                       u_t.name AS tutor_name, u_s.name AS student_name
+                FROM events e
+                LEFT JOIN tutor_profiles tp ON tp.id_tutor = e.tutor_id
+                LEFT JOIN users u_t ON u_t.id_user = tp.id_user
+                LEFT JOIN student_profiles sp ON sp.id_student = e.student_id
+                LEFT JOIN users u_s ON u_s.id_user = sp.id_user
+                WHERE tp.id_user = %s OR sp.id_user = %s
+                ORDER BY e.start_time ASC
+            """, (uid, uid))
+        except Exception:
+            conn.rollback()
+            cur.execute("""
+                SELECT e.id_event, e.title, e.description, e.start_time, e.end_time,
+                       e.status, 0 AS amount, e.tutor_id, e.student_id,
+                       u_t.name AS tutor_name, u_s.name AS student_name
+                FROM events e
+                LEFT JOIN tutor_profiles tp ON tp.id_tutor = e.tutor_id
+                LEFT JOIN users u_t ON u_t.id_user = tp.id_user
+                LEFT JOIN student_profiles sp ON sp.id_student = e.student_id
+                LEFT JOIN users u_s ON u_s.id_user = sp.id_user
+                WHERE tp.id_user = %s OR sp.id_user = %s
+                ORDER BY e.start_time ASC
+            """, (uid, uid))
         events = cur.fetchall()
         # Convert datetimes to strings
         for ev in events:
