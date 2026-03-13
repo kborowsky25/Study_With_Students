@@ -75,8 +75,23 @@ export default function FindTutors() {
         <p className="text-white/50">Browse {tutors.length} peer tutors from top universities</p>
       </div>
 
-      {/* Filters */}
-      <form onSubmit={handleFilter} className="glass p-4 mb-8">
+      {/* Filters — sticky so it stays visible while scrolling results */}
+      <form
+        onSubmit={handleFilter}
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          marginBottom: '24px',
+          borderRadius: '16px',
+          padding: '14px 16px',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.25)',
+        }}
+      >
         <div className="flex flex-col sm:flex-row gap-3">
           <select
             value={university}
