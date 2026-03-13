@@ -55,8 +55,6 @@ export default function Sidebar({ mode = 'student' }) {
         height: '100%',
         overflowY: 'auto',
         overflowX: 'hidden',
-        position: 'sticky',
-        top: 0,
       }}
       className="scrollbar-hide"
     >

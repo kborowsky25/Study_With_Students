@@ -1,19 +1,25 @@
 import { useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import Sidebar from './Sidebar'
 
 export default function HubLayout({ children, initialMode, raw = false, noScroll = false }) {
-  const { isTutor } = useAuth()
   const { dark, toggle } = useTheme()
   const navigate = useNavigate()
 
-  const [mode, setMode] = useState(initialMode ?? 'student')
+  // Persist mode in localStorage so it survives navigation between hub pages
+  const [mode, setMode] = useState(() => {
+    if (initialMode) {
+      localStorage.setItem('sws_hub_mode', initialMode)
+      return initialMode
+    }
+    return localStorage.getItem('sws_hub_mode') ?? 'student'
+  })
 
   function toggleMode() {
     const next = mode === 'student' ? 'tutor' : 'student'
     setMode(next)
+    localStorage.setItem('sws_hub_mode', next)
     navigate({ to: next === 'tutor' ? '/hub/tutor' : '/hub/student' })
   }
 
@@ -47,58 +53,30 @@ export default function HubLayout({ children, initialMode, raw = false, noScroll
         <div style={{ flex: 1 }} />
 
         {/* Mode switch — always visible. Shows the mode you're switching TO. */}
-        {isTutor ? (
-          <button
-            onClick={toggleMode}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: 'rgba(255,114,94,0.12)',
-              border: '1px solid rgba(255,114,94,0.25)',
-              borderRadius: '20px',
-              padding: '4px 14px',
-              cursor: 'pointer',
-              marginRight: '12px',
-              transition: 'background 0.2s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,114,94,0.20)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,114,94,0.12)'}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#ff725e' }}>
-              swap_horiz
-            </span>
-            <span style={{ fontSize: '12px', fontWeight: '700', color: '#ff725e' }}>
-              {mode === 'tutor' ? 'Student View' : 'Tutor View'}
-            </span>
-          </button>
-        ) : (
-          /* Non-tutors: Tutor View button navigates to become-a-tutor */
-          <Link
-            to="/become-tutor"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: 'rgba(255,114,94,0.12)',
-              border: '1px solid rgba(255,114,94,0.25)',
-              borderRadius: '20px',
-              padding: '4px 14px',
-              marginRight: '12px',
-              textDecoration: 'none',
-              transition: 'background 0.2s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,114,94,0.20)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,114,94,0.12)'}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#ff725e' }}>
-              swap_horiz
-            </span>
-            <span style={{ fontSize: '12px', fontWeight: '700', color: '#ff725e' }}>
-              Tutor View
-            </span>
-          </Link>
-        )}
+        <button
+          onClick={toggleMode}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: 'rgba(255,114,94,0.12)',
+            border: '1px solid rgba(255,114,94,0.25)',
+            borderRadius: '20px',
+            padding: '4px 14px',
+            cursor: 'pointer',
+            marginRight: '12px',
+            transition: 'background 0.2s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,114,94,0.20)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,114,94,0.12)'}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#ff725e' }}>
+            swap_horiz
+          </span>
+          <span style={{ fontSize: '12px', fontWeight: '700', color: '#ff725e' }}>
+            {mode === 'tutor' ? 'Student View' : 'Tutor View'}
+          </span>
+        </button>
 
         {/* Theme toggle */}
         <button
@@ -137,6 +115,7 @@ export default function HubLayout({ children, initialMode, raw = false, noScroll
 
         <main style={{
           flex: 1,
+          height: '100%',
           overflowY: noScroll ? 'hidden' : 'auto',
           minWidth: 0,
         }}>

@@ -14,6 +14,11 @@ from flask_jwt_extended import (
 )
 import mysql.connector
 from mysql.connector import Error
+try:
+    import stripe
+    stripe.api_key = os.environ.get('STRIPE_SECRET_KEY', '')
+except ImportError:
+    stripe = None
 
 app = Flask(__name__)
 
@@ -859,8 +864,84 @@ def get_payments():
 @app.route('/api/payments/setup', methods=['POST'])
 @jwt_required()
 def setup_payment():
-    # Stripe integration placeholder — add stripe keys via env vars
-    return jsonify({'message': 'Payment setup endpoint — configure Stripe keys in environment'})
+    # Legacy stub kept for compatibility
+    return jsonify({'message': 'Use /api/payments/checkout/<event_id> instead'})
+
+
+@app.route('/api/payments/checkout/<int:event_id>', methods=['POST'])
+@jwt_required()
+def create_checkout_session(event_id):
+    """Create a Stripe Checkout Session for a confirmed session."""
+    if stripe is None or not stripe.api_key:
+        return jsonify({'error': 'Stripe is not configured. Set STRIPE_SECRET_KEY in environment.'}), 503
+
+    uid  = current_user_id()
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT e.id_event, e.title, e.amount, e.status,
+                   sp.id_user AS student_user_id
+            FROM events e
+            LEFT JOIN student_profiles sp ON sp.id_student = e.student_id
+            WHERE e.id_event = %s
+        """, (event_id,))
+        ev = cur.fetchone()
+        if not ev:
+            return jsonify({'error': 'Event not found'}), 404
+        if ev['student_user_id'] != uid:
+            return jsonify({'error': 'Not authorised'}), 403
+        if ev['status'] not in ('confirmed', 'pending'):
+            return jsonify({'error': 'Session is not payable (must be confirmed or pending)'}), 400
+
+        amount_pence = int(float(ev['amount'] or 0) * 100)
+        if amount_pence < 50:
+            return jsonify({'error': 'Amount too small for Stripe (minimum £0.50)'}), 400
+
+        frontend_base = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+        session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'gbp',
+                    'unit_amount': amount_pence,
+                    'product_data': {'name': ev['title']},
+                },
+                'quantity': 1,
+            }],
+            mode='payment',
+            success_url=f'{frontend_base}/payments?success=1&event_id={event_id}',
+            cancel_url=f'{frontend_base}/payments?canceled=1',
+            metadata={'event_id': str(event_id), 'user_id': str(uid)},
+        )
+        return jsonify({'url': session.url})
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/payments/verify/<int:event_id>', methods=['POST'])
+@jwt_required()
+def verify_payment(event_id):
+    """Mark an event as paid after successful Stripe checkout redirect."""
+    uid  = current_user_id()
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT e.id_event, sp.id_user AS student_user_id
+            FROM events e
+            LEFT JOIN student_profiles sp ON sp.id_student = e.student_id
+            WHERE e.id_event = %s
+        """, (event_id,))
+        ev = cur.fetchone()
+        if not ev or ev['student_user_id'] != uid:
+            return jsonify({'error': 'Not authorised'}), 403
+
+        cur2 = conn.cursor()
+        cur2.execute("UPDATE events SET status = 'paid' WHERE id_event = %s", (event_id,))
+        conn.commit()
+        cur2.close()
+        return jsonify({'message': 'Payment recorded'})
+    finally:
+        cur.close(); conn.close()
 
 
 # ── Users / Search ────────────────────────────────────────────────────────────
