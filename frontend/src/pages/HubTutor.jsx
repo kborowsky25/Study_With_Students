@@ -13,6 +13,25 @@ const GREEN  = '#34d399'
 const AMBER  = '#fbbf24'
 const BLUE   = '#63b3ed'
 
+// ── CountUp hook ─────────────────────────────────────────────────────────────
+function useCountUp(target, duration = 750) {
+  const [val, setVal] = useState(0)
+  useEffect(() => {
+    if (!target) { setVal(target ?? 0); return }
+    const start = performance.now()
+    let raf
+    const step = (now) => {
+      const t = Math.min((now - start) / duration, 1)
+      const eased = 1 - Math.pow(1 - t, 3)
+      setVal(Math.round(target * eased))
+      if (t < 1) raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(raf)
+  }, [target, duration])
+  return val
+}
+
 function fmt(iso) {
   if (!iso) return '—'
   const d = new Date(iso)
@@ -285,6 +304,7 @@ export default function HubTutor() {
           <Panel
             icon="hourglass_top"
             title="Session Requests"
+            subtitle={pending.length > 0 ? `${pending.length} awaiting your response` : 'no pending requests'}
             extra={
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {pending.length > 0 && (
@@ -311,6 +331,7 @@ export default function HubTutor() {
             <Panel
               icon="people"
               title="Active Students"
+              subtitle={students.length > 0 ? `${students.length} enrolled with you` : 'no students yet'}
               extra={<Link to="/active-students" style={{ color: CORAL, fontSize: '12px', fontWeight: '600' }}>View all →</Link>}
               style={{ flex: 1, minHeight: 0 }}
             >
@@ -324,6 +345,7 @@ export default function HubTutor() {
             <Panel
               icon="check_circle"
               title="Confirmed Sessions"
+              subtitle={confirmed.length > 0 ? `${thisWeekSessions} this week` : 'your teaching schedule'}
               extra={<Link to="/calendar/tutor" style={{ color: CORAL, fontSize: '12px', fontWeight: '600' }}>Calendar →</Link>}
               style={{ flex: 1, minHeight: 0 }}
             >
@@ -340,6 +362,7 @@ export default function HubTutor() {
             <Panel
               icon="bar_chart"
               title="Earnings"
+              subtitle="last 6 months"
               extra={<Link to="/payments" style={{ color: CORAL, fontSize: '12px', fontWeight: '600' }}>Details →</Link>}
               style={{ flexShrink: 0 }}
             >
@@ -355,6 +378,7 @@ export default function HubTutor() {
             <Panel
               icon="message"
               title="Messages"
+              subtitle={conversations.length > 0 ? `${conversations.length} conversation${conversations.length !== 1 ? 's' : ''}` : 'no messages yet'}
               extra={<Link to="/messages" style={{ color: CORAL, fontSize: '12px', fontWeight: '600' }}>Open →</Link>}
               style={{ flex: 1, minHeight: 0 }}
             >
@@ -376,22 +400,29 @@ export default function HubTutor() {
 
 // ── Sub-components ──────────────────────────────────────────────────────────
 
-function Panel({ icon, title, extra, children, style }) {
+function Panel({ icon, title, subtitle, extra, children, style }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', ...style }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-          {icon && (
-            <div style={{
-              width: '26px', height: '26px', borderRadius: '7px',
-              background: 'rgba(255,114,94,0.12)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '14px', color: CORAL }}>{icon}</span>
-            </div>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+            {icon && (
+              <div style={{
+                width: '22px', height: '22px', borderRadius: '6px',
+                background: `${CORAL}15`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '13px', color: CORAL }}>{icon}</span>
+              </div>
+            )}
+            <h2 style={{ color: 'var(--text)', fontWeight: '800', fontSize: '13px', letterSpacing: '-0.01em' }}>{title}</h2>
+          </div>
+          {subtitle && (
+            <p style={{ fontSize: '10px', color: 'var(--text-faint)', marginTop: '1px', marginLeft: icon ? '29px' : '0' }}>
+              {subtitle}
+            </p>
           )}
-          <h2 style={{ color: 'var(--text)', fontWeight: '700', fontSize: '13px' }}>{title}</h2>
         </div>
         {extra}
       </div>
@@ -405,6 +436,7 @@ function Panel({ icon, title, extra, children, style }) {
         flex: 1,
         minHeight: 0,
         overflowY: 'auto',
+        boxShadow: 'var(--shadow-card)',
       }}
         className="scrollbar-hide"
       >
@@ -415,6 +447,10 @@ function Panel({ icon, title, extra, children, style }) {
 }
 
 function StatCard({ icon, label, value, to, accent = CORAL, highlight }) {
+  const isNum    = typeof value === 'number'
+  const animated = useCountUp(isNum ? value : 0, 800)
+  const display  = value === null ? null : isNum ? animated : value
+
   return (
     <Link to={to} style={{ textDecoration: 'none' }}>
       <div
@@ -429,14 +465,15 @@ function StatCard({ icon, label, value, to, accent = CORAL, highlight }) {
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
+          boxShadow: 'var(--shadow-card)',
         }}
         onMouseEnter={e => {
           e.currentTarget.style.transform = 'translateY(-2px)'
-          e.currentTarget.style.boxShadow = `0 8px 24px rgba(0,0,0,0.12)`
+          e.currentTarget.style.boxShadow = 'var(--shadow-hover)'
         }}
         onMouseLeave={e => {
           e.currentTarget.style.transform = 'translateY(0)'
-          e.currentTarget.style.boxShadow = 'none'
+          e.currentTarget.style.boxShadow = 'var(--shadow-card)'
         }}
       >
         <div style={{
@@ -447,9 +484,15 @@ function StatCard({ icon, label, value, to, accent = CORAL, highlight }) {
           <span className="material-symbols-outlined" style={{ color: accent, fontSize: '22px' }}>{icon}</span>
         </div>
         <div>
-          {value === null
+          {display === null
             ? <div className="skeleton" style={{ width: '56px', height: '24px', marginBottom: '4px' }} />
-            : <div style={{ fontSize: '24px', fontWeight: '900', color: 'var(--text)', lineHeight: 1 }}>{value}</div>
+            : <div
+                key={value}
+                className="animate-number-pop"
+                style={{ fontSize: '24px', fontWeight: '900', color: 'var(--text)', lineHeight: 1 }}
+              >
+                {display}
+              </div>
           }
           <div style={{ color: 'var(--text-faint)', fontSize: '10px', marginTop: '3px', fontWeight: '600', letterSpacing: '0.03em' }}>
             {label}
@@ -498,11 +541,16 @@ function EarningsGraph({ events, loading, thisMonth, total, thisWeek }) {
             const x     = i * (BAR_W + GAP)
             const y     = CHART_H - barH
             const isCur = m.month === now.getMonth() && m.year === now.getFullYear()
+            const delay = i * 80
             return (
               <g key={i}>
                 <rect
                   x={x} y={y} width={BAR_W} height={barH} rx={5}
                   fill={isCur ? 'url(#barGrad)' : 'rgba(52,211,153,0.22)'}
+                  style={{
+                    transformOrigin: `${x + BAR_W/2}px ${CHART_H}px`,
+                    animation: `barGrow 0.65s cubic-bezier(.22,.68,0,1.0) ${delay}ms both`,
+                  }}
                 />
                 {isCur && m.total > 0 && (
                   <text

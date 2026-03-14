@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useAuth } from '../context/AuthContext'
 import HubLayout from '../components/layout/HubLayout'
@@ -8,6 +8,25 @@ import { getConversations } from '../api/messages'
 
 const CORAL = '#ff725e'
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
+
+// ── CountUp hook ─────────────────────────────────────────────────────────────
+function useCountUp(target, duration = 700) {
+  const [val, setVal] = useState(0)
+  useEffect(() => {
+    if (!target) { setVal(target ?? 0); return }
+    const start = performance.now()
+    let raf
+    const step = (now) => {
+      const t = Math.min((now - start) / duration, 1)
+      const eased = 1 - Math.pow(1 - t, 3)
+      setVal(Math.round(target * eased))
+      if (t < 1) raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(raf)
+  }, [target, duration])
+  return val
+}
 
 function fmt(iso) {
   if (!iso) return ''
@@ -241,7 +260,8 @@ export default function HubStudent() {
 
           {/* Col 1: Upcoming Sessions */}
           <Panel
-            title="Upcoming Sessions"
+            title="My Schedule"
+            subtitle={`${upcoming.length} upcoming session${upcoming.length !== 1 ? 's' : ''}`}
             icon="event"
             extra={<Link to="/calendar/student" style={{ color: CORAL, fontSize: '12px', fontWeight: '600' }}>Calendar →</Link>}
             animClass={mounted ? 'animate-slide-up delay-200' : ''}
@@ -257,6 +277,7 @@ export default function HubStudent() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0 }}>
             <Panel
               title="My Tutors"
+              subtitle={activeTutors.length > 0 ? `${activeTutors.length} active` : 'add your first tutor'}
               icon="cast_for_education"
               extra={<Link to="/active-tutors" style={{ color: CORAL, fontSize: '12px', fontWeight: '600' }}>View all →</Link>}
               style={{ flex: 1, minHeight: 0 }}
@@ -271,6 +292,7 @@ export default function HubStudent() {
 
             <Panel
               title="Recent Messages"
+              subtitle={unreadCount > 0 ? `${unreadCount} unread` : 'all caught up'}
               icon="chat"
               extra={<Link to="/messages" style={{ color: CORAL, fontSize: '12px', fontWeight: '600' }}>Open →</Link>}
               style={{ flex: 1, minHeight: 0 }}
@@ -287,6 +309,7 @@ export default function HubStudent() {
           {/* Col 3: Mini Calendar */}
           <Panel
             title="Calendar"
+            subtitle="this month at a glance"
             icon="calendar_month"
             extra={<Link to="/calendar/student" style={{ color: CORAL, fontSize: '12px', fontWeight: '600' }}>Full view →</Link>}
             innerStyle={{ display: 'flex', flexDirection: 'column' }}
@@ -416,15 +439,28 @@ function MiniCalendar({ events }) {
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
-function Panel({ title, icon, extra, children, style, innerStyle, animClass }) {
+function Panel({ title, subtitle, icon, extra, children, style, innerStyle, animClass }) {
   return (
     <div className={animClass} style={{ display: 'flex', flexDirection: 'column', ...style }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          {icon && (
-            <span className="material-symbols-outlined" style={{ fontSize: '14px', color: CORAL }}>{icon}</span>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+            {icon && (
+              <div style={{
+                width: '22px', height: '22px', borderRadius: '6px',
+                background: `${CORAL}15`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '13px', color: CORAL }}>{icon}</span>
+              </div>
+            )}
+            <h2 style={{ color: 'var(--text)', fontWeight: '800', fontSize: '13px', letterSpacing: '-0.01em' }}>{title}</h2>
+          </div>
+          {subtitle && (
+            <p style={{ fontSize: '10px', color: 'var(--text-faint)', marginTop: '1px', marginLeft: icon ? '29px' : '0' }}>
+              {subtitle}
+            </p>
           )}
-          <h2 style={{ color: 'var(--text)', fontWeight: '700', fontSize: '13px' }}>{title}</h2>
         </div>
         {extra}
       </div>
@@ -437,6 +473,7 @@ function Panel({ title, icon, extra, children, style, innerStyle, animClass }) {
         flex: 1,
         minHeight: 0,
         overflowY: 'auto',
+        boxShadow: 'var(--shadow-card)',
         ...innerStyle,
       }}>
         {children}
@@ -446,6 +483,10 @@ function Panel({ title, icon, extra, children, style, innerStyle, animClass }) {
 }
 
 function StatCard({ icon, label, value, to, highlight, badge, animClass }) {
+  const isNum     = typeof value === 'number'
+  const animated  = useCountUp(isNum ? value : 0, 800)
+  const display   = value === null ? null : isNum ? animated : value
+
   return (
     <Link to={to} style={{ textDecoration: 'none' }} className={animClass}>
       <div
@@ -461,9 +502,10 @@ function StatCard({ icon, label, value, to, highlight, badge, animClass }) {
           alignItems: 'center',
           gap: '14px',
           position: 'relative',
+          boxShadow: 'var(--shadow-card)',
         }}
-        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 30px rgba(0,0,0,0.14)' }}
-        onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
+        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = 'var(--shadow-hover)' }}
+        onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-card)' }}
       >
         <div style={{
           width: '44px', height: '44px', borderRadius: '12px',
@@ -471,22 +513,28 @@ function StatCard({ icon, label, value, to, highlight, badge, animClass }) {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0,
         }}>
-          <span className="material-symbols-outlined" style={{ color: CORAL, fontSize: '28px' }}>{icon}</span>
+          <span className="material-symbols-outlined" style={{ color: CORAL, fontSize: '26px' }}>{icon}</span>
         </div>
         <div>
-          {value === null ? (
+          {display === null ? (
             <div className="skeleton" style={{ width: '36px', height: '28px', borderRadius: '6px', marginBottom: '4px' }} />
           ) : (
-            <div style={{ fontSize: '26px', fontWeight: '900', color: 'var(--text)', lineHeight: 1 }}>{value}</div>
+            <div
+              key={value}
+              className="animate-number-pop"
+              style={{ fontSize: '26px', fontWeight: '900', color: 'var(--text)', lineHeight: 1 }}
+            >
+              {display}
+            </div>
           )}
-          <div style={{ color: 'var(--text-faint)', fontSize: '11px', marginTop: '3px', fontWeight: '500' }}>{label}</div>
+          <div style={{ color: 'var(--text-faint)', fontSize: '11px', marginTop: '3px', fontWeight: '600' }}>{label}</div>
         </div>
         {badge && (
           <div style={{
             position: 'absolute', top: '10px', right: '10px',
-            width: '18px', height: '18px', borderRadius: '50%',
+            minWidth: '18px', height: '18px', borderRadius: '9px',
             background: '#60a5fa', color: 'white',
-            fontSize: '9px', fontWeight: '700',
+            fontSize: '9px', fontWeight: '700', padding: '0 4px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             {badge}
