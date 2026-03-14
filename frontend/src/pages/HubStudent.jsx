@@ -128,45 +128,47 @@ function TopTutorsTrio({ tutors }) {
       </div>
 
       {/* Three mini-cards in a row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '7px' }}>
         {trio.map(({ tutor, isCenter, gradIdx, animCls }) => {
-          const initials  = tutor.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() ?? '??'
-          const subjects  = tutor.subjects?.split(',').map(s => s.trim()).filter(Boolean) ?? []
-          const firstName = tutor.name?.split(' ')[0] ?? ''
-          const lastName  = tutor.name?.split(' ')[1]?.[0] ? tutor.name.split(' ')[1][0] + '.' : ''
-          const opacity   = isCenter ? 1 : 0.42
+          const nameParts = (tutor?.name ?? 'Unknown Tutor').split(' ')
+          const initials  = nameParts.map(n => n[0]).join('').slice(0, 2).toUpperCase() || '??'
+          const firstName = nameParts[0] ?? 'Tutor'
+          const lastName  = nameParts[1]?.[0] ? nameParts[1][0] + '.' : ''
+          const subjects  = tutor?.subjects?.split(',').map(s => s.trim()).filter(Boolean) ?? []
+          const uni       = tutor?.university ?? ''
+          const opacity   = isCenter ? 1 : 0.55
 
           return (
             <Link
-              key={tutor.id_tutor}
+              key={tutor?.id_tutor ?? gradIdx}
               to="/tutor/$tutorId"
-              params={{ tutorId: String(tutor.id_tutor) }}
+              params={{ tutorId: String(tutor?.id_tutor ?? '') }}
               style={{ textDecoration: 'none', opacity, transition: 'opacity 0.25s', flexShrink: 0 }}
               onMouseEnter={e => e.currentTarget.style.opacity = '1'}
               onMouseLeave={e => e.currentTarget.style.opacity = String(opacity)}
             >
               <div style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px',
-                padding: isCenter ? '9px 11px' : '7px 9px',
-                background: isCenter ? `${CORAL}0d` : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${isCenter ? CORAL + '30' : 'rgba(255,255,255,0.07)'}`,
+                padding: isCenter ? '9px 11px' : '7px 8px',
+                background: isCenter ? `${CORAL}0d` : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${isCenter ? CORAL + '30' : 'rgba(255,255,255,0.09)'}`,
                 borderRadius: '12px',
-                width: isCenter ? '104px' : '76px',
+                width: isCenter ? '108px' : '80px',
                 backdropFilter: 'blur(8px)',
               }}>
                 {/* Avatar */}
                 <div
                   className={animCls}
                   style={{
-                    width: isCenter ? '42px' : '30px',
-                    height: isCenter ? '42px' : '30px',
+                    width: isCenter ? '42px' : '32px',
+                    height: isCenter ? '42px' : '32px',
                     borderRadius: '50%',
                     background: TUTOR_GRADS[gradIdx],
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     color: 'white',
-                    fontSize: isCenter ? '14px' : '10px',
+                    fontSize: isCenter ? '14px' : '11px',
                     fontWeight: '900',
-                    boxShadow: isCenter ? `0 4px 14px ${CORAL}38` : '0 2px 6px rgba(0,0,0,0.15)',
+                    boxShadow: isCenter ? `0 4px 14px ${CORAL}38` : '0 2px 8px rgba(0,0,0,0.2)',
                     flexShrink: 0,
                   }}
                 >
@@ -178,34 +180,39 @@ function TopTutorsTrio({ tutors }) {
                   {/* Name */}
                   <p style={{
                     color: 'var(--text)', fontWeight: '700',
-                    fontSize: isCenter ? '11px' : '9px',
+                    fontSize: isCenter ? '11px' : '9.5px',
                     lineHeight: 1.2, margin: '0 0 2px',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
-                    {isCenter ? `${firstName} ${lastName}` : firstName}
+                    {`${firstName} ${lastName}`.trim()}
                   </p>
 
                   {/* Subjects */}
-                  {subjects.slice(0, isCenter ? 2 : 1).map((sub, i) => (
-                    <p key={sub} style={{
-                      fontSize: '8px', fontWeight: '600', margin: 0,
-                      color: isCenter ? CORAL : 'var(--text-faint)',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      opacity: i === 1 ? 0.7 : 1,
-                    }}>
-                      {sub}
-                    </p>
-                  ))}
-
-                  {/* University (centre only) */}
-                  {isCenter && tutor.university && (
-                    <p style={{
-                      fontSize: '8px', color: 'var(--text-faint)', margin: '2px 0 0',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>
-                      {tutor.university}
-                    </p>
+                  {subjects.length > 0 ? (
+                    subjects.slice(0, isCenter ? 2 : 1).map((sub, i) => (
+                      <p key={sub} style={{
+                        fontSize: '8px', fontWeight: '600', margin: '0 0 1px',
+                        color: isCenter ? CORAL : `${CORAL}cc`,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        opacity: i === 1 ? 0.75 : 1,
+                      }}>
+                        {sub}
+                      </p>
+                    ))
+                  ) : (
+                    <p style={{ fontSize: '8px', color: 'var(--text-faint)', margin: '0 0 1px' }}>Tutor</p>
                   )}
+
+                  {/* University — all cards */}
+                  {uni ? (
+                    <p style={{
+                      fontSize: '7.5px', color: 'var(--text-faint)', margin: '2px 0 0',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      lineHeight: 1.2,
+                    }}>
+                      {uni}
+                    </p>
+                  ) : null}
                 </div>
               </div>
             </Link>
@@ -277,10 +284,10 @@ export default function HubStudent() {
           <div style={{ position: 'absolute', right: '-40px', top: '-40px', width: '200px', height: '200px', background: `${CORAL}08`, borderRadius: '50%', filter: 'blur(50px)', pointerEvents: 'none' }} />
           <div style={{ position: 'absolute', left: '30%', bottom: '-20px', width: '120px', height: '120px', background: 'rgba(255,154,60,0.06)', borderRadius: '50%', filter: 'blur(30px)', pointerEvents: 'none' }} />
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', position: 'relative' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '16px', position: 'relative' }}>
 
             {/* Left: greeting */}
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
                 <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'var(--text-muted)' }}>waving_hand</span>
                 <p style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: '500' }}>{greeting}</p>
@@ -332,7 +339,7 @@ export default function HubStudent() {
             )}
 
             {/* Right: XP section */}
-            <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
+            <div style={{ justifySelf: 'end', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
               {/* XP Donut */}
               <XpDonut xpProgress={xpProgress} level={level} />
 
