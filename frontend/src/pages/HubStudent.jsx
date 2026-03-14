@@ -284,10 +284,10 @@ export default function HubStudent() {
           <div style={{ position: 'absolute', right: '-40px', top: '-40px', width: '200px', height: '200px', background: `${CORAL}08`, borderRadius: '50%', filter: 'blur(50px)', pointerEvents: 'none' }} />
           <div style={{ position: 'absolute', left: '30%', bottom: '-20px', width: '120px', height: '120px', background: 'rgba(255,154,60,0.06)', borderRadius: '50%', filter: 'blur(30px)', pointerEvents: 'none' }} />
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '16px', position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', position: 'relative' }}>
 
-            {/* Left: greeting */}
-            <div style={{ minWidth: 0 }}>
+            {/* Left: greeting — takes all space but stops before the trio */}
+            <div style={{ flex: 1, minWidth: 0, maxWidth: 'calc(50% - 150px)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
                 <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'var(--text-muted)' }}>waving_hand</span>
                 <p style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: '500' }}>{greeting}</p>
@@ -333,13 +333,21 @@ export default function HubStudent() {
               </div>
             </div>
 
-            {/* Centre: Top Tutors Trio */}
+            {/* Centre: Top Tutors Trio — absolutely centred in the banner, floats above flex flow */}
             {topTutors.length >= 3 && (
-              <TopTutorsTrio tutors={topTutors.slice(0, 3)} />
+              <div style={{
+                position: 'absolute', left: '50%', top: '50%',
+                transform: 'translate(-50%, -50%)',
+                pointerEvents: 'none', zIndex: 1,
+              }}>
+                <div style={{ pointerEvents: 'auto' }}>
+                  <TopTutorsTrio tutors={topTutors.slice(0, 3)} />
+                </div>
+              </div>
             )}
 
-            {/* Right: XP section */}
-            <div style={{ justifySelf: 'end', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
+            {/* Right: XP section — sits at the right edge naturally */}
+            <div style={{ marginLeft: 'auto', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
               {/* XP Donut */}
               <XpDonut xpProgress={xpProgress} level={level} />
 
