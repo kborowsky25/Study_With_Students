@@ -839,18 +839,59 @@ def save_room_to_calendar(room_id):
 @jwt_required()
 def get_payments():
     uid  = current_user_id()
+    role = request.args.get('role', 'student')   # 'student' | 'tutor'
     conn = get_db(); cur = conn.cursor(dictionary=True)
     try:
-        cur.execute("""
-            SELECT e.id_event, e.title, e.start_time, e.end_time,
-                   e.status, e.amount, u.name AS tutor_name
-            FROM events e
-            LEFT JOIN tutor_profiles tp ON tp.id_tutor = e.tutor_id
-            LEFT JOIN users u ON u.id_user = tp.id_user
-            LEFT JOIN student_profiles sp ON sp.id_student = e.student_id
-            WHERE sp.id_user = %s
-            ORDER BY e.start_time DESC
-        """, (uid,))
+        if role == 'tutor':
+            # Earnings: sessions where this user is the tutor
+            try:
+                cur.execute("""
+                    SELECT e.id_event, e.title, e.start_time, e.end_time,
+                           e.status, e.amount, u_s.name AS student_name
+                    FROM events e
+                    LEFT JOIN tutor_profiles tp ON tp.id_tutor = e.tutor_id
+                    LEFT JOIN student_profiles sp ON sp.id_student = e.student_id
+                    LEFT JOIN users u_s ON u_s.id_user = sp.id_user
+                    WHERE tp.id_user = %s
+                    ORDER BY e.start_time DESC
+                """, (uid,))
+            except Exception:
+                conn.rollback()
+                cur.execute("""
+                    SELECT e.id_event, e.title, e.start_time, e.end_time,
+                           e.status, 0 AS amount, u_s.name AS student_name
+                    FROM events e
+                    LEFT JOIN tutor_profiles tp ON tp.id_tutor = e.tutor_id
+                    LEFT JOIN student_profiles sp ON sp.id_student = e.student_id
+                    LEFT JOIN users u_s ON u_s.id_user = sp.id_user
+                    WHERE tp.id_user = %s
+                    ORDER BY e.start_time DESC
+                """, (uid,))
+        else:
+            # Payments: sessions where this user is the student
+            try:
+                cur.execute("""
+                    SELECT e.id_event, e.title, e.start_time, e.end_time,
+                           e.status, e.amount, u_t.name AS tutor_name
+                    FROM events e
+                    LEFT JOIN tutor_profiles tp ON tp.id_tutor = e.tutor_id
+                    LEFT JOIN users u_t ON u_t.id_user = tp.id_user
+                    LEFT JOIN student_profiles sp ON sp.id_student = e.student_id
+                    WHERE sp.id_user = %s
+                    ORDER BY e.start_time DESC
+                """, (uid,))
+            except Exception:
+                conn.rollback()
+                cur.execute("""
+                    SELECT e.id_event, e.title, e.start_time, e.end_time,
+                           e.status, 0 AS amount, u_t.name AS tutor_name
+                    FROM events e
+                    LEFT JOIN tutor_profiles tp ON tp.id_tutor = e.tutor_id
+                    LEFT JOIN users u_t ON u_t.id_user = tp.id_user
+                    LEFT JOIN student_profiles sp ON sp.id_student = e.student_id
+                    WHERE sp.id_user = %s
+                    ORDER BY e.start_time DESC
+                """, (uid,))
         events = cur.fetchall()
         for ev in events:
             for key in ('start_time', 'end_time'):
@@ -1006,6 +1047,256 @@ def downgrade_membership():
         )
         conn.commit()
         return jsonify({'message': 'Subscription cancelled'})
+    finally:
+        cur.close(); conn.close()
+
+
+# ── Auth refresh ──────────────────────────────────────────────────────────────
+
+@app.route('/api/auth/refresh', methods=['POST'])
+@jwt_required()
+def refresh_auth_token():
+    """Issue a new JWT with fresh claims from DB (call after membership change)."""
+    uid  = current_user_id()
+    conn = get_db(); cur = conn.cursor()
+    try:
+        cur.execute("SELECT name, email FROM users WHERE id_user = %s", (uid,))
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': 'User not found'}), 404
+        name, email = row
+
+        cur.execute("SELECT id_tutor FROM tutor_profiles WHERE id_user = %s", (uid,))
+        is_tutor = cur.fetchone() is not None
+
+        try:
+            cur.execute("SELECT is_premium FROM users WHERE id_user = %s", (uid,))
+            prem_row   = cur.fetchone()
+            is_premium = bool(prem_row[0]) if prem_row else False
+        except Exception:
+            is_premium = False
+
+        token = create_access_token(
+            identity=str(uid),
+            additional_claims={'name': name, 'email': email, 'is_tutor': is_tutor, 'is_premium': is_premium},
+        )
+        return jsonify({
+            'access_token': token,
+            'user': {'id': uid, 'name': name, 'email': email, 'is_tutor': is_tutor, 'is_premium': is_premium},
+        })
+    finally:
+        cur.close(); conn.close()
+
+# ── Classrooms ────────────────────────────────────────────────────────────────
+# DB migration (run once):
+#   CREATE TABLE classrooms (
+#     id INT AUTO_INCREMENT PRIMARY KEY,
+#     tutor_id INT NOT NULL, title VARCHAR(255) NOT NULL,
+#     subject VARCHAR(100), description TEXT,
+#     capacity INT DEFAULT 30,
+#     start_time DATETIME, end_time DATETIME, zoom_link VARCHAR(500),
+#     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+#   );
+#   CREATE TABLE classroom_enrollments (
+#     classroom_id INT NOT NULL, student_id INT NOT NULL,
+#     PRIMARY KEY (classroom_id, student_id)
+#   );
+
+def _classrooms_missing(e):
+    return '1146' in str(e) or "doesn't exist" in str(e).lower()
+
+
+@app.route('/api/classrooms', methods=['GET'])
+@jwt_required()
+def get_classrooms():
+    uid  = current_user_id()
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        try:
+            cur.execute("""
+                SELECT c.id, c.title, c.subject, c.description,
+                       c.capacity, c.start_time, c.end_time, c.zoom_link,
+                       u.name AS tutor_name,
+                       COUNT(DISTINCT ce.student_id) AS enrolled_count
+                FROM classrooms c
+                JOIN tutor_profiles tp ON tp.id_tutor = c.tutor_id
+                JOIN users u ON u.id_user = tp.id_user
+                LEFT JOIN classroom_enrollments ce ON ce.classroom_id = c.id
+                GROUP BY c.id
+                ORDER BY c.start_time ASC
+            """)
+            classrooms = cur.fetchall()
+        except Exception as e:
+            if _classrooms_missing(e):
+                return jsonify({'classrooms': []})
+            raise
+
+        # Mark which classrooms the current user is enrolled in
+        sp_cur = conn.cursor()
+        sp_cur.execute("SELECT id_student FROM student_profiles WHERE id_user = %s", (uid,))
+        sp_row = sp_cur.fetchone(); sp_cur.close()
+        student_id = sp_row[0] if sp_row else None
+
+        enrolled_ids = set()
+        if student_id:
+            e_cur = conn.cursor()
+            e_cur.execute("SELECT classroom_id FROM classroom_enrollments WHERE student_id = %s", (student_id,))
+            enrolled_ids = {r[0] for r in e_cur.fetchall()}
+            e_cur.close()
+
+        for c in classrooms:
+            c['enrolled'] = c['id'] in enrolled_ids
+            for key in ('start_time', 'end_time'):
+                if c.get(key) and hasattr(c[key], 'isoformat'):
+                    c[key] = c[key].isoformat()
+        return jsonify({'classrooms': classrooms})
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/classrooms', methods=['POST'])
+@jwt_required()
+def create_classroom():
+    uid  = current_user_id()
+    data = request.get_json()
+    conn = get_db(); cur = conn.cursor()
+    try:
+        cur.execute("SELECT id_tutor FROM tutor_profiles WHERE id_user = %s", (uid,))
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': 'Tutor profile required'}), 403
+
+        cur.execute("""
+            INSERT INTO classrooms (tutor_id, title, subject, description, capacity, start_time, end_time, zoom_link)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (row[0], data.get('title'), data.get('subject'), data.get('description'),
+              data.get('capacity', 30), data.get('start_time'), data.get('end_time'), data.get('zoom_link')))
+        conn.commit()
+        return jsonify({'classroom': {'id': cur.lastrowid}}), 201
+    except Exception as e:
+        if _classrooms_missing(e):
+            return jsonify({'error': 'Run the classrooms DB migration first'}), 503
+        raise
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/classrooms/mine', methods=['GET'])
+@jwt_required()
+def get_my_classrooms():
+    uid  = current_user_id()
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT id_tutor FROM tutor_profiles WHERE id_user = %s", (uid,))
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'classrooms': []})
+        try:
+            cur.execute("""
+                SELECT c.id, c.title, c.subject, c.description,
+                       c.capacity, c.start_time, c.end_time, c.zoom_link,
+                       COUNT(DISTINCT ce.student_id) AS enrolled_count
+                FROM classrooms c
+                LEFT JOIN classroom_enrollments ce ON ce.classroom_id = c.id
+                WHERE c.tutor_id = %s
+                GROUP BY c.id
+                ORDER BY c.start_time ASC
+            """, (row['id_tutor'],))
+            classrooms = cur.fetchall()
+        except Exception as e:
+            if _classrooms_missing(e):
+                return jsonify({'classrooms': []})
+            raise
+        for c in classrooms:
+            for key in ('start_time', 'end_time'):
+                if c.get(key) and hasattr(c[key], 'isoformat'):
+                    c[key] = c[key].isoformat()
+        return jsonify({'classrooms': classrooms})
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/classrooms/<int:classroom_id>/enroll', methods=['POST'])
+@jwt_required()
+def enroll_classroom(classroom_id):
+    uid  = current_user_id()
+    conn = get_db(); cur = conn.cursor()
+    try:
+        cur.execute("SELECT id_student FROM student_profiles WHERE id_user = %s", (uid,))
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': 'Student profile required'}), 403
+        student_id = row[0]
+
+        cur.execute("SELECT capacity FROM classrooms WHERE id = %s", (classroom_id,))
+        c = cur.fetchone()
+        if not c:
+            return jsonify({'error': 'Classroom not found'}), 404
+
+        cur.execute("SELECT COUNT(*) FROM classroom_enrollments WHERE classroom_id = %s", (classroom_id,))
+        if cur.fetchone()[0] >= c[0]:
+            return jsonify({'error': f'Classroom is full ({c[0]} max)'}), 409
+
+        cur.execute(
+            "INSERT IGNORE INTO classroom_enrollments (classroom_id, student_id) VALUES (%s, %s)",
+            (classroom_id, student_id)
+        )
+        conn.commit()
+        return jsonify({'message': 'Enrolled'})
+    except Exception as e:
+        if _classrooms_missing(e):
+            return jsonify({'error': 'Run the classrooms DB migration first'}), 503
+        raise
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/classrooms/<int:classroom_id>/enroll', methods=['DELETE'])
+@jwt_required()
+def unenroll_classroom(classroom_id):
+    uid  = current_user_id()
+    conn = get_db(); cur = conn.cursor()
+    try:
+        cur.execute("SELECT id_student FROM student_profiles WHERE id_user = %s", (uid,))
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': 'Not found'}), 404
+        cur.execute(
+            "DELETE FROM classroom_enrollments WHERE classroom_id = %s AND student_id = %s",
+            (classroom_id, row[0])
+        )
+        conn.commit()
+        return jsonify({'message': 'Unenrolled'})
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/classrooms/<int:classroom_id>/students', methods=['GET'])
+@jwt_required()
+def get_classroom_students(classroom_id):
+    uid  = current_user_id()
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT c.id FROM classrooms c
+            JOIN tutor_profiles tp ON tp.id_tutor = c.tutor_id
+            WHERE c.id = %s AND tp.id_user = %s
+        """, (classroom_id, uid))
+        if not cur.fetchone():
+            return jsonify({'error': 'Not authorised'}), 403
+        try:
+            cur.execute("""
+                SELECT u.id_user, u.name, u.email
+                FROM classroom_enrollments ce
+                JOIN student_profiles sp ON sp.id_student = ce.student_id
+                JOIN users u ON u.id_user = sp.id_user
+                WHERE ce.classroom_id = %s
+            """, (classroom_id,))
+            return jsonify({'students': cur.fetchall()})
+        except Exception as e:
+            if _classrooms_missing(e):
+                return jsonify({'students': []})
+            raise
     finally:
         cur.close(); conn.close()
 
