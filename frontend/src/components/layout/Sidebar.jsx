@@ -8,6 +8,7 @@ const studentLinks = [
   { to: '/calendar/student',    label: 'Calendar',    icon: 'calendar_month' },
   { to: '/active-tutors',       label: 'My Tutors',   icon: 'cast_for_education' },
   { to: '/study-rooms/student', label: 'Study Rooms', icon: 'groups' },
+  { to: '/classroom',           label: 'Classroom',   icon: 'school' },
   { to: '/forum',               label: 'Forum',       icon: 'forum' },
   { to: '/payments',            label: 'Payments',    icon: 'payments' },
 ]
@@ -18,6 +19,7 @@ const tutorLinks = [
   { to: '/messages',            label: 'Messages',    icon: 'message' },
   { to: '/calendar/tutor',      label: 'Calendar',    icon: 'calendar_month' },
   { to: '/study-rooms/tutor',   label: 'Study Rooms', icon: 'groups' },
+  { to: '/classroom',           label: 'Classroom',   icon: 'school' },
   { to: '/payments',            label: 'Earnings',    icon: 'payments' },
   { to: '/tutor-profile',       label: 'My Profile',  icon: 'account_circle' },
 ]
@@ -171,6 +173,46 @@ export default function Sidebar({ mode = 'student' }) {
           )
         })}
       </div>
+
+      {/* ── Switch to Tutor Hub (student view, is_tutor only) ─── */}
+      {user?.is_tutor && mode === 'student' && (
+        <div style={{ padding: '0 8px 8px' }}>
+          <Link
+            to="/hub/tutor"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '10px 12px',
+              borderRadius: '10px',
+              background: 'rgba(255,114,94,0.08)',
+              border: '1px solid rgba(255,114,94,0.18)',
+              textDecoration: 'none',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'rgba(255,114,94,0.16)'
+              e.currentTarget.style.border = '1px solid rgba(255,114,94,0.30)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'rgba(255,114,94,0.08)'
+              e.currentTarget.style.border = '1px solid rgba(255,114,94,0.18)'
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '18px', color: '#ff725e', flexShrink: 0 }}>
+              swap_horiz
+            </span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: '11px', fontWeight: '800', color: '#ff725e', lineHeight: 1.2 }}>
+                Switch to Tutor Hub
+              </div>
+              <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.38)', marginTop: '1px' }}>
+                Manage your students
+              </div>
+            </div>
+          </Link>
+        </div>
+      )}
 
       {/* ── Upgrade CTA (free users only) ───────────── */}
       {!user?.is_premium && (

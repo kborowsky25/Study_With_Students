@@ -30,16 +30,17 @@ export default function Login() {
     <div style={{ minHeight: '100vh', backgroundColor: '#1b263b', display: 'flex', fontFamily: '"Noto Sans JP", sans-serif' }}>
 
       {/* Left — illustration */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4vw' }}>
+      <div className="animate-slide-in-left" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4vw' }}>
         <img
           src="/static/images/login/login.svg"
           alt="Study With Students"
           style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
+          className="animate-float"
         />
       </div>
 
       {/* Right — form */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4vw' }}>
+      <div className="animate-slide-in-right" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4vw' }}>
 
         {/* Logo */}
         <Link to="/" style={{ textDecoration: 'none', marginBottom: '3vh' }}>

@@ -40,31 +40,50 @@ export default function ActiveTutors() {
 
   return (
     <HubLayout>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="animate-slide-up mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-black text-white mb-1">My Tutors</h1>
-          <p className="text-white/50">{tutors.length} active tutor{tutors.length !== 1 ? 's' : ''}</p>
+          <h1 className="text-3xl font-black text-white mb-1">
+            My Tutors <span style={{ color: '#ff725e' }}>✦</span>
+          </h1>
+          <p className="text-white/50">{loading ? '…' : tutors.length} active tutor{tutors.length !== 1 ? 's' : ''}</p>
         </div>
-        <Link to="/find-tutors" className="btn-primary">Find more</Link>
+        <Link to="/find-tutors" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>add</span>
+          Find more
+        </Link>
       </div>
 
       {loading ? (
         <div className="grid sm:grid-cols-2 gap-5">
-          {[1, 2, 3].map(i => <div key={i} className="glass h-48 animate-pulse" />)}
+          {[1, 2, 3].map(i => (
+            <div key={i} className="glass p-5" style={{ height: '160px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div className="skeleton" style={{ width: '48px', height: '48px', borderRadius: '50%', flexShrink: 0 }} />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div className="skeleton" style={{ height: '14px', borderRadius: '6px', width: '60%' }} />
+                  <div className="skeleton" style={{ height: '11px', borderRadius: '6px', width: '45%' }} />
+                </div>
+              </div>
+              <div className="skeleton" style={{ height: '11px', borderRadius: '6px', width: '80%' }} />
+              <div className="skeleton" style={{ height: '11px', borderRadius: '6px', width: '55%' }} />
+            </div>
+          ))}
         </div>
       ) : tutors.length === 0 ? (
         <div className="text-center py-20">
-          <p className="text-5xl mb-4">👨‍🏫</p>
-          <p className="text-white/60 text-lg mb-4">No active tutors yet</p>
+          <span className="material-symbols-outlined" style={{ fontSize: '56px', color: 'rgba(255,255,255,0.15)', display: 'block', marginBottom: '16px' }}>cast_for_education</span>
+          <p className="text-white/60 text-lg mb-2">No active tutors yet</p>
+          <p className="text-white/30 text-sm mb-6">Connect with a tutor to start learning</p>
           <Link to="/find-tutors" className="btn-primary">Find a tutor</Link>
         </div>
       ) : (
         <div className="space-y-6">
-          {tutors.map(tutor => {
+          {tutors.map((tutor, idx) => {
             const initials = tutor.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
             const myEvents = tutorEvents(tutor.id_tutor)
+            const DELAYS = ['delay-50', 'delay-100', 'delay-150', 'delay-200']
             return (
-              <div key={tutor.id_tutor} className="glass p-5">
+              <div key={tutor.id_tutor} className={`glass p-5 animate-slide-up ${DELAYS[Math.min(idx, DELAYS.length - 1)]}`}>
                 {/* Tutor header */}
                 <div className="flex items-start justify-between gap-3 mb-4">
                   <div className="flex items-center gap-3">

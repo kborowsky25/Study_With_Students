@@ -45,8 +45,9 @@ import CalendarStudent   from './pages/CalendarStudent'
 import CalendarTutor     from './pages/CalendarTutor'
 
 // Pages — payments & events
-import Payments from './pages/Payments'
-import Events   from './pages/Events'
+import Payments   from './pages/Payments'
+import Events     from './pages/Events'
+import Classroom  from './pages/Classroom'
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 const rootRoute = createRootRoute({
@@ -165,6 +166,10 @@ const eventsRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/events',
   beforeLoad: requireAuth, component: Events,
 })
+const classroomRoute = createRoute({
+  getParentRoute: () => rootRoute, path: '/classroom',
+  beforeLoad: requireAuth, component: Classroom,
+})
 
 // ─── Build router ─────────────────────────────────────────────────────────────
 const routeTree = rootRoute.addChildren([
@@ -176,7 +181,7 @@ const routeTree = rootRoute.addChildren([
   forumHomeRoute, forumCategoryRoute, forumThreadRoute, newThreadRoute,
   studyRoomsStudentRoute, studyRoomsTutorRoute,
   calendarStudentRoute, calendarTutorRoute,
-  paymentsRoute, eventsRoute,
+  paymentsRoute, eventsRoute, classroomRoute,
 ])
 
 export const router = createRouter({ routeTree })

@@ -43,7 +43,7 @@ export default function TutorInfo() {
 
   if (loading) return (
     <HubLayout>
-      <div className="glass p-8 animate-pulse h-64" />
+      <div className="skeleton" style={{ borderRadius: "16px", height: "256px" }} />
     </HubLayout>
   )
 

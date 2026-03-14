@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getTutors, getLikedTutors, likeTutor, activateTutor } from '../api/tutors'
+import { getTutors, getLikedTutors, likeTutor } from '../api/tutors'
 import HubLayout from '../components/layout/HubLayout'
 import TutorCard from '../components/features/TutorCard'
 import toast from 'react-hot-toast'
@@ -15,6 +15,7 @@ export default function FindTutors() {
   const [tutors,     setTutors]     = useState([])
   const [liked,      setLiked]      = useState(new Set())
   const [loading,    setLoading]    = useState(true)
+  const [mounted,    setMounted]    = useState(false)
   const [university, setUniversity] = useState('')
   const [subject,    setSubject]    = useState('')
 
@@ -43,6 +44,7 @@ export default function FindTutors() {
   useEffect(() => {
     fetchTutors()
     fetchLiked()
+    requestAnimationFrame(() => setMounted(true))
   }, [])
 
   function handleFilter(e) {
@@ -70,9 +72,11 @@ export default function FindTutors() {
 
   return (
     <HubLayout>
-      <div className="mb-8">
-        <h1 className="text-3xl font-black text-white mb-1">Find Tutors</h1>
-        <p className="text-white/50">Browse {tutors.length} peer tutors from top universities</p>
+      <div className={`mb-8 ${mounted ? 'animate-slide-up' : ''}`}>
+        <h1 className="text-3xl font-black text-white mb-1">
+          Find Tutors <span style={{ color: '#ff725e' }}>✦</span>
+        </h1>
+        <p className="text-white/50">Browse {loading ? '…' : tutors.length} peer tutors from top universities — 0% commission</p>
       </div>
 
       {/* Filters — sticky so it stays visible while scrolling results */}
@@ -122,37 +126,44 @@ export default function FindTutors() {
       {loading ? (
         <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="glass p-5 h-64 animate-pulse">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-white/5" />
-                <div className="space-y-2 flex-1">
-                  <div className="h-3 bg-white/5 rounded w-3/4" />
-                  <div className="h-2.5 bg-white/5 rounded w-1/2" />
+            <div key={i} className="glass p-5" style={{ height: '220px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div className="skeleton" style={{ width: '48px', height: '48px', borderRadius: '50%', flexShrink: 0 }} />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div className="skeleton" style={{ height: '14px', borderRadius: '6px', width: '70%' }} />
+                  <div className="skeleton" style={{ height: '11px', borderRadius: '6px', width: '50%' }} />
                 </div>
               </div>
-              <div className="space-y-2">
-                <div className="h-2.5 bg-white/5 rounded" />
-                <div className="h-2.5 bg-white/5 rounded w-4/5" />
+              <div className="skeleton" style={{ height: '11px', borderRadius: '6px' }} />
+              <div className="skeleton" style={{ height: '11px', borderRadius: '6px', width: '80%' }} />
+              <div style={{ display: 'flex', gap: '6px', marginTop: 'auto' }}>
+                <div className="skeleton" style={{ height: '32px', borderRadius: '8px', flex: 1 }} />
               </div>
             </div>
           ))}
         </div>
       ) : tutors.length === 0 ? (
         <div className="text-center py-20">
-          <p className="text-5xl mb-4">🔍</p>
-          <p className="text-white/60 text-lg">No tutors found with those filters</p>
-          <button onClick={clearFilters} className="btn-outline mt-4">Clear filters</button>
+          <span className="material-symbols-outlined" style={{ fontSize: '52px', color: 'rgba(255,255,255,0.2)', display: 'block', marginBottom: '16px' }}>search</span>
+          <p className="text-white/60 text-lg mb-2">No tutors found</p>
+          <p className="text-white/30 text-sm mb-6">Try adjusting your filters</p>
+          <button onClick={clearFilters} className="btn-outline">Clear filters</button>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
-          {tutors.map(tutor => (
-            <TutorCard
-              key={tutor.id_tutor}
-              tutor={tutor}
-              liked={liked.has(tutor.id_tutor)}
-              onLike={handleLike}
-            />
-          ))}
+          {tutors.map((tutor, i) => {
+            const DELAYS = ['', 'delay-50', 'delay-100', 'delay-150', 'delay-200', 'delay-300']
+            const delay  = DELAYS[Math.min(i, DELAYS.length - 1)]
+            return (
+              <div key={tutor.id_tutor} className={mounted ? `animate-slide-up ${delay}` : ''}>
+                <TutorCard
+                  tutor={tutor}
+                  liked={liked.has(tutor.id_tutor)}
+                  onLike={handleLike}
+                />
+              </div>
+            )
+          })}
         </div>
       )}
     </HubLayout>

@@ -89,7 +89,7 @@ export default function StudyRoomsTutor() {
       {/* Rooms list */}
       {loading ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map(i => <div key={i} className="glass h-44 animate-pulse" />)}
+          {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ borderRadius: "12px", height: "168px" }} />)}
         </div>
       ) : rooms.length === 0 ? (
         <div className="text-center py-20">

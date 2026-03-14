@@ -17,20 +17,22 @@ export default function ActiveStudents() {
 
   return (
     <HubLayout initialMode="tutor">
-      <div className="mb-8">
-        <h1 className="text-3xl font-black text-white mb-1">My Students</h1>
-        <p className="text-white/50">{students.length} active student{students.length !== 1 ? 's' : ''}</p>
+      <div className="animate-slide-up mb-8">
+        <h1 className="text-3xl font-black text-white mb-1">
+          My Students <span style={{ color: '#ff725e' }}>✦</span>
+        </h1>
+        <p className="text-white/50">{loading ? '…' : students.length} active student{students.length !== 1 ? 's' : ''}</p>
       </div>
 
       {loading ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map(i => <div key={i} className="glass h-36 animate-pulse" />)}
+          {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ borderRadius: "12px", height: "132px" }} />)}
         </div>
       ) : students.length === 0 ? (
         <div className="text-center py-20">
-          <p className="text-5xl mb-4">👩‍🎓</p>
-          <p className="text-white/60 text-lg">No active students yet</p>
-          <p className="text-white/40 text-sm mt-2">Students can add you after viewing your profile</p>
+          <span className="material-symbols-outlined" style={{ fontSize: '56px', color: 'rgba(255,255,255,0.15)', display: 'block', marginBottom: '16px' }}>group</span>
+          <p className="text-white/60 text-lg mb-2">No active students yet</p>
+          <p className="text-white/40 text-sm">Students can add you after viewing your profile</p>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

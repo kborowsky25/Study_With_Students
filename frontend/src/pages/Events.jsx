@@ -25,9 +25,11 @@ export default function Events() {
 
   return (
     <HubLayout>
-      <div className="mb-8">
-        <h1 className="text-3xl font-black text-white mb-1">Sessions</h1>
-        <p className="text-white/50">{events.length} total sessions</p>
+      <div className="animate-slide-up mb-8">
+        <h1 className="text-3xl font-black text-white mb-1">
+          Sessions <span style={{ color: '#ff725e' }}>✦</span>
+        </h1>
+        <p className="text-white/50">{loading ? '…' : events.length} total sessions</p>
       </div>
 
       {/* Filter tabs */}
@@ -54,7 +56,7 @@ export default function Events() {
 
       {loading ? (
         <div className="grid sm:grid-cols-2 gap-4">
-          {[1, 2, 3, 4].map(i => <div key={i} className="glass h-36 animate-pulse" />)}
+          {[1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ borderRadius: "12px", height: "132px" }} />)}
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-20">
