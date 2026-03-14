@@ -13,11 +13,6 @@ const AMBER  = '#fbbf24'
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
-const ORBIT_CLASSES = [
-  'animate-orbit-1','animate-orbit-2','animate-orbit-3','animate-orbit-4',
-  'animate-orbit-5','animate-orbit-6','animate-orbit-7','animate-orbit-8',
-]
-
 const TUTOR_GRADS = [
   `linear-gradient(135deg, ${CORAL}, #ff9a3c)`,
   'linear-gradient(135deg, #60a5fa, #818cf8)',
@@ -122,53 +117,77 @@ function XpDonut({ xpProgress, level }) {
   )
 }
 
-// ── Top Tutor Card (with orbital float animation) ─────────────────────────────
-function TopTutorCard({ tutor, idx }) {
-  const initials = tutor.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() ?? '??'
-  const subject  = tutor.subjects?.split(',')[0]?.trim() ?? ''
-  const animCls  = ORBIT_CLASSES[idx % ORBIT_CLASSES.length]
-  const grad     = TUTOR_GRADS[idx % TUTOR_GRADS.length]
+// ── Top Tutors Trio — centre prominent, sides faint ──────────────────────────
+function TopTutorsTrio({ tutors }) {
+  // [left-faint, center-main, right-faint]
+  const trio = [
+    { tutor: tutors[1], isCenter: false, size: 38, opacity: 0.38, animCls: 'animate-orbit-3', gradIdx: 1 },
+    { tutor: tutors[0], isCenter: true,  size: 56, opacity: 1.00, animCls: 'animate-orbit-1', gradIdx: 0 },
+    { tutor: tutors[2], isCenter: false, size: 38, opacity: 0.38, animCls: 'animate-orbit-5', gradIdx: 2 },
+  ]
 
   return (
-    <Link to="/tutor/$tutorId" params={{ tutorId: String(tutor.id_tutor) }} style={{ textDecoration: 'none', flexShrink: 0 }}>
-      <div
-        className={animCls}
-        style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
-          padding: '14px 12px',
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border)',
-          borderRadius: '16px',
-          cursor: 'pointer',
-          width: '86px',
-          boxShadow: 'var(--shadow-card)',
-          transition: 'border-color 0.2s, box-shadow 0.2s',
-        }}
-        onMouseEnter={e => { e.currentTarget.style.borderColor = `${CORAL}50`; e.currentTarget.style.boxShadow = 'var(--shadow-hover)' }}
-        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'var(--shadow-card)' }}
-      >
-        <div style={{
-          width: '48px', height: '48px', borderRadius: '50%',
-          background: grad,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'white', fontSize: '16px', fontWeight: '900',
-          boxShadow: '0 4px 14px rgba(0,0,0,0.20)',
-          flexShrink: 0,
-        }}>
-          {initials}
-        </div>
-        <div style={{ textAlign: 'center', minWidth: 0, width: '100%' }}>
-          <p style={{ color: 'var(--text)', fontSize: '11px', fontWeight: '700', lineHeight: 1.2, marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {tutor.name?.split(' ')[0]}
-          </p>
-          {subject && (
-            <p style={{ color: CORAL, fontSize: '9px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {subject}
-            </p>
-          )}
-        </div>
+    <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+      {/* Label */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <span className="material-symbols-outlined" style={{ fontSize: '11px', color: CORAL }}>auto_awesome</span>
+        <span style={{ fontSize: '9px', fontWeight: '700', color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          Top Tutors
+        </span>
       </div>
-    </Link>
+
+      {/* Three in a row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {trio.map(({ tutor, isCenter, size, opacity, animCls, gradIdx }) => {
+          const initials = tutor.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() ?? '??'
+          const subject  = tutor.subjects?.split(',')[0]?.trim() ?? ''
+          return (
+            <Link
+              key={tutor.id_tutor}
+              to="/tutor/$tutorId"
+              params={{ tutorId: String(tutor.id_tutor) }}
+              style={{ textDecoration: 'none', opacity, transition: 'opacity 0.25s' }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={e => e.currentTarget.style.opacity = String(opacity)}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
+                {/* Avatar */}
+                <div
+                  className={animCls}
+                  style={{
+                    width: `${size}px`, height: `${size}px`, borderRadius: '50%',
+                    background: TUTOR_GRADS[gradIdx],
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'white',
+                    fontSize: isCenter ? '18px' : '12px',
+                    fontWeight: '900',
+                    boxShadow: isCenter
+                      ? `0 6px 22px ${CORAL}40, 0 0 0 2px ${CORAL}25`
+                      : '0 2px 8px rgba(0,0,0,0.18)',
+                    flexShrink: 0,
+                  }}
+                >
+                  {initials}
+                </div>
+                {/* Name + subject (center only shows subject; sides show just name) */}
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ color: 'var(--text)', fontSize: isCenter ? '11px' : '9px', fontWeight: '700', lineHeight: 1.2, margin: 0 }}>
+                    {tutor.name?.split(' ')[0]}
+                  </p>
+                  {isCenter && subject && (
+                    <p style={{ color: CORAL, fontSize: '9px', fontWeight: '600', margin: 0 }}>{subject}</p>
+                  )}
+                </div>
+              </div>
+            </Link>
+          )
+        })}
+      </div>
+
+      <Link to="/find-tutors" style={{ color: CORAL, fontSize: '9px', fontWeight: '600', textDecoration: 'none', opacity: 0.8 }}>
+        See all →
+      </Link>
+    </div>
   )
 }
 
@@ -229,7 +248,7 @@ export default function HubStudent() {
           <div style={{ position: 'absolute', right: '-40px', top: '-40px', width: '200px', height: '200px', background: `${CORAL}08`, borderRadius: '50%', filter: 'blur(50px)', pointerEvents: 'none' }} />
           <div style={{ position: 'absolute', left: '30%', bottom: '-20px', width: '120px', height: '120px', background: 'rgba(255,154,60,0.06)', borderRadius: '50%', filter: 'blur(30px)', pointerEvents: 'none' }} />
 
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px', position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', position: 'relative' }}>
 
             {/* Left: greeting */}
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -278,6 +297,11 @@ export default function HubStudent() {
               </div>
             </div>
 
+            {/* Centre: Top Tutors Trio */}
+            {topTutors.length >= 3 && (
+              <TopTutorsTrio tutors={topTutors.slice(0, 3)} />
+            )}
+
             {/* Right: EXPANDED XP section */}
             <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', minWidth: '155px' }}>
               {/* Level badge */}
@@ -322,35 +346,6 @@ export default function HubStudent() {
             </div>
           </div>
         </div>
-
-        {/* ── Top Tutors Today — horizontal orbital carousel ──────────────── */}
-        {topTutors.length > 0 && (
-          <div className={mounted ? 'animate-slide-up delay-100' : ''} style={{ flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '8px' }}>
-              <div style={{
-                width: '22px', height: '22px', borderRadius: '6px',
-                background: `${CORAL}15`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '13px', color: CORAL }}>star</span>
-              </div>
-              <h2 style={{ fontSize: '13px', fontWeight: '800', color: 'var(--text)' }}>Top Tutors Today</h2>
-              <Link to="/find-tutors" style={{ marginLeft: 'auto', color: CORAL, fontSize: '11px', fontWeight: '600', textDecoration: 'none' }}>
-                See all →
-              </Link>
-            </div>
-            {/* Horizontal scroll — hide scrollbar */}
-            <div style={{
-              display: 'flex', gap: '10px', alignItems: 'flex-end',
-              overflowX: 'auto', paddingBottom: '8px', paddingTop: '6px',
-              msOverflowStyle: 'none', scrollbarWidth: 'none',
-            }}>
-              {topTutors.map((t, i) => (
-                <TopTutorCard key={t.id_tutor} tutor={t} idx={i} />
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* ── Stats row ───────────────────────────────────────────────────── */}
         <div style={{ flexShrink: 0, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
