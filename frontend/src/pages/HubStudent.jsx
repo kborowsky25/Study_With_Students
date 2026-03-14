@@ -57,11 +57,11 @@ function fmtShort(iso) {
 
 // ── Animated XP Donut ────────────────────────────────────────────────────────
 function XpDonut({ xpProgress, level }) {
-  const size   = 144
-  const radius = 56
-  const stroke = 7
-  const cx     = size / 2
-  const cy     = size / 2
+  const size   = 96
+  const radius = 36
+  const stroke = 5
+  const cx     = 48
+  const cy     = 48
   const circum = 2 * Math.PI * radius
   const [offset, setOffset] = useState(circum)
 
@@ -80,14 +80,8 @@ function XpDonut({ xpProgress, level }) {
             <stop offset="0%" stopColor={CORAL} />
             <stop offset="100%" stopColor={AMBER} />
           </linearGradient>
-          <filter id="donut-glow">
-            <feGaussianBlur stdDeviation="2" result="blur" />
-            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
         </defs>
-        {/* Track */}
         <circle cx={cx} cy={cy} r={radius} fill="none" stroke={`${CORAL}1a`} strokeWidth={stroke} />
-        {/* Progress */}
         <circle
           cx={cx} cy={cy} r={radius}
           fill="none"
@@ -96,86 +90,121 @@ function XpDonut({ xpProgress, level }) {
           strokeLinecap="round"
           strokeDasharray={circum}
           strokeDashoffset={offset}
-          filter="url(#donut-glow)"
           style={{ transition: 'stroke-dashoffset 1.4s cubic-bezier(0.4,0,0.2,1)' }}
         />
       </svg>
-      {/* Center badge */}
       <div style={{
         position: 'absolute', inset: 0,
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
         pointerEvents: 'none',
       }}>
-        <span style={{ fontSize: '30px', fontWeight: '900', color: 'var(--text)', lineHeight: 1 }}>{level}</span>
-        <span style={{ fontSize: '10px', fontWeight: '700', color: CORAL, letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: '2px' }}>Level</span>
-        <span style={{ fontSize: '10px', color: 'var(--text-faint)', marginTop: '2px' }}>
-          {xpProgress}<span style={{ opacity: 0.6 }}>/100 xp</span>
+        <span style={{ fontSize: '22px', fontWeight: '900', color: 'var(--text)', lineHeight: 1 }}>{level}</span>
+        <span style={{ fontSize: '8px', fontWeight: '700', color: CORAL, letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: '2px' }}>Level</span>
+        <span style={{ fontSize: '8px', color: 'var(--text-faint)', marginTop: '1px' }}>
+          {xpProgress}<span style={{ opacity: 0.6 }}>/100</span>
         </span>
       </div>
     </div>
   )
 }
 
-// ── Top Tutors Trio — centre prominent, sides faint ──────────────────────────
+// ── Top Tutors Trio — mini cards, centre dominant ─────────────────────────────
 function TopTutorsTrio({ tutors }) {
-  // [left-faint, center-main, right-faint]
   const trio = [
-    { tutor: tutors[1], isCenter: false, size: 38, opacity: 0.38, animCls: 'animate-orbit-3', gradIdx: 1 },
-    { tutor: tutors[0], isCenter: true,  size: 56, opacity: 1.00, animCls: 'animate-orbit-1', gradIdx: 0 },
-    { tutor: tutors[2], isCenter: false, size: 38, opacity: 0.38, animCls: 'animate-orbit-5', gradIdx: 2 },
+    { tutor: tutors[1], isCenter: false, gradIdx: 1, animCls: 'animate-orbit-3' },
+    { tutor: tutors[0], isCenter: true,  gradIdx: 0, animCls: 'animate-orbit-1' },
+    { tutor: tutors[2], isCenter: false, gradIdx: 2, animCls: 'animate-orbit-5' },
   ]
 
   return (
-    <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+    <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
       {/* Label */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
         <span className="material-symbols-outlined" style={{ fontSize: '11px', color: CORAL }}>auto_awesome</span>
-        <span style={{ fontSize: '9px', fontWeight: '700', color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-          Top Tutors
+        <span style={{ fontSize: '9px', fontWeight: '700', color: 'var(--text-faint)', letterSpacing: '0.07em', textTransform: 'uppercase' }}>
+          Top Tutors Today
         </span>
       </div>
 
-      {/* Three in a row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        {trio.map(({ tutor, isCenter, size, opacity, animCls, gradIdx }) => {
-          const initials = tutor.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() ?? '??'
-          const subject  = tutor.subjects?.split(',')[0]?.trim() ?? ''
+      {/* Three mini-cards in a row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+        {trio.map(({ tutor, isCenter, gradIdx, animCls }) => {
+          const initials  = tutor.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() ?? '??'
+          const subjects  = tutor.subjects?.split(',').map(s => s.trim()).filter(Boolean) ?? []
+          const firstName = tutor.name?.split(' ')[0] ?? ''
+          const lastName  = tutor.name?.split(' ')[1]?.[0] ? tutor.name.split(' ')[1][0] + '.' : ''
+          const opacity   = isCenter ? 1 : 0.42
+
           return (
             <Link
               key={tutor.id_tutor}
               to="/tutor/$tutorId"
               params={{ tutorId: String(tutor.id_tutor) }}
-              style={{ textDecoration: 'none', opacity, transition: 'opacity 0.25s' }}
+              style={{ textDecoration: 'none', opacity, transition: 'opacity 0.25s', flexShrink: 0 }}
               onMouseEnter={e => e.currentTarget.style.opacity = '1'}
               onMouseLeave={e => e.currentTarget.style.opacity = String(opacity)}
             >
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
+              <div style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px',
+                padding: isCenter ? '9px 11px' : '7px 9px',
+                background: isCenter ? `${CORAL}0d` : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${isCenter ? CORAL + '30' : 'rgba(255,255,255,0.07)'}`,
+                borderRadius: '12px',
+                width: isCenter ? '104px' : '76px',
+                backdropFilter: 'blur(8px)',
+              }}>
                 {/* Avatar */}
                 <div
                   className={animCls}
                   style={{
-                    width: `${size}px`, height: `${size}px`, borderRadius: '50%',
+                    width: isCenter ? '42px' : '30px',
+                    height: isCenter ? '42px' : '30px',
+                    borderRadius: '50%',
                     background: TUTOR_GRADS[gradIdx],
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     color: 'white',
-                    fontSize: isCenter ? '18px' : '12px',
+                    fontSize: isCenter ? '14px' : '10px',
                     fontWeight: '900',
-                    boxShadow: isCenter
-                      ? `0 6px 22px ${CORAL}40, 0 0 0 2px ${CORAL}25`
-                      : '0 2px 8px rgba(0,0,0,0.18)',
+                    boxShadow: isCenter ? `0 4px 14px ${CORAL}38` : '0 2px 6px rgba(0,0,0,0.15)',
                     flexShrink: 0,
                   }}
                 >
                   {initials}
                 </div>
-                {/* Name + subject (center only shows subject; sides show just name) */}
-                <div style={{ textAlign: 'center' }}>
-                  <p style={{ color: 'var(--text)', fontSize: isCenter ? '11px' : '9px', fontWeight: '700', lineHeight: 1.2, margin: 0 }}>
-                    {tutor.name?.split(' ')[0]}
+
+                {/* Info */}
+                <div style={{ textAlign: 'center', width: '100%', minWidth: 0 }}>
+                  {/* Name */}
+                  <p style={{
+                    color: 'var(--text)', fontWeight: '700',
+                    fontSize: isCenter ? '11px' : '9px',
+                    lineHeight: 1.2, margin: '0 0 2px',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {isCenter ? `${firstName} ${lastName}` : firstName}
                   </p>
-                  {isCenter && subject && (
-                    <p style={{ color: CORAL, fontSize: '9px', fontWeight: '600', margin: 0 }}>{subject}</p>
+
+                  {/* Subjects */}
+                  {subjects.slice(0, isCenter ? 2 : 1).map((sub, i) => (
+                    <p key={sub} style={{
+                      fontSize: '8px', fontWeight: '600', margin: 0,
+                      color: isCenter ? CORAL : 'var(--text-faint)',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      opacity: i === 1 ? 0.7 : 1,
+                    }}>
+                      {sub}
+                    </p>
+                  ))}
+
+                  {/* University (centre only) */}
+                  {isCenter && tutor.university && (
+                    <p style={{
+                      fontSize: '8px', color: 'var(--text-faint)', margin: '2px 0 0',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                      {tutor.university}
+                    </p>
                   )}
                 </div>
               </div>
@@ -184,7 +213,7 @@ function TopTutorsTrio({ tutors }) {
         })}
       </div>
 
-      <Link to="/find-tutors" style={{ color: CORAL, fontSize: '9px', fontWeight: '600', textDecoration: 'none', opacity: 0.8 }}>
+      <Link to="/find-tutors" style={{ color: CORAL, fontSize: '9px', fontWeight: '600', textDecoration: 'none', opacity: 0.75 }}>
         See all →
       </Link>
     </div>
@@ -239,7 +268,7 @@ export default function HubStudent() {
             background: `linear-gradient(135deg, ${CORAL}14 0%, rgba(255,114,94,0.03) 55%, rgba(255,154,60,0.06) 100%)`,
             border: `1px solid ${CORAL}24`,
             borderRadius: '16px',
-            padding: '18px 22px',
+            padding: '12px 20px',
             position: 'relative',
             overflow: 'hidden',
           }}
@@ -302,46 +331,29 @@ export default function HubStudent() {
               <TopTutorsTrio tutors={topTutors.slice(0, 3)} />
             )}
 
-            {/* Right: EXPANDED XP section */}
-            <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', minWidth: '155px' }}>
-              {/* Level badge */}
-              <div style={{
-                padding: '3px 12px', borderRadius: '20px',
-                background: `${CORAL}18`, border: `1px solid ${CORAL}35`,
-              }}>
-                <span style={{ fontSize: '10px', fontWeight: '800', color: CORAL, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                  ⭐ Level {level}
-                </span>
-              </div>
-
+            {/* Right: XP section */}
+            <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
               {/* XP Donut */}
               <XpDonut xpProgress={xpProgress} level={level} />
 
               {/* XP progress bar */}
-              <div style={{ width: '130px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                  <span style={{ fontSize: '9px', color: 'var(--text-faint)', fontWeight: '600' }}>Lv {level}</span>
-                  <span style={{ fontSize: '9px', color: 'var(--text-faint)', fontWeight: '600' }}>Lv {level + 1}</span>
+              <div style={{ width: '96px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                  <span style={{ fontSize: '8px', color: 'var(--text-faint)', fontWeight: '600' }}>Lv {level}</span>
+                  <span style={{ fontSize: '8px', color: 'var(--text-faint)', fontWeight: '600' }}>Lv {level + 1}</span>
                 </div>
-                <div style={{ height: '5px', borderRadius: '3px', background: `${CORAL}1a`, overflow: 'hidden' }}>
+                <div style={{ height: '4px', borderRadius: '2px', background: `${CORAL}1a`, overflow: 'hidden' }}>
                   <div style={{
                     height: '100%',
                     width: `${xpProgress}%`,
                     background: `linear-gradient(90deg, ${CORAL}, ${AMBER})`,
-                    borderRadius: '3px',
+                    borderRadius: '2px',
                     transition: 'width 1.5s cubic-bezier(0.4,0,0.2,1)',
                   }} />
                 </div>
-                <p style={{ fontSize: '9px', color: 'var(--text-faint)', textAlign: 'center', marginTop: '4px' }}>
-                  {100 - xpProgress} XP to Level {level + 1}
+                <p style={{ fontSize: '8px', color: 'var(--text-faint)', textAlign: 'center', marginTop: '3px' }}>
+                  {100 - xpProgress} XP to Lv {level + 1}
                 </p>
-              </div>
-
-              {/* XP source chips */}
-              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '140px' }}>
-                <span style={{ fontSize: '9px', background: `${CORAL}12`, color: CORAL, padding: '2px 6px', borderRadius: '8px', fontWeight: '700' }}>+30 sign-up</span>
-                <span style={{ fontSize: '9px', background: 'rgba(52,211,153,0.12)', color: GREEN, padding: '2px 6px', borderRadius: '8px', fontWeight: '700' }}>+30/session</span>
-                <span style={{ fontSize: '9px', background: 'rgba(96,165,250,0.12)', color: BLUE, padding: '2px 6px', borderRadius: '8px', fontWeight: '700' }}>+10/tutor</span>
               </div>
             </div>
           </div>
