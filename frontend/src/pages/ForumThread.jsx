@@ -333,8 +333,7 @@ export default function ForumThread() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '9px', marginBottom: '10px' }}>
                             <UserAvatar name={post.author_name} size={28} />
                             <span style={{
-                              color: 'var(--text)', fontWeight: '700', fontSize: '13px',
-                              color: isMe ? CORAL : 'var(--text)',
+                              color: isMe ? CORAL : 'var(--text)', fontWeight: '700', fontSize: '13px',
                             }}>
                               {post.author_name}
                             </span>
