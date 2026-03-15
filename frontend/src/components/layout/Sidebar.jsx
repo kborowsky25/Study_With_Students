@@ -4,33 +4,31 @@ import { useNavigate } from '@tanstack/react-router'
 
 // ── Per-mode accent palettes ──────────────────────────────────────────────────
 const STUDENT = {
-  accent:       '#fb923c',
-  accent2:      '#ff725e',
-  avatarGrad:   'linear-gradient(135deg, #fb923c, #ff725e)',
-  avatarShadow: '0 4px 14px rgba(251,146,60,0.40)',
-  activeBg:     'rgba(251,146,60,0.12)',
-  activeBorder: 'rgba(251,146,60,0.22)',
+  accent:       '#ff725e',
+  avatarGrad:   'linear-gradient(135deg, #ff725e, #e05a48)',
+  avatarShadow: '0 4px 14px rgba(255,114,94,0.38)',
+  activeBg:     'rgba(255,114,94,0.12)',
+  activeBorder: 'rgba(255,114,94,0.22)',
   badgeBg:      'rgba(255,255,255,0.08)',
   badgeBorder:  'rgba(255,255,255,0.12)',
   badgeColor:   'rgba(255,255,255,0.50)',
-  upgradeBg:    'linear-gradient(135deg, rgba(251,146,60,0.14), rgba(255,114,94,0.10))',
-  upgradeBgHov: 'linear-gradient(135deg, rgba(251,146,60,0.22), rgba(255,114,94,0.16))',
-  upgradeBor:   'rgba(251,146,60,0.30)',
+  upgradeBg:    'linear-gradient(135deg, rgba(255,114,94,0.14), rgba(255,154,60,0.10))',
+  upgradeBgHov: 'linear-gradient(135deg, rgba(255,114,94,0.22), rgba(255,154,60,0.16))',
+  upgradeBor:   'rgba(255,114,94,0.28)',
 }
 
 const TUTOR = {
-  accent:       '#22d3ee',
-  accent2:      '#34d399',
-  avatarGrad:   'linear-gradient(135deg, #22d3ee, #34d399)',
-  avatarShadow: '0 4px 14px rgba(34,211,238,0.35)',
-  activeBg:     'rgba(34,211,238,0.10)',
-  activeBorder: 'rgba(34,211,238,0.22)',
-  badgeBg:      'rgba(34,211,238,0.12)',
-  badgeBorder:  'rgba(34,211,238,0.28)',
-  badgeColor:   '#22d3ee',
-  upgradeBg:    'linear-gradient(135deg, rgba(34,211,238,0.12), rgba(52,211,153,0.10))',
-  upgradeBgHov: 'linear-gradient(135deg, rgba(34,211,238,0.20), rgba(52,211,153,0.16))',
-  upgradeBor:   'rgba(34,211,238,0.28)',
+  accent:       '#a78bfa',
+  avatarGrad:   'linear-gradient(135deg, #a78bfa, #7c3aed)',
+  avatarShadow: '0 4px 14px rgba(167,139,250,0.38)',
+  activeBg:     'rgba(167,139,250,0.11)',
+  activeBorder: 'rgba(167,139,250,0.22)',
+  badgeBg:      'rgba(167,139,250,0.14)',
+  badgeBorder:  'rgba(167,139,250,0.28)',
+  badgeColor:   '#a78bfa',
+  upgradeBg:    'linear-gradient(135deg, rgba(167,139,250,0.13), rgba(124,58,237,0.09))',
+  upgradeBgHov: 'linear-gradient(135deg, rgba(167,139,250,0.20), rgba(124,58,237,0.15))',
+  upgradeBor:   'rgba(167,139,250,0.26)',
 }
 
 // ── Section-grouped nav definitions ──────────────────────────────────────────
