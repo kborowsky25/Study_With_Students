@@ -43,7 +43,7 @@ const STUDENT_SHORTCUTS = [
   { key: 'g s', label: 'Study Rooms' },
   { key: 'g e', label: 'Forum' },
   { key: 'g p', label: 'Payments' },
-  { key: 'g x', label: 'Battle Pass' },
+  { key: 'g x', label: 'Graduation' },
 ]
 
 const TUTOR_SHORTCUTS = [
@@ -53,7 +53,7 @@ const TUTOR_SHORTCUTS = [
   { key: 'g c', label: 'Calendar' },
   { key: 'g s', label: 'Study Rooms' },
   { key: 'g e', label: 'Earnings' },
-  { key: 'g x', label: 'Battle Pass' },
+  { key: 'g x', label: 'Graduation' },
   { key: 'g p', label: 'My Profile' },
 ]
 

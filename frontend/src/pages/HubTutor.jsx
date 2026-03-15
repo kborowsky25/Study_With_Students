@@ -129,13 +129,13 @@ export default function HubTutor() {
   const confirmed = events.filter(e => e.status === 'confirmed')
   const paid      = events.filter(e => e.status === 'paid')
 
-  // Earnings calculations
+  // Earnings calculations — only count sessions the student has actually paid
   const now        = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-  const thisMonthEarnings = [...confirmed, ...paid]
+  const thisMonthEarnings = paid
     .filter(e => e.amount && new Date(e.start_time) >= monthStart)
     .reduce((sum, e) => sum + Number(e.amount || 0), 0)
-  const totalEarnings = [...confirmed, ...paid]
+  const totalEarnings = paid
     .reduce((sum, e) => sum + Number(e.amount || 0), 0)
 
   // Sessions this week
@@ -268,14 +268,14 @@ export default function HubTutor() {
             icon="payments"
             label="This Month"
             value={loading ? null : `£${thisMonthEarnings.toFixed(2)}`}
-            to="/payments"
+            to="/earnings"
             accent={GREEN}
           />
           <StatCard
             icon="savings"
             label="Total Earned"
             value={loading ? null : `£${totalEarnings.toFixed(2)}`}
-            to="/payments"
+            to="/earnings"
             accent={CORAL}
           />
           <StatCard

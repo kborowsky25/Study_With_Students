@@ -19,7 +19,7 @@ const FREE_FEATURES = [
   { icon: 'forum',           label: 'Community Forum',                ok: false },
   { icon: 'groups',          label: 'Study Rooms',                    ok: false },
   { icon: 'school',          label: 'Classroom sessions',             ok: false },
-  { icon: 'military_tech',   label: 'Explorer Battle Pass',           ok: false },
+  { icon: 'military_tech',   label: 'Explorer Graduation',           ok: false },
 ]
 
 const EXPLORER_FEATURES = [
@@ -30,7 +30,7 @@ const EXPLORER_FEATURES = [
   { icon: 'forum',           label: 'Community Forum',                ok: true  },
   { icon: 'groups',          label: 'Study Rooms',                    ok: true  },
   { icon: 'school',          label: 'Classroom sessions',             ok: true  },
-  { icon: 'military_tech',   label: 'Explorer Battle Pass',           ok: true  },
+  { icon: 'military_tech',   label: 'Explorer Graduation',           ok: true  },
 ]
 
 // ── Check row ─────────────────────────────────────────────────────────────────
@@ -169,7 +169,7 @@ export default function Membership() {
                 { to: '/forum',               icon: 'forum',         label: 'Community Forum',   color: '#60a5fa' },
                 { to: '/study-rooms/student', icon: 'groups',        label: 'Study Rooms',        color: '#a78bfa' },
                 { to: '/classroom',           icon: 'school',        label: 'Classroom',          color: GREEN      },
-                { to: '/xp',                  icon: 'military_tech', label: 'Battle Pass',        color: AMBER      },
+                { to: '/xp',                  icon: 'military_tech', label: 'Graduation',         color: AMBER      },
               ].map(({ to, icon, label, color }) => (
                 <Link
                   key={to}
@@ -338,7 +338,7 @@ export default function Membership() {
                 { q: 'Is this a real charge?',    a: "Not yet — this is a simulation. We'll integrate Stripe soon." },
                 { q: 'How do I cancel?',          a: 'You can cancel anytime from this page once billing is live.' },
                 { q: "What's the commission?",    a: '0% commission on all 1-to-1 sessions. Always.' },
-                { q: 'Can tutors upgrade too?',   a: 'Yes! Tutors get the Battle Pass and forum access.' },
+                { q: 'Can tutors upgrade too?',   a: 'Yes! Tutors get the Graduation XP tracker and forum access.' },
               ].map(({ q, a }) => (
                 <div key={q}>
                   <p style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text)', marginBottom: '4px' }}>{q}</p>

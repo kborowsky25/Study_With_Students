@@ -141,7 +141,7 @@ export default function XP() {
                   </span>
                 </div>
                 <p style={{ fontSize:'13px', color:'var(--text-muted)', margin:'4px 0 0' }}>
-                  {isStudent ? 'Student' : 'Tutor'} Battle Pass
+                  {isStudent ? 'Student' : 'Tutor'} Graduation
                 </p>
               </div>
 

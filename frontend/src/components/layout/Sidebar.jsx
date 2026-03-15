@@ -51,7 +51,7 @@ const studentSections = [
     title: 'Account',
     links: [
       { to: '/payments',            label: 'Payments',     icon: 'payments',           key: 'p' },
-      { to: '/xp',                  label: 'Battle Pass',  icon: 'military_tech',      key: 'x' },
+      { to: '/xp',                  label: 'Graduation',   icon: 'military_tech',      key: 'x' },
     ],
   },
 ]
@@ -85,7 +85,7 @@ const tutorSections = [
     title: 'Account',
     links: [
       { to: '/earnings',            label: 'Earnings',     icon: 'payments',           key: 'e' },
-      { to: '/xp',                  label: 'Battle Pass',  icon: 'military_tech',      key: 'x' },
+      { to: '/xp',                  label: 'Graduation',   icon: 'military_tech',      key: 'x' },
     ],
   },
 ]
