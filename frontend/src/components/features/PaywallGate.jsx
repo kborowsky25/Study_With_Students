@@ -70,7 +70,7 @@ export default function PaywallGate({ feature = 'This feature', children, bypass
         ))}
       </div>
 
-      <Link to="/payments" className="btn-primary" style={{ padding: '11px 28px', fontSize: '14px' }}>
+      <Link to="/membership" className="btn-primary" style={{ padding: '11px 28px', fontSize: '14px' }}>
         Upgrade to Explorer — £2/mo
       </Link>
       <p style={{ color: 'var(--text-faint)', fontSize: '11px', marginTop: '10px' }}>

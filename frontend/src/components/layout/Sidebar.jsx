@@ -134,9 +134,9 @@ export default function Sidebar({ mode = 'student', chordActive = false }) {
     >
       {/* ── Profile ──────────────────────────────────────────────────────────── */}
       <Link
-        to={mode === 'tutor' ? '/tutor-profile' : '/hub/student'}
+        to={mode === 'tutor' ? '/tutor-profile' : '/dashboard'}
         style={{ textDecoration: 'none' }}
-        title={mode === 'tutor' ? 'Edit profile' : 'My dashboard'}
+        title={mode === 'tutor' ? 'Edit profile' : 'My stats'}
       >
         <div
           style={{
@@ -243,7 +243,7 @@ export default function Sidebar({ mode = 'student', chordActive = false }) {
       {!user?.is_premium && (
         <div style={{ padding: '0 8px 8px' }}>
           <Link
-            to="/payments"
+            to="/membership"
             style={{
               display: 'flex', alignItems: 'center', gap: '10px',
               padding: '10px 12px', borderRadius: '10px',

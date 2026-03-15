@@ -370,17 +370,35 @@ export default function CalendarStudent() {
               ) : (
                 <div style={{ display:'flex', flexDirection:'column' }}>
                   {upcoming.map(ev => (
-                    <div key={ev.id_event} style={{ display:'flex', alignItems:'center', gap:'8px', padding:'8px 0', borderBottom:'1px solid var(--border)' }}>
-                      <div style={{ width:'6px', height:'6px', borderRadius:'50%', flexShrink:0, background:STATUS_COLOR[ev.status]??'#fbbf24', boxShadow:`0 0 5px ${STATUS_COLOR[ev.status]??'#fbbf24'}80` }} />
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <p style={{ color:'var(--text)', fontSize:'12px', fontWeight:'600', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ev.title}</p>
-                        <p style={{ color:'var(--text-muted)', fontSize:'10px' }}>
-                          {new Date(ev.start_time).toLocaleDateString('en-GB',{day:'numeric',month:'short'})} · {fmtTime(ev.start_time)}
-                        </p>
+                    <div key={ev.id_event} style={{ padding:'8px 0', borderBottom:'1px solid var(--border)' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'5px' }}>
+                        <div style={{ width:'6px', height:'6px', borderRadius:'50%', flexShrink:0, background:STATUS_COLOR[ev.status]??'#fbbf24', boxShadow:`0 0 5px ${STATUS_COLOR[ev.status]??'#fbbf24'}80` }} />
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <p style={{ color:'var(--text)', fontSize:'12px', fontWeight:'600', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ev.title}</p>
+                          <p style={{ color:'var(--text-muted)', fontSize:'10px' }}>
+                            {new Date(ev.start_time).toLocaleDateString('en-GB',{day:'numeric',month:'short'})} · {fmtTime(ev.start_time)}
+                          </p>
+                        </div>
+                        <span style={{ fontSize:'9px', fontWeight:'700', color:STATUS_COLOR[ev.status]??'#fbbf24', flexShrink:0, textTransform:'uppercase', letterSpacing:'0.05em' }}>
+                          {ev.status}
+                        </span>
                       </div>
-                      <span style={{ fontSize:'9px', fontWeight:'700', color:STATUS_COLOR[ev.status]??'#fbbf24', flexShrink:0, textTransform:'uppercase', letterSpacing:'0.05em' }}>
-                        {ev.status}
-                      </span>
+                      <div style={{ display:'flex', gap:'5px', paddingLeft:'14px' }}>
+                        <a href={makeGoogleLink(ev)} target="_blank" rel="noopener noreferrer"
+                          style={{ display:'flex', alignItems:'center', gap:'3px', fontSize:'10px', fontWeight:'600', color:'#4285F4', background:'rgba(66,133,244,0.08)', border:'1px solid rgba(66,133,244,0.20)', borderRadius:'6px', padding:'3px 7px', textDecoration:'none', transition:'background 0.15s' }}
+                          onMouseEnter={e=>e.currentTarget.style.background='rgba(66,133,244,0.18)'}
+                          onMouseLeave={e=>e.currentTarget.style.background='rgba(66,133,244,0.08)'}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize:'11px' }}>calendar_add_on</span>Google
+                        </a>
+                        <a href={makeOutlookLink(ev)} target="_blank" rel="noopener noreferrer"
+                          style={{ display:'flex', alignItems:'center', gap:'3px', fontSize:'10px', fontWeight:'600', color:'#0078D4', background:'rgba(0,120,212,0.08)', border:'1px solid rgba(0,120,212,0.20)', borderRadius:'6px', padding:'3px 7px', textDecoration:'none', transition:'background 0.15s' }}
+                          onMouseEnter={e=>e.currentTarget.style.background='rgba(0,120,212,0.18)'}
+                          onMouseLeave={e=>e.currentTarget.style.background='rgba(0,120,212,0.08)'}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize:'11px' }}>calendar_month</span>Outlook
+                        </a>
+                      </div>
                     </div>
                   ))}
                 </div>
