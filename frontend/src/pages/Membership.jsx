@@ -335,7 +335,7 @@ export default function Membership() {
               {[
                 { q: 'Is this a real charge?',    a: "Not yet — this is a simulation. We'll integrate Stripe soon." },
                 { q: 'How do I cancel?',          a: 'You can cancel anytime from this page once billing is live.' },
-                { q: 'What's the commission?',    a: '0% commission on all 1-to-1 sessions. Always.' },
+                { q: "What's the commission?",    a: '0% commission on all 1-to-1 sessions. Always.' },
                 { q: 'Can tutors upgrade too?',   a: 'Yes! Tutors get the Battle Pass and forum access.' },
               ].map(({ q, a }) => (
                 <div key={q}>
