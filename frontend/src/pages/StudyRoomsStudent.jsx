@@ -12,18 +12,18 @@ const PURPLE = '#a78bfa'
 
 // Subject → colour + icon
 const SUBJECT_META = {
-  'Maths':            { color: BLUE,   icon: 'calculate' },
-  'Mathematics':      { color: BLUE,   icon: 'calculate' },
+  'Maths':            { color: BLUE,      icon: 'calculate' },
+  'Mathematics':      { color: BLUE,      icon: 'calculate' },
   'Physics':          { color: '#c084fc', icon: 'science' },
-  'Chemistry':        { color: '#34d399', icon: 'biotech' },
-  'Biology':          { color: GREEN,  icon: 'eco' },
-  'Computer Science': { color: CORAL,  icon: 'terminal' },
-  'Economics':        { color: AMBER,  icon: 'trending_up' },
-  'English':          { color: PURPLE, icon: 'menu_book' },
+  'Chemistry':        { color: GREEN,     icon: 'biotech' },
+  'Biology':          { color: '#4ade80', icon: 'eco' },
+  'Computer Science': { color: CORAL,     icon: 'terminal' },
+  'Economics':        { color: AMBER,     icon: 'trending_up' },
+  'English':          { color: PURPLE,    icon: 'menu_book' },
   'History':          { color: '#fb923c', icon: 'history_edu' },
   'Law':              { color: '#94a3b8', icon: 'gavel' },
   'Psychology':       { color: '#f472b6', icon: 'psychology' },
-  'Statistics':       { color: BLUE,   icon: 'bar_chart' },
+  'Statistics':       { color: BLUE,      icon: 'bar_chart' },
 }
 
 function getSubjectMeta(subject) {
@@ -46,11 +46,7 @@ function getRoomStatus(room) {
   if (diffMin < 60) return { label: `In ${diffMin}m`, type: 'soon' }
   const diffHr = Math.floor(diffMin / 60)
   if (diffHr < 24) return { label: `In ${diffHr}h`, type: 'upcoming' }
-  return { label: formatRelDate(start), type: 'upcoming' }
-}
-
-function formatRelDate(d) {
-  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+  return { label: start.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }), type: 'upcoming' }
 }
 
 function formatTime(iso) {
@@ -67,11 +63,18 @@ function formatDuration(startIso, endIso) {
   return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
+const SORT_OPTIONS = [
+  { key: 'hot',      label: 'Hot',      icon: 'local_fire_department' },
+  { key: 'new',      label: 'New',      icon: 'schedule' },
+  { key: 'upcoming', label: 'Upcoming', icon: 'event' },
+]
+
 export default function StudyRoomsStudent() {
   const [rooms,   setRooms]   = useState([])
   const [loading, setLoading] = useState(true)
   const [saving,  setSaving]  = useState(null)
-  const [filter,  setFilter]  = useState('all')
+  const [sort,    setSort]    = useState('hot')
+  const [subject, setSubject] = useState('all')
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -94,163 +97,240 @@ export default function StudyRoomsStudent() {
     }
   }
 
-  const now    = new Date()
-  const liveRooms     = rooms.filter(r => r.start_time && new Date(r.start_time) <= now && (!r.end_time || new Date(r.end_time) > now))
-  const upcomingRooms = rooms.filter(r => r.start_time && new Date(r.start_time) > now)
+  const now        = new Date()
+  const liveRooms  = rooms.filter(r => r.start_time && new Date(r.start_time) <= now && (!r.end_time || new Date(r.end_time) > now))
+  const activeRooms = rooms.filter(r => !r.end_time || new Date(r.end_time) > now)
 
-  const filtered = filter === 'live'
-    ? liveRooms
-    : filter === 'upcoming'
-    ? upcomingRooms
-    : rooms.filter(r => !r.end_time || new Date(r.end_time) > now)
+  // Unique subjects from active rooms
+  const subjects = ['all', ...new Set(activeRooms.map(r => r.subject).filter(Boolean))]
+
+  // Filter by selected subject
+  const subjectFiltered = subject === 'all'
+    ? activeRooms
+    : activeRooms.filter(r => r.subject === subject)
+
+  // Sort
+  const sorted = [...subjectFiltered].sort((a, b) => {
+    const aS = getRoomStatus(a)
+    const bS = getRoomStatus(b)
+    if (sort === 'hot') {
+      const order = { live: 0, soon: 1, upcoming: 2, ended: 3 }
+      const diff = (order[aS.type] ?? 2) - (order[bS.type] ?? 2)
+      if (diff !== 0) return diff
+      return new Date(a.start_time) - new Date(b.start_time)
+    }
+    if (sort === 'new') return (b.id ?? 0) - (a.id ?? 0)
+    // upcoming: soonest first
+    return new Date(a.start_time) - new Date(b.start_time)
+  })
 
   return (
     <HubLayout>
       <PaywallGate feature="Study Rooms">
+        <div style={{ display: 'flex', height: '100%', gap: '20px', minHeight: 0 }}>
 
-        {/* ── Header ─────────────────────────────────────────────────── */}
-        <div className={`mb-8 ${mounted ? 'animate-slide-up' : ''}`} style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '16px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-              <div style={{
-                width: '40px', height: '40px', borderRadius: '11px',
-                background: 'linear-gradient(135deg, rgba(96,165,250,0.20), rgba(167,139,250,0.20))',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <span className="material-symbols-outlined" style={{ color: BLUE, fontSize: '22px' }}>groups</span>
-              </div>
-              <h1 className="page-title" style={{ fontSize: '26px', fontWeight: '900', letterSpacing: '-0.03em' }}>
-                Study Rooms
-              </h1>
-            </div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
-              Live group sessions hosted by your tutors
-            </p>
+          {/* ── Left sidebar: subject categories ─────────────────────────────── */}
+          <div style={{ width: '168px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
 
-            {/* Live indicator */}
-            {liveRooms.length > 0 && (
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: '6px', marginTop: '8px',
-                background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.25)',
-                borderRadius: '20px', padding: '4px 12px',
-              }}>
-                <span className="animate-pulse-dot" style={{ width: '8px', height: '8px', borderRadius: '50%', background: GREEN, display: 'inline-block' }} />
-                <span style={{ fontSize: '12px', fontWeight: '700', color: GREEN }}>
-                  {liveRooms.length} session{liveRooms.length !== 1 ? 's' : ''} live right now
-                </span>
+            {/* Sidebar header */}
+            <div style={{ marginBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'var(--text-faint)' }}>category</span>
+                <span style={{ fontSize: '10px', fontWeight: '800', color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Subjects</span>
               </div>
-            )}
-          </div>
-
-          {/* Stats */}
-          {!loading && rooms.length > 0 && (
-            <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
-              <div style={{ textAlign: 'center', padding: '10px 16px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
-                <div style={{ fontSize: '20px', fontWeight: '900', color: GREEN }}>{liveRooms.length}</div>
-                <div style={{ fontSize: '10px', color: 'var(--text-faint)', fontWeight: '600', marginTop: '1px' }}>LIVE</div>
-              </div>
-              <div style={{ textAlign: 'center', padding: '10px 16px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
-                <div style={{ fontSize: '20px', fontWeight: '900', color: BLUE }}>{upcomingRooms.length}</div>
-                <div style={{ fontSize: '10px', color: 'var(--text-faint)', fontWeight: '600', marginTop: '1px' }}>UPCOMING</div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ── Filter tabs ─────────────────────────────────────────────── */}
-        {!loading && rooms.length > 0 && (
-          <div className={mounted ? 'animate-slide-up delay-100' : ''} style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-            {[
-              { key: 'all',      label: 'All Sessions',   icon: 'grid_view' },
-              { key: 'live',     label: 'Live Now',        icon: 'play_circle', accent: GREEN },
-              { key: 'upcoming', label: 'Upcoming',        icon: 'schedule',    accent: BLUE },
-            ].map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setFilter(tab.key)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                  padding: '7px 14px', borderRadius: '10px',
-                  background: filter === tab.key ? (tab.accent ? `${tab.accent}18` : `${CORAL}18`) : 'var(--bg-card)',
-                  border: `1px solid ${filter === tab.key ? (tab.accent ?? CORAL) + '35' : 'var(--border)'}`,
-                  color: filter === tab.key ? (tab.accent ?? CORAL) : 'var(--text-muted)',
-                  fontSize: '12px', fontWeight: '700', cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>{tab.icon}</span>
-                {tab.label}
-                {tab.key === 'live' && liveRooms.length > 0 && (
-                  <span style={{ background: GREEN, color: '#000', fontSize: '9px', fontWeight: '800', padding: '1px 5px', borderRadius: '8px' }}>
-                    {liveRooms.length}
+              {/* Live indicator */}
+              {liveRooms.length > 0 && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '5px',
+                  background: 'rgba(52,211,153,0.10)', border: '1px solid rgba(52,211,153,0.22)',
+                  borderRadius: '8px', padding: '5px 9px',
+                }}>
+                  <span className="animate-pulse-dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: GREEN, display: 'inline-block', flexShrink: 0 }} />
+                  <span style={{ fontSize: '11px', fontWeight: '700', color: GREEN }}>
+                    {liveRooms.length} live now
                   </span>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* ── Content ────────────────────────────────────────────────── */}
-        {loading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-            {[1, 2, 3, 4, 5, 6].map(i => (
-              <div key={i} className="skeleton" style={{ height: '220px', borderRadius: '16px' }} />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <div style={{
-              width: '72px', height: '72px', borderRadius: '20px', margin: '0 auto 20px',
-              background: 'rgba(96,165,250,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '36px', color: BLUE }}>groups</span>
+                </div>
+              )}
             </div>
-            <p style={{ color: 'var(--text)', fontSize: '16px', fontWeight: '700', marginBottom: '6px' }}>
-              {filter === 'live' ? 'No live sessions right now' : 'No study rooms available'}
-            </p>
-            <p style={{ color: 'var(--text-faint)', fontSize: '13px' }}>
-              {filter === 'live'
-                ? 'Check the upcoming tab for scheduled sessions'
-                : 'Check back later — tutors are always creating new sessions'}
-            </p>
-            {filter !== 'all' && (
-              <button onClick={() => setFilter('all')} className="btn-secondary" style={{ marginTop: '16px', fontSize: '13px' }}>
-                Show all rooms
-              </button>
-            )}
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
-            {filtered.map((room, idx) => (
-              <RoomCard
-                key={room.id}
-                room={room}
-                saving={saving}
-                onSave={handleSave}
-                animDelay={Math.min(idx * 60, 350)}
-                mounted={mounted}
-              />
-            ))}
-          </div>
-        )}
 
+            {/* Category pills */}
+            {loading ? (
+              [1,2,3,4,5].map(i => (
+                <div key={i} className="skeleton" style={{ height: '36px', borderRadius: '10px', marginBottom: '3px' }} />
+              ))
+            ) : subjects.map(sub => {
+              const meta   = sub === 'all' ? { color: CORAL, icon: 'apps' } : getSubjectMeta(sub)
+              const active = subject === sub
+              const count  = sub === 'all'
+                ? activeRooms.length
+                : activeRooms.filter(r => r.subject === sub).length
+              const hasLive = sub !== 'all' && liveRooms.some(r => r.subject === sub)
+
+              return (
+                <button
+                  key={sub}
+                  onClick={() => setSubject(sub)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '8px 10px', borderRadius: '10px', width: '100%', textAlign: 'left',
+                    background: active ? `${meta.color}18` : 'transparent',
+                    border: `1px solid ${active ? meta.color + '35' : 'transparent'}`,
+                    color: active ? meta.color : 'var(--text-muted)',
+                    fontSize: '12px', fontWeight: active ? '700' : '500',
+                    cursor: 'pointer', transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={e => {
+                    if (!active) {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+                      e.currentTarget.style.border = '1px solid rgba(255,255,255,0.08)'
+                      e.currentTarget.style.color = 'var(--text)'
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (!active) {
+                      e.currentTarget.style.background = 'transparent'
+                      e.currentTarget.style.border = '1px solid transparent'
+                      e.currentTarget.style.color = 'var(--text-muted)'
+                    }
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '16px', flexShrink: 0 }}>{meta.icon}</span>
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {sub === 'all' ? 'All Rooms' : sub}
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
+                    {hasLive && (
+                      <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: GREEN, flexShrink: 0 }} />
+                    )}
+                    <span style={{
+                      fontSize: '9px', fontWeight: '700',
+                      background: active ? `${meta.color}28` : 'rgba(255,255,255,0.06)',
+                      color: active ? meta.color : 'var(--text-faint)',
+                      borderRadius: '5px', padding: '1px 5px', minWidth: '16px', textAlign: 'center',
+                    }}>
+                      {count}
+                    </span>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* ── Main feed ────────────────────────────────────────────────────── */}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+            {/* Top bar: title + sort tabs */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, gap: '12px' }}>
+              <div>
+                <h1 style={{ fontSize: '20px', fontWeight: '900', color: 'var(--text)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                  {subject === 'all' ? 'Study Rooms' : subject}
+                </h1>
+                <p style={{ fontSize: '11px', color: 'var(--text-faint)', marginTop: '2px' }}>
+                  {sorted.length} session{sorted.length !== 1 ? 's' : ''} · Live group sessions by your tutors
+                </p>
+              </div>
+
+              {/* Sort pill bar */}
+              <div style={{
+                display: 'flex', gap: '3px',
+                background: 'var(--bg-card)', border: '1px solid var(--border)',
+                borderRadius: '12px', padding: '4px',
+                flexShrink: 0,
+              }}>
+                {SORT_OPTIONS.map(opt => (
+                  <button
+                    key={opt.key}
+                    onClick={() => setSort(opt.key)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '5px',
+                      padding: '5px 11px', borderRadius: '8px', fontSize: '11px', fontWeight: '700',
+                      background: sort === opt.key ? `${CORAL}18` : 'transparent',
+                      border: `1px solid ${sort === opt.key ? CORAL + '35' : 'transparent'}`,
+                      color: sort === opt.key ? CORAL : 'var(--text-muted)',
+                      cursor: 'pointer', transition: 'all 0.15s',
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>{opt.icon}</span>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Feed list */}
+            <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, paddingRight: '2px' }}>
+              {loading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {[1,2,3,4].map(i => (
+                    <div key={i} className="skeleton" style={{ height: '100px', borderRadius: '14px' }} />
+                  ))}
+                </div>
+
+              ) : sorted.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                  <div style={{
+                    width: '64px', height: '64px', borderRadius: '18px', margin: '0 auto 16px',
+                    background: 'rgba(96,165,250,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '32px', color: BLUE }}>groups</span>
+                  </div>
+                  <p style={{ color: 'var(--text)', fontSize: '15px', fontWeight: '700', marginBottom: '5px' }}>No study rooms found</p>
+                  <p style={{ color: 'var(--text-faint)', fontSize: '12px', marginBottom: '14px' }}>
+                    {subject !== 'all'
+                      ? `No ${subject} sessions available yet`
+                      : 'Check back later — tutors create new sessions regularly'}
+                  </p>
+                  {subject !== 'all' && (
+                    <button
+                      onClick={() => setSubject('all')}
+                      style={{
+                        padding: '7px 18px', borderRadius: '10px',
+                        border: `1px solid ${BLUE}35`, background: `${BLUE}12`,
+                        color: BLUE, fontSize: '12px', fontWeight: '700', cursor: 'pointer',
+                      }}
+                    >
+                      Show all subjects
+                    </button>
+                  )}
+                </div>
+
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
+                  {sorted.map((room, idx) => (
+                    <RoomPost
+                      key={room.id}
+                      room={room}
+                      saving={saving}
+                      onSave={handleSave}
+                      mounted={mounted}
+                      animDelay={Math.min(idx * 50, 300)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </PaywallGate>
     </HubLayout>
   )
 }
 
-function RoomCard({ room, saving, onSave, animDelay, mounted }) {
+// ── Reddit-style room post ────────────────────────────────────────────────────
+function RoomPost({ room, saving, onSave, mounted, animDelay }) {
   const meta     = getSubjectMeta(room.subject)
   const status   = getRoomStatus(room)
   const duration = formatDuration(room.start_time, room.end_time)
   const isLive   = status.type === 'live'
+  const isSoon   = status.type === 'soon'
 
-  const statusStyle = {
-    live:     { background: 'rgba(52,211,153,0.14)',  color: GREEN,  border: '1px solid rgba(52,211,153,0.28)' },
-    soon:     { background: 'rgba(251,191,36,0.14)',  color: AMBER,  border: '1px solid rgba(251,191,36,0.28)' },
-    upcoming: { background: 'rgba(96,165,250,0.12)',  color: BLUE,   border: '1px solid rgba(96,165,250,0.25)' },
-    ended:    { background: 'rgba(255,255,255,0.05)', color: 'var(--text-faint)', border: '1px solid var(--border)' },
-  }[status.type] ?? {}
+  const statusStyles = {
+    live:     { bg: 'rgba(52,211,153,0.14)',  color: GREEN,              border: 'rgba(52,211,153,0.28)' },
+    soon:     { bg: 'rgba(251,191,36,0.14)',  color: AMBER,              border: 'rgba(251,191,36,0.28)' },
+    upcoming: { bg: 'rgba(96,165,250,0.12)',  color: BLUE,               border: 'rgba(96,165,250,0.25)' },
+    ended:    { bg: 'rgba(255,255,255,0.05)', color: 'var(--text-faint)', border: 'var(--border)' },
+  }
+  const ss = statusStyles[status.type] ?? statusStyles.upcoming
 
   return (
     <div
@@ -258,122 +338,139 @@ function RoomCard({ room, saving, onSave, animDelay, mounted }) {
       style={{
         animationDelay: `${animDelay}ms`,
         background: isLive
-          ? 'linear-gradient(135deg, rgba(52,211,153,0.07) 0%, var(--bg-card) 60%)'
+          ? 'linear-gradient(135deg, rgba(52,211,153,0.06) 0%, var(--bg-card) 60%)'
           : 'var(--bg-card)',
-        border: `1px solid ${isLive ? 'rgba(52,211,153,0.20)' : 'var(--border)'}`,
-        borderRadius: '16px',
-        padding: '20px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '14px',
+        border: `1px solid ${isLive ? 'rgba(52,211,153,0.22)' : `${meta.color}18`}`,
+        borderRadius: '14px',
+        padding: '14px 18px',
+        display: 'flex', alignItems: 'center', gap: '14px',
         boxShadow: 'var(--shadow-card)',
-        transition: 'transform 0.22s ease, box-shadow 0.22s ease',
-        cursor: 'default',
-        position: 'relative',
-        overflow: 'hidden',
+        transition: 'transform 0.18s ease, box-shadow 0.18s ease',
+        position: 'relative', overflow: 'hidden',
       }}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = 'var(--shadow-hover)' }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-card)' }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(4px)'; e.currentTarget.style.boxShadow = 'var(--shadow-hover)' }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'translateX(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-card)' }}
     >
-      {/* Ambient glow for live */}
+      {/* Live left stripe */}
       {isLive && (
-        <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '100px', height: '100px', background: 'rgba(52,211,153,0.10)', borderRadius: '50%', filter: 'blur(24px)', pointerEvents: 'none' }} />
+        <div style={{
+          position: 'absolute', left: 0, top: 0, bottom: 0, width: '3px',
+          background: `linear-gradient(180deg, ${GREEN}, rgba(52,211,153,0.3))`,
+          borderRadius: '14px 0 0 14px',
+        }} />
       )}
 
-      {/* Header row */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px' }}>
-        {/* Subject icon */}
-        <div style={{
-          width: '42px', height: '42px', borderRadius: '12px', flexShrink: 0,
-          background: `${meta.color}18`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <span className="material-symbols-outlined" style={{ color: meta.color, fontSize: '22px' }}>{meta.icon}</span>
-        </div>
-
-        {/* Status pill */}
-        <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: '5px',
-          padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700',
-          ...statusStyle, flexShrink: 0,
-        }}>
-          {isLive && <span className="animate-pulse-dot" style={{ width: '7px', height: '7px', borderRadius: '50%', background: GREEN }} />}
-          {status.label}
-        </span>
+      {/* Subject icon */}
+      <div style={{
+        width: '46px', height: '46px', borderRadius: '13px', flexShrink: 0,
+        background: `${meta.color}18`,
+        border: `1px solid ${meta.color}28`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <span className="material-symbols-outlined" style={{ color: meta.color, fontSize: '23px' }}>{meta.icon}</span>
       </div>
 
-      {/* Title + description */}
-      <div>
-        <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)', marginBottom: '5px', lineHeight: 1.3 }}>
-          {room.subject}
-        </h3>
+      {/* Content */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Title row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px', flexWrap: 'wrap' }}>
+          <span style={{
+            fontSize: '14px', fontWeight: '800', color: 'var(--text)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {room.subject}
+          </span>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: '4px',
+            padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: '700', flexShrink: 0,
+            background: ss.bg, color: ss.color, border: `1px solid ${ss.border}`,
+          }}>
+            {isLive && <span className="animate-pulse-dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: GREEN }} />}
+            {status.label}
+          </span>
+        </div>
+
+        {/* Description */}
         {room.description && (
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.5,
-            overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+          <p style={{
+            fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '6px',
+            overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical',
+          }}>
             {room.description}
           </p>
         )}
-      </div>
 
-      {/* Time info */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'var(--text-faint)' }}>schedule</span>
-          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{formatTime(room.start_time)}</span>
-        </div>
-        {duration && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'var(--text-faint)' }}>timelapse</span>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{duration} session</span>
+        {/* Meta row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '12px', color: 'var(--text-faint)' }}>schedule</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-faint)' }}>{formatTime(room.start_time)}</span>
           </div>
-        )}
+          {duration && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '12px', color: 'var(--text-faint)' }}>timelapse</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-faint)' }}>{duration}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Action buttons */}
-      <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
-        {room.zoom_link && isLive && (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0, alignItems: 'flex-end' }}>
+        {room.zoom_link && isLive ? (
           <a
             href={room.zoom_link}
             target="_blank"
             rel="noreferrer"
             style={{
-              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-              padding: '9px', borderRadius: '10px', fontSize: '13px', fontWeight: '800',
+              display: 'flex', alignItems: 'center', gap: '5px',
+              padding: '8px 14px', borderRadius: '10px',
+              fontSize: '12px', fontWeight: '800',
               background: `linear-gradient(135deg, ${GREEN}, rgba(52,211,153,0.7))`,
               color: '#0d1f1a', textDecoration: 'none',
-              boxShadow: '0 4px 16px rgba(52,211,153,0.30)',
+              boxShadow: '0 3px 12px rgba(52,211,153,0.28)',
+              whiteSpace: 'nowrap',
             }}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>videocam</span>
+            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>videocam</span>
             Join Live
           </a>
-        )}
-        {room.zoom_link && !isLive && (
+        ) : room.zoom_link ? (
           <a
             href={room.zoom_link}
             target="_blank"
             rel="noreferrer"
-            className="btn-secondary"
-            style={{ flex: 1, fontSize: '12px', padding: '8px' }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '5px',
+              padding: '7px 12px', borderRadius: '10px',
+              fontSize: '11px', fontWeight: '700',
+              background: 'rgba(96,165,250,0.10)', color: BLUE,
+              border: '1px solid rgba(96,165,250,0.22)', textDecoration: 'none',
+              whiteSpace: 'nowrap',
+            }}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>videocam</span>
-            Zoom Link
+            <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>videocam</span>
+            Zoom
           </a>
-        )}
+        ) : null}
+
         <button
           onClick={() => onSave(room.id)}
           disabled={saving === room.id}
           style={{
-            flex: room.zoom_link ? '0 0 auto' : 1,
-            padding: '9px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: '700',
+            display: 'flex', alignItems: 'center', gap: '5px',
+            padding: '7px 12px', borderRadius: '10px',
+            fontSize: '11px', fontWeight: '700',
             background: 'var(--btn-secondary-bg)', color: 'var(--text)',
             border: '1px solid var(--border)', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
             opacity: saving === room.id ? 0.6 : 1,
-            transition: 'all 0.2s ease',
+            transition: 'all 0.15s ease',
+            whiteSpace: 'nowrap',
           }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'var(--btn-secondary-bg)' }}
         >
-          <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>
+          <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>
             {saving === room.id ? 'sync' : 'calendar_add_on'}
           </span>
           {saving === room.id ? 'Saving…' : 'Save'}

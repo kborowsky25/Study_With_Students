@@ -32,34 +32,6 @@ function makeOutlookLink(ev) {
   return url.toString()
 }
 
-// ── iCal helpers ───────────────────────────────────────────────────────────
-function generateICS(events) {
-  const fmt = d => new Date(d).toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z'
-  const esc = s => (s ?? '').replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;')
-  const vevs = events.map(ev => [
-    'BEGIN:VEVENT',
-    `DTSTART:${fmt(ev.start_time)}`,
-    `DTEND:${fmt(ev.end_time)}`,
-    `SUMMARY:${esc(ev.title)}`,
-    ev.description ? `DESCRIPTION:${esc(ev.description)}` : null,
-    `UID:sws-${ev.id_event}@studywithstudents`,
-    `STATUS:${ev.status === 'confirmed' ? 'CONFIRMED' : ev.status === 'canceled' ? 'CANCELLED' : 'TENTATIVE'}`,
-    'END:VEVENT',
-  ].filter(Boolean).join('\r\n')).join('\r\n')
-  return [
-    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Study With Students//EN',
-    'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:SWS Sessions',
-    vevs, 'END:VCALENDAR',
-  ].join('\r\n')
-}
-
-function downloadICS(events, filename = 'sws-sessions.ics') {
-  const blob = new Blob([generateICS(events)], { type: 'text/calendar;charset=utf-8' })
-  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: filename })
-  document.body.appendChild(a); a.click(); document.body.removeChild(a)
-  URL.revokeObjectURL(a.href)
-}
-
 function fmtTime(iso) {
   if (!iso) return '—'
   return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
@@ -366,9 +338,6 @@ export default function CalendarStudent() {
             {/* XP Widget */}
             <XPRing level={level} progress={xpProgress} totalXP={totalXP} xpToNext={xpToNext} />
 
-            {/* Calendar sync */}
-            <CalendarSyncCard events={events} />
-
             {/* Selected day */}
             <div className="glass" style={{ padding:'14px', overflow:'auto', flex:'0 0 auto', maxHeight:'36%' }}>
               <h3 style={{ fontWeight:700, fontSize:'13px', color:'var(--text)', marginBottom:'10px', display:'flex', alignItems:'center', gap:'5px' }}>
@@ -425,86 +394,6 @@ export default function CalendarStudent() {
   )
 }
 
-// ── Calendar sync card ─────────────────────────────────────────────────────
-function CalendarSyncCard({ events }) {
-  const upcoming = events.filter(e => e.status !== 'canceled' && new Date(e.start_time) > new Date())
-
-  function handleDownload() {
-    downloadICS(upcoming)
-    toast.success(`${upcoming.length} session${upcoming.length !== 1 ? 's' : ''} exported!`)
-  }
-
-  return (
-    <div style={{
-      background: 'rgba(96,165,250,0.06)',
-      border: '1px solid rgba(96,165,250,0.18)',
-      borderRadius: '14px',
-      padding: '13px 14px',
-      flexShrink: 0,
-    }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '9px' }}>
-        <span className="material-symbols-outlined" style={{ fontSize: '15px', color: '#60a5fa' }}>sync</span>
-        <span style={{ fontSize: '12px', fontWeight: '800', color: 'var(--text)' }}>Sync Calendar</span>
-        {upcoming.length > 0 && (
-          <span style={{ marginLeft: 'auto', fontSize: '10px', fontWeight: '700', color: '#60a5fa', background: 'rgba(96,165,250,0.12)', padding: '1px 7px', borderRadius: '20px' }}>
-            {upcoming.length} upcoming
-          </span>
-        )}
-      </div>
-
-      {/* Download button */}
-      <button
-        onClick={handleDownload}
-        disabled={upcoming.length === 0}
-        style={{
-          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-          padding: '8px 10px', borderRadius: '10px', marginBottom: '8px',
-          background: upcoming.length > 0 ? 'rgba(96,165,250,0.12)' : 'rgba(255,255,255,0.04)',
-          border: `1px solid ${upcoming.length > 0 ? 'rgba(96,165,250,0.28)' : 'rgba(255,255,255,0.08)'}`,
-          color: upcoming.length > 0 ? '#60a5fa' : 'var(--text-faint)',
-          fontSize: '12px', fontWeight: '700',
-          cursor: upcoming.length > 0 ? 'pointer' : 'default',
-          opacity: upcoming.length === 0 ? 0.5 : 1,
-          transition: 'all 0.15s',
-        }}
-        onMouseEnter={e => { if (upcoming.length > 0) e.currentTarget.style.background = 'rgba(96,165,250,0.20)' }}
-        onMouseLeave={e => { e.currentTarget.style.background = upcoming.length > 0 ? 'rgba(96,165,250,0.12)' : 'rgba(255,255,255,0.04)' }}
-      >
-        <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>download</span>
-        Download .ics file
-      </button>
-
-      {/* Then import in… */}
-      <p style={{ fontSize: '9px', color: 'var(--text-faint)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: '700' }}>
-        Then import in
-      </p>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
-        <a
-          href="https://calendar.google.com/calendar/r/settings/import"
-          target="_blank" rel="noopener noreferrer"
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '6px 8px', borderRadius: '8px', textDecoration: 'none', fontSize: '11px', fontWeight: '600', color: '#4285F4', background: 'rgba(66,133,244,0.08)', border: '1px solid rgba(66,133,244,0.18)', transition: 'all 0.15s' }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(66,133,244,0.16)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'rgba(66,133,244,0.08)'}
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>open_in_new</span>
-          Google
-        </a>
-        <a
-          href="https://outlook.live.com/calendar/0/addcalendar"
-          target="_blank" rel="noopener noreferrer"
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '6px 8px', borderRadius: '8px', textDecoration: 'none', fontSize: '11px', fontWeight: '600', color: '#0078D4', background: 'rgba(0,120,212,0.08)', border: '1px solid rgba(0,120,212,0.18)', transition: 'all 0.15s' }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,120,212,0.16)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,120,212,0.08)'}
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>open_in_new</span>
-          Outlook
-        </a>
-      </div>
-    </div>
-  )
-}
-
 function EventCard({ ev }) {
   return (
     <div style={{
@@ -523,14 +412,21 @@ function EventCard({ ev }) {
       <p style={{ color:'var(--text-muted)', fontSize:'11px', marginBottom:'9px' }}>
         {fmtTime(ev.start_time)} – {fmtTime(ev.end_time)}
       </p>
-      <div style={{ display:'flex', gap:'5px', flexWrap:'wrap' }}>
+      <p style={{ fontSize:'9px', color:'var(--text-faint)', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'5px' }}>Add to calendar</p>
+      <div style={{ display:'flex', gap:'6px' }}>
         <a href={makeGoogleLink(ev)} target="_blank" rel="noopener noreferrer"
-          style={{ display:'flex', alignItems:'center', gap:'3px', fontSize:'10px', fontWeight:'600', color:'#4285F4', background:'rgba(66,133,244,0.10)', border:'1px solid rgba(66,133,244,0.22)', borderRadius:'7px', padding:'3px 7px', textDecoration:'none' }}>
-          <span className="material-symbols-outlined" style={{ fontSize:'12px' }}>calendar_add_on</span>Google
+          style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:'5px', fontSize:'11px', fontWeight:'700', color:'#4285F4', background:'rgba(66,133,244,0.10)', border:'1px solid rgba(66,133,244,0.25)', borderRadius:'9px', padding:'6px 8px', textDecoration:'none', transition:'all 0.15s' }}
+          onMouseEnter={e => e.currentTarget.style.background='rgba(66,133,244,0.20)'}
+          onMouseLeave={e => e.currentTarget.style.background='rgba(66,133,244,0.10)'}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize:'14px' }}>calendar_add_on</span>Google
         </a>
         <a href={makeOutlookLink(ev)} target="_blank" rel="noopener noreferrer"
-          style={{ display:'flex', alignItems:'center', gap:'3px', fontSize:'10px', fontWeight:'600', color:'#0078D4', background:'rgba(0,120,212,0.10)', border:'1px solid rgba(0,120,212,0.22)', borderRadius:'7px', padding:'3px 7px', textDecoration:'none' }}>
-          <span className="material-symbols-outlined" style={{ fontSize:'12px' }}>calendar_month</span>Outlook
+          style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:'5px', fontSize:'11px', fontWeight:'700', color:'#0078D4', background:'rgba(0,120,212,0.10)', border:'1px solid rgba(0,120,212,0.25)', borderRadius:'9px', padding:'6px 8px', textDecoration:'none', transition:'all 0.15s' }}
+          onMouseEnter={e => e.currentTarget.style.background='rgba(0,120,212,0.20)'}
+          onMouseLeave={e => e.currentTarget.style.background='rgba(0,120,212,0.10)'}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize:'14px' }}>calendar_month</span>Outlook
         </a>
       </div>
     </div>

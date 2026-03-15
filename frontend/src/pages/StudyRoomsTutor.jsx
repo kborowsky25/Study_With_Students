@@ -60,6 +60,7 @@ export default function StudyRoomsTutor() {
   const [creating, setCreating] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [mounted,  setMounted]  = useState(false)
+  const [subject,  setSubject]  = useState('all')
 
   async function load() {
     try {
@@ -96,6 +97,10 @@ export default function StudyRoomsTutor() {
   const liveRooms    = rooms.filter(r => r.start_time && new Date(r.start_time) <= now && (!r.end_time || new Date(r.end_time) > now))
   const upcomingRoom = rooms.filter(r => r.start_time && new Date(r.start_time) > now)
   const nextRoom     = upcomingRoom.sort((a, b) => new Date(a.start_time) - new Date(b.start_time))[0]
+
+  // Subject filter
+  const subjects      = ['all', ...new Set(rooms.map(r => r.subject).filter(Boolean))]
+  const filteredRooms = subject === 'all' ? rooms : rooms.filter(r => r.subject === subject)
 
   return (
     <HubLayout initialMode="tutor">
@@ -172,6 +177,36 @@ export default function StudyRoomsTutor() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── Subject filter pills ──────────────────────────────────────── */}
+      {!loading && subjects.length > 1 && (
+        <div
+          className={mounted ? 'animate-slide-up delay-100' : ''}
+          style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '4px' }}
+        >
+          {subjects.map(sub => {
+            const meta   = sub === 'all' ? { color: CORAL, icon: 'apps' } : getSubjectMeta(sub)
+            const active = subject === sub
+            return (
+              <button
+                key={sub}
+                onClick={() => setSubject(sub)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '5px',
+                  padding: '5px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: '700',
+                  background: active ? `${meta.color}18` : 'var(--bg-card)',
+                  border: `1px solid ${active ? meta.color + '40' : 'var(--border)'}`,
+                  color: active ? meta.color : 'var(--text-muted)',
+                  cursor: 'pointer', transition: 'all 0.15s ease',
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>{meta.icon}</span>
+                {sub === 'all' ? 'All' : sub}
+              </button>
+            )
+          })}
         </div>
       )}
 
@@ -343,7 +378,7 @@ export default function StudyRoomsTutor() {
           className={mounted ? 'animate-slide-up delay-200' : ''}
           style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}
         >
-          {rooms.map((room, idx) => {
+          {filteredRooms.map((room, idx) => {
             const meta   = getSubjectMeta(room.subject)
             const status = getRoomStatus(room)
             const isLive = status.type === 'live'

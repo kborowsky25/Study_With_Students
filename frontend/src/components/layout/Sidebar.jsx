@@ -50,7 +50,6 @@ const studentSections = [
   {
     title: 'Account',
     links: [
-      { to: '/dashboard',           label: 'My Stats',     icon: 'bar_chart',          key: 'd' },
       { to: '/payments',            label: 'Payments',     icon: 'payments',           key: 'p' },
       { to: '/xp',                  label: 'Battle Pass',  icon: 'military_tech',      key: 'x' },
     ],
@@ -87,7 +86,6 @@ const tutorSections = [
     links: [
       { to: '/earnings',            label: 'Earnings',     icon: 'payments',           key: 'e' },
       { to: '/xp',                  label: 'Battle Pass',  icon: 'military_tech',      key: 'x' },
-      { to: '/tutor-profile',       label: 'My Profile',   icon: 'account_circle',     key: 'p' },
     ],
   },
 ]
@@ -136,9 +134,9 @@ export default function Sidebar({ mode = 'student', chordActive = false }) {
     >
       {/* ── Profile ──────────────────────────────────────────────────────────── */}
       <Link
-        to={mode === 'tutor' ? '/tutor-profile' : '/dashboard'}
+        to={mode === 'tutor' ? '/tutor-profile' : '/hub/student'}
         style={{ textDecoration: 'none' }}
-        title="View profile"
+        title={mode === 'tutor' ? 'Edit profile' : 'My dashboard'}
       >
         <div
           style={{
