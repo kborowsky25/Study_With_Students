@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { getActiveTutors, deactivateTutor } from '../api/tutors'
+import { getActiveTutors, deactivateTutor, getTutorRequestsSent } from '../api/tutors'
 import { getEvents } from '../api/events'
 import HubLayout from '../components/layout/HubLayout'
 import { PageTitle } from '../context/PageTitleContext'
@@ -30,15 +30,21 @@ const STATUS_COLOR = { pending: AMBER, confirmed: GREEN, canceled: '#f87171', pa
 export default function ActiveTutors() {
   const [tutors,   setTutors]   = useState([])
   const [events,   setEvents]   = useState([])
+  const [requests, setRequests] = useState([])   // pending tutor requests sent by this student
   const [loading,  setLoading]  = useState(true)
   const [mounted,  setMounted]  = useState(false)
   const [expanded, setExpanded] = useState(new Set())
 
   async function load() {
     try {
-      const [{ data: td }, { data: ed }] = await Promise.all([getActiveTutors(), getEvents()])
+      const [{ data: td }, { data: ed }, { data: rd }] = await Promise.all([
+        getActiveTutors(),
+        getEvents(),
+        getTutorRequestsSent(),
+      ])
       setTutors(td.tutors ?? [])
       setEvents(ed.events ?? [])
+      setRequests((rd.requests ?? []).filter(r => r.status === 'pending'))
     } catch { toast.error('Could not load tutors') }
     finally  { setLoading(false); setTimeout(() => setMounted(true), 80) }
   }
@@ -67,7 +73,7 @@ export default function ActiveTutors() {
       <PageHeader
         icon="cast_for_education" iconColor={BLUE}
         title="My Tutors"
-        subtitle={loading ? '…' : `${tutors.length} active tutor${tutors.length !== 1 ? 's' : ''}`}
+        subtitle={loading ? '…' : `${tutors.length} active${requests.length > 0 ? ` · ${requests.length} pending` : ''}`}
         right={
           <Link to="/find-tutors" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '8px 16px' }}>
             <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>add</span>
@@ -82,20 +88,99 @@ export default function ActiveTutors() {
           {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: '120px', borderRadius: '18px' }} />)}
         </div>
 
-      /* Empty */
-      ) : tutors.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '80px 0' }}>
-          <div style={{ width: '72px', height: '72px', borderRadius: '20px', background: `${BLUE}14`, border: `1px solid ${BLUE}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '36px', color: BLUE }}>cast_for_education</span>
-          </div>
-          <p style={{ color: 'var(--text)', fontWeight: '700', fontSize: '18px', marginBottom: '8px' }}>No active tutors yet</p>
-          <p style={{ color: 'var(--text-faint)', fontSize: '14px', marginBottom: '24px' }}>Connect with a tutor to start learning</p>
-          <Link to="/find-tutors" className="btn-primary">Find a Tutor</Link>
-        </div>
-
-      /* List */
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <>
+          {/* ── Pending Requests section ─────────────────────────────────────── */}
+          {requests.length > 0 && (
+            <div style={{ marginBottom: '28px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '15px', color: AMBER }}>hourglass_top</span>
+                <h2 style={{ color: 'var(--text)', fontWeight: '800', fontSize: '13px', letterSpacing: '-0.01em', margin: 0 }}>
+                  Pending Requests
+                </h2>
+                <span style={{ background: `${AMBER}18`, color: AMBER, fontSize: '9px', fontWeight: '800', padding: '2px 7px', borderRadius: '9px' }}>
+                  {requests.length} AWAITING
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {requests.map((req, idx) => {
+                  const initials = req.tutor_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() ?? '??'
+                  const subjects = req.subjects?.split(',').map(s => s.trim()).filter(Boolean) ?? []
+                  const gradIdx  = (req.tutor_id ?? idx) % TUTOR_GRADS.length
+                  const DELAYS   = ['', 'delay-50', 'delay-100', 'delay-150']
+                  return (
+                    <div
+                      key={req.id}
+                      className={mounted ? `animate-slide-up ${DELAYS[Math.min(idx, DELAYS.length - 1)]}` : ''}
+                      style={{
+                        background: `${AMBER}07`,
+                        border: `1px solid ${AMBER}28`,
+                        borderRadius: '18px',
+                        padding: '16px 20px',
+                        display: 'flex', alignItems: 'center', gap: '14px',
+                        backdropFilter: 'blur(12px)',
+                      }}
+                    >
+                      {/* Avatar */}
+                      <div style={{ width: '46px', height: '46px', borderRadius: '13px', flexShrink: 0, background: TUTOR_GRADS[gradIdx], display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '15px', fontWeight: '900', opacity: 0.75 }}>
+                        {initials}
+                      </div>
+                      {/* Info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+                          <p style={{ fontWeight: '800', color: 'var(--text)', fontSize: '14px', margin: 0 }}>{req.tutor_name}</p>
+                          <span style={{ background: `${AMBER}18`, color: AMBER, fontSize: '9px', fontWeight: '800', padding: '2px 7px', borderRadius: '9px' }}>PENDING</span>
+                        </div>
+                        <p style={{ color: 'var(--text-faint)', fontSize: '12px', margin: '0 0 6px' }}>
+                          {req.university ?? 'Tutor'} · Awaiting their response
+                        </p>
+                        {subjects.length > 0 && (
+                          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                            {subjects.slice(0, 3).map((s, i) => {
+                              const colors = [CORAL, BLUE, PURPLE, GREEN]
+                              const c = colors[i % colors.length]
+                              return <span key={s} style={{ fontSize: '10px', fontWeight: '600', padding: '2px 8px', borderRadius: '20px', background: `${c}14`, color: c, border: `1px solid ${c}28` }}>{s}</span>
+                            })}
+                          </div>
+                        )}
+                      </div>
+                      {/* Status icon */}
+                      <span className="material-symbols-outlined" style={{ fontSize: '22px', color: `${AMBER}70`, flexShrink: 0 }}>hourglass_top</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Active Tutors section ─────────────────────────────────────────── */}
+          {tutors.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '15px', color: BLUE }}>cast_for_education</span>
+              <h2 style={{ color: 'var(--text)', fontWeight: '800', fontSize: '13px', letterSpacing: '-0.01em', margin: 0 }}>
+                Active Tutors
+              </h2>
+              <span style={{ background: `${GREEN}18`, color: GREEN, fontSize: '9px', fontWeight: '800', padding: '2px 7px', borderRadius: '9px' }}>
+                {tutors.length} ACTIVE
+              </span>
+            </div>
+          )}
+
+          {/* Empty state — no tutors and no requests */}
+          {tutors.length === 0 && requests.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '80px 0' }}>
+              <div style={{ width: '72px', height: '72px', borderRadius: '20px', background: `${BLUE}14`, border: `1px solid ${BLUE}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '36px', color: BLUE }}>cast_for_education</span>
+              </div>
+              <p style={{ color: 'var(--text)', fontWeight: '700', fontSize: '18px', marginBottom: '8px' }}>No tutors yet</p>
+              <p style={{ color: 'var(--text-faint)', fontSize: '14px', marginBottom: '24px' }}>Send a request to connect with a tutor</p>
+              <Link to="/find-tutors" className="btn-primary">Find a Tutor</Link>
+            </div>
+          )}
+
+          {/* Active tutor cards */}
+          {tutors.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {tutors.map((tutor, idx) => {
             const initials  = tutor.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() ?? '??'
             const myEvents  = tutorEvents(tutor.id_tutor)
@@ -219,7 +304,9 @@ export default function ActiveTutors() {
               </div>
             )
           })}
-        </div>
+          </div>
+          )}
+        </>
       )}
     </HubLayout>
   )

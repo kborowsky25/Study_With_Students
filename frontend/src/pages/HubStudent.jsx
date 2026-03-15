@@ -438,18 +438,14 @@ export default function HubStudent() {
               animClass={mounted ? 'animate-slide-up delay-300' : ''}
             >
               {loading ? <SkeletonList rows={3} /> : (
-                <>
-                  {/* Pending invites shown at the top */}
-                  {pendingInvites.slice(0, 3).map(req => (
-                    <PendingInviteRow key={req.id} request={req} />
-                  ))}
-                  {/* Active tutors */}
-                  {activeTutors.length === 0 && pendingInvites.length === 0 ? (
-                    <EmptyState icon="cast_for_education" text="No active tutors yet" action={{ to: '/find-tutors', label: 'Find one' }} />
-                  ) : (
-                    activeTutors.slice(0, 5).map(t => <TutorRow key={t.id_tutor} tutor={t} />)
-                  )}
-                </>
+                activeTutors.length === 0 && pendingInvites.length === 0 ? (
+                  <EmptyState icon="cast_for_education" text="No active tutors yet" action={{ to: '/find-tutors', label: 'Find one' }} />
+                ) : activeTutors.length === 0 ? (
+                  /* Only pending — nudge them to the page */
+                  <EmptyState icon="hourglass_top" text={`${pendingInvites.length} request${pendingInvites.length !== 1 ? 's' : ''} awaiting response`} action={{ to: '/active-tutors', label: 'View requests' }} />
+                ) : (
+                  activeTutors.slice(0, 5).map(t => <TutorRow key={t.id_tutor} tutor={t} />)
+                )
               )}
             </Panel>
 
