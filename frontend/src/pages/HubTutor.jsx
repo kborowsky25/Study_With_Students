@@ -8,10 +8,11 @@ import { getConversations } from '../api/messages'
 import { getStudyRooms } from '../api/studyrooms'
 import toast from 'react-hot-toast'
 
-const CORAL  = '#ff725e'
+const CORAL  = '#2dd4bf'   // tutor hub — neon teal
 const GREEN  = '#34d399'
 const AMBER  = '#fbbf24'
 const BLUE   = '#63b3ed'
+const TEAL   = '#2dd4bf'
 
 // ── CountUp hook ─────────────────────────────────────────────────────────────
 function useCountUp(target, duration = 750) {
@@ -163,8 +164,8 @@ export default function HubTutor() {
           className={mounted ? 'animate-slide-up' : ''}
           style={{
             flexShrink: 0,
-            background: 'linear-gradient(135deg, rgba(52,211,153,0.10) 0%, rgba(255,114,94,0.06) 50%, rgba(251,191,36,0.06) 100%)',
-            border: '1px solid rgba(52,211,153,0.20)',
+            background: 'linear-gradient(135deg, rgba(45,212,191,0.10) 0%, rgba(45,212,191,0.03) 55%, rgba(99,179,237,0.06) 100%)',
+            border: '1px solid rgba(45,212,191,0.22)',
             borderRadius: '16px',
             padding: '20px 24px',
             display: 'flex',
@@ -176,7 +177,7 @@ export default function HubTutor() {
           }}
         >
           {/* Background glow blobs */}
-          <div style={{ position: 'absolute', right: '-20px', top: '-40px', width: '180px', height: '180px', background: 'rgba(52,211,153,0.07)', borderRadius: '50%', filter: 'blur(40px)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', right: '-20px', top: '-40px', width: '180px', height: '180px', background: 'rgba(45,212,191,0.08)', borderRadius: '50%', filter: 'blur(40px)', pointerEvents: 'none' }} />
           <div style={{ position: 'absolute', left: '30%', bottom: '-30px', width: '120px', height: '120px', background: `${CORAL}06`, borderRadius: '50%', filter: 'blur(30px)', pointerEvents: 'none' }} />
 
           {/* Left: text + chips */}
@@ -532,8 +533,8 @@ function EarningsGraph({ events, loading, thisMonth, total, thisWeek }) {
         <svg viewBox={`0 0 ${totalW} ${CHART_H + 18}`} width="100%" style={{ overflow: 'visible' }}>
           <defs>
             <linearGradient id="barGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%"   stopColor={GREEN} />
-              <stop offset="100%" stopColor="rgba(52,211,153,0.5)" />
+              <stop offset="0%"   stopColor={TEAL} />
+              <stop offset="100%" stopColor="rgba(45,212,191,0.5)" />
             </linearGradient>
           </defs>
           {months.map((m, i) => {
@@ -546,7 +547,7 @@ function EarningsGraph({ events, loading, thisMonth, total, thisWeek }) {
               <g key={i}>
                 <rect
                   x={x} y={y} width={BAR_W} height={barH} rx={5}
-                  fill={isCur ? 'url(#barGrad)' : 'rgba(52,211,153,0.22)'}
+                  fill={isCur ? 'url(#barGrad)' : 'rgba(45,212,191,0.20)'}
                   style={{
                     transformOrigin: `${x + BAR_W/2}px ${CHART_H}px`,
                     animation: `barGrow 0.65s cubic-bezier(.22,.68,0,1.0) ${delay}ms both`,
@@ -556,7 +557,7 @@ function EarningsGraph({ events, loading, thisMonth, total, thisWeek }) {
                   <text
                     x={x + BAR_W / 2} y={y - 4}
                     textAnchor="middle" fontSize="7" fontWeight="800"
-                    fill={GREEN}
+                    fill={TEAL}
                   >
                     £{m.total.toFixed(0)}
                   </text>
@@ -578,7 +579,7 @@ function EarningsGraph({ events, loading, thisMonth, total, thisWeek }) {
 
       {/* Summary rows */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        <EarningsRow label="This month"         value={`£${thisMonth.toFixed(2)}`} icon="calendar_month"  color={GREEN} />
+        <EarningsRow label="This month"         value={`£${thisMonth.toFixed(2)}`} icon="calendar_month"  color={TEAL} />
         <EarningsRow label="Total earned"       value={`£${total.toFixed(2)}`}     icon="savings"         color={CORAL} />
         <EarningsRow label="Sessions this week" value={String(thisWeek)}           icon="event_available" color={AMBER} />
       </div>
