@@ -430,18 +430,33 @@ def activate_tutor(tutor_id):
         else:
             student_id = row[0]
 
-        # Check not already active
-        cur.execute(
-            "SELECT 1 FROM active_tutors WHERE id_student = %s AND id_tutor = %s",
-            (student_id, tutor_id)
-        )
+        # Check not already active — support both old (id_user) and new (id_student) schema
+        try:
+            cur.execute(
+                "SELECT 1 FROM active_tutors WHERE id_student = %s AND id_tutor = %s",
+                (student_id, tutor_id)
+            )
+        except Exception:
+            conn.rollback()
+            cur.execute(
+                "SELECT 1 FROM active_tutors WHERE id_user = %s AND id_tutor = %s",
+                (uid, tutor_id)
+            )
         if cur.fetchone():
             return jsonify({'error': 'Already in your active tutors'}), 409
 
-        cur.execute(
-            "INSERT INTO active_tutors (id_student, id_tutor) VALUES (%s, %s)",
-            (student_id, tutor_id)
-        )
+        # INSERT — try new schema (id_student), fall back to old schema (id_user)
+        try:
+            cur.execute(
+                "INSERT INTO active_tutors (id_student, id_tutor) VALUES (%s, %s)",
+                (student_id, tutor_id)
+            )
+        except Exception:
+            conn.rollback()
+            cur.execute(
+                "INSERT INTO active_tutors (id_user, id_tutor) VALUES (%s, %s)",
+                (uid, tutor_id)
+            )
         conn.commit()
         return jsonify({'message': 'Tutor activated'})
     finally:
@@ -456,12 +471,24 @@ def deactivate_tutor(tutor_id):
     try:
         cur.execute("SELECT id_student FROM student_profiles WHERE id_user = %s", (uid,))
         row = cur.fetchone()
-        if not row:
-            return jsonify({'error': 'Not found'}), 404
-        cur.execute(
-            "DELETE FROM active_tutors WHERE id_student = %s AND id_tutor = %s",
-            (row[0], tutor_id)
-        )
+        # Try new schema (id_student), fall back to old schema (id_user)
+        try:
+            if row:
+                cur.execute(
+                    "DELETE FROM active_tutors WHERE id_student = %s AND id_tutor = %s",
+                    (row[0], tutor_id)
+                )
+            else:
+                cur.execute(
+                    "DELETE FROM active_tutors WHERE id_user = %s AND id_tutor = %s",
+                    (uid, tutor_id)
+                )
+        except Exception:
+            conn.rollback()
+            cur.execute(
+                "DELETE FROM active_tutors WHERE id_user = %s AND id_tutor = %s",
+                (uid, tutor_id)
+            )
         conn.commit()
         return jsonify({'message': 'Tutor removed'})
     finally:
@@ -476,28 +503,52 @@ def active_tutors():
     try:
         cur.execute("SELECT id_student FROM student_profiles WHERE id_user = %s", (uid,))
         row = cur.fetchone()
-        if not row:
-            return jsonify({'tutors': []})
-        try:
-            cur.execute("""
+        student_id = row['id_student'] if row else None
+
+        # Try all column combinations: new schema (id_student) + full cols,
+        # then old schema (id_user) + full cols, then either with minimal cols
+        queries = []
+        if student_id:
+            queries.append(("""
                 SELECT tp.id_tutor, tp.id_user, u.name, tp.age, tp.university,
                        tp.course, tp.about_me, tp.subjects, tp.availability
                 FROM active_tutors at2
                 JOIN tutor_profiles tp ON tp.id_tutor = at2.id_tutor
                 JOIN users u ON u.id_user = tp.id_user
                 WHERE at2.id_student = %s
-            """, (row['id_student'],))
-        except Exception:
-            conn.rollback()
-            cur.execute("""
+            """, (student_id,)))
+            queries.append(("""
                 SELECT tp.id_tutor, tp.id_user, u.name, tp.age, tp.university,
                        tp.course, tp.about_me, '' AS subjects, '' AS availability
                 FROM active_tutors at2
                 JOIN tutor_profiles tp ON tp.id_tutor = at2.id_tutor
                 JOIN users u ON u.id_user = tp.id_user
                 WHERE at2.id_student = %s
-            """, (row['id_student'],))
-        return jsonify({'tutors': cur.fetchall()})
+            """, (student_id,)))
+        queries.append(("""
+            SELECT tp.id_tutor, tp.id_user, u.name, tp.age, tp.university,
+                   tp.course, tp.about_me, tp.subjects, tp.availability
+            FROM active_tutors at2
+            JOIN tutor_profiles tp ON tp.id_tutor = at2.id_tutor
+            JOIN users u ON u.id_user = tp.id_user
+            WHERE at2.id_user = %s
+        """, (uid,)))
+        queries.append(("""
+            SELECT tp.id_tutor, tp.id_user, u.name, tp.age, tp.university,
+                   tp.course, tp.about_me, '' AS subjects, '' AS availability
+            FROM active_tutors at2
+            JOIN tutor_profiles tp ON tp.id_tutor = at2.id_tutor
+            JOIN users u ON u.id_user = tp.id_user
+            WHERE at2.id_user = %s
+        """, (uid,)))
+
+        for sql, params in queries:
+            try:
+                cur.execute(sql, params)
+                return jsonify({'tutors': cur.fetchall()})
+            except Exception:
+                conn.rollback()
+        return jsonify({'tutors': []})
     finally:
         cur.close(); conn.close()
 
