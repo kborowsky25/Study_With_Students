@@ -5,7 +5,11 @@ Run: python -m flask --app api run --debug
 """
 import os
 import traceback
-from datetime import timedelta
+import smtplib
+import random
+from datetime import timedelta, datetime
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import (
@@ -62,26 +66,135 @@ def is_tutor_user(user_id):
     cur.close(); conn.close()
     return result
 
+# ── Email verification helpers ────────────────────────────────────────────────
+#
+# Required DB migration (run once):
+#   CREATE TABLE IF NOT EXISTS email_verifications (
+#     id         INT AUTO_INCREMENT PRIMARY KEY,
+#     email      VARCHAR(255) NOT NULL,
+#     code       VARCHAR(6)   NOT NULL,
+#     expires_at DATETIME     NOT NULL,
+#     used       BOOLEAN      DEFAULT FALSE,
+#     created_at DATETIME     DEFAULT CURRENT_TIMESTAMP,
+#     INDEX idx_ev_email (email)
+#   );
+#
+# Tutor status migration (run once):
+#   ALTER TABLE tutor_profiles
+#     ADD COLUMN IF NOT EXISTS status ENUM('pending','approved','rejected') DEFAULT 'pending';
+
+def send_verification_email(to_email, code):
+    """Send 6-digit code via SMTP, or print to terminal in dev mode."""
+    MAIL_SERVER   = os.environ.get('MAIL_SERVER',   '')
+    MAIL_PORT     = int(os.environ.get('MAIL_PORT', 587))
+    MAIL_USERNAME = os.environ.get('MAIL_USERNAME', '')
+    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD', '')
+
+    if not MAIL_SERVER or not MAIL_USERNAME:
+        # Dev mode — code visible in the Flask terminal
+        print(f'\n📧 [DEV EMAIL] To: {to_email} | Verification code: {code}\n', flush=True)
+        return
+
+    html = f"""
+    <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
+      <h2 style="color:#1b263b;margin-bottom:8px;">Your StudyWithStudents code</h2>
+      <p style="color:#666;margin-bottom:24px;">Enter this code to verify your email and create your account.</p>
+      <div style="background:#f4f6fb;border-radius:12px;padding:24px;text-align:center;margin-bottom:24px;">
+        <span style="font-size:40px;font-weight:900;letter-spacing:12px;color:#ff725e;">{code}</span>
+      </div>
+      <p style="color:#999;font-size:13px;">This code expires in 10 minutes. Didn't request this? Ignore this email.</p>
+    </div>
+    """
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = f'{code} — your StudyWithStudents verification code'
+    msg['From']    = MAIL_USERNAME
+    msg['To']      = to_email
+    msg.attach(MIMEText(html, 'html'))
+
+    with smtplib.SMTP(MAIL_SERVER, MAIL_PORT) as server:
+        server.ehlo()
+        server.starttls()
+        server.login(MAIL_USERNAME, MAIL_PASSWORD)
+        server.sendmail(MAIL_USERNAME, to_email, msg.as_string())
+
+
+@app.route('/api/auth/send-verification', methods=['POST'])
+def send_verification():
+    data  = request.get_json(silent=True) or {}
+    email = data.get('email', '').strip().lower()
+    if not email:
+        return jsonify({'error': 'Email required'}), 400
+
+    conn = get_db(); cur = conn.cursor()
+    try:
+        # Reject if already registered
+        cur.execute("SELECT id_user FROM users WHERE email = %s", (email,))
+        if cur.fetchone():
+            return jsonify({'error': 'Email already registered'}), 409
+
+        code    = ''.join(random.choices('0123456789', k=6))
+        expires = datetime.utcnow() + timedelta(minutes=10)
+
+        # Clear old codes for this email, insert new
+        cur.execute("DELETE FROM email_verifications WHERE email = %s", (email,))
+        cur.execute(
+            "INSERT INTO email_verifications (email, code, expires_at) VALUES (%s, %s, %s)",
+            (email, code, expires)
+        )
+        conn.commit()
+    finally:
+        cur.close(); conn.close()
+
+    try:
+        send_verification_email(email, code)
+    except Exception as e:
+        print(f'[WARN] Email send failed: {e}', flush=True)
+        # Still succeed — in dev mode the code was already printed to terminal
+
+    return jsonify({'message': 'Verification code sent'}), 200
+
+
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 @app.route('/api/auth/register', methods=['POST'])
 def register():
-    data     = request.get_json()
-    name     = data.get('name', '').strip()
-    email    = data.get('email', '').strip().lower()
-    password = data.get('password', '')
+    data              = request.get_json(silent=True) or {}
+    name              = data.get('name', '').strip()
+    email             = data.get('email', '').strip().lower()
+    password          = data.get('password', '')
+    verification_code = data.get('verification_code', '').strip()
 
     if not name or not email or not password:
         return jsonify({'error': 'All fields required'}), 400
+    if not verification_code:
+        return jsonify({'error': 'Verification code required'}), 400
 
     conn = None
     try:
         conn = get_db()
         cur  = conn.cursor()
 
+        # Verify OTP code
+        cur.execute("""
+            SELECT id, expires_at, used
+            FROM email_verifications
+            WHERE email = %s AND code = %s
+            ORDER BY id DESC LIMIT 1
+        """, (email, verification_code))
+        ver_row = cur.fetchone()
+        if not ver_row:
+            return jsonify({'error': 'Invalid verification code'}), 400
+        ver_id, expires_at, used = ver_row
+        if used:
+            return jsonify({'error': 'Verification code already used'}), 400
+        if datetime.utcnow() > expires_at:
+            return jsonify({'error': 'Verification code expired — please request a new one'}), 400
+
+        # Mark code used before inserting user (prevents race)
+        cur.execute("UPDATE email_verifications SET used = 1 WHERE id = %s", (ver_id,))
+
         cur.execute("SELECT id_user FROM users WHERE email = %s", (email,))
         if cur.fetchone():
-            cur.close(); conn.close()
             return jsonify({'error': 'Email already registered'}), 409
 
         cur.execute(
@@ -102,7 +215,7 @@ def register():
             except: pass
             try: conn.close()
             except: pass
-        import traceback; traceback.print_exc()   # prints real error to Flask console
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 
@@ -172,12 +285,13 @@ def get_tutors():
 
     conn = get_db(); cur = conn.cursor(dictionary=True)
     try:
+        # Only show approved tutors (status column may not exist yet — handled by fallback)
         query  = """
             SELECT tp.id_tutor, tp.id_user, u.name, tp.age, tp.university,
                    tp.course, tp.about_me, tp.subjects, tp.availability
             FROM tutor_profiles tp
             JOIN users u ON u.id_user = tp.id_user
-            WHERE 1=1
+            WHERE (tp.status IS NULL OR tp.status = 'approved')
         """
         params = []
         if university:
@@ -191,7 +305,7 @@ def get_tutors():
             cur.execute(query, params)
             tutors = cur.fetchall()
         except Exception:
-            # subjects / availability columns may not exist yet — retry with base columns only
+            # subjects / availability / status columns may not exist yet — retry with base columns only
             conn.rollback()
             fallback = """
                 SELECT tp.id_tutor, tp.id_user, u.name, tp.age, tp.university,
@@ -306,12 +420,15 @@ def activate_tutor(tutor_id):
     uid  = current_user_id()
     conn = get_db(); cur = conn.cursor()
     try:
-        # Get student profile id
+        # Get or auto-create student profile (handles legacy users)
         cur.execute("SELECT id_student FROM student_profiles WHERE id_user = %s", (uid,))
         row = cur.fetchone()
         if not row:
-            return jsonify({'error': 'Student profile not found'}), 404
-        student_id = row[0]
+            cur.execute("INSERT INTO student_profiles (id_user) VALUES (%s)", (uid,))
+            conn.commit()
+            student_id = cur.lastrowid
+        else:
+            student_id = row[0]
 
         # Check not already active
         cur.execute(
@@ -422,12 +539,31 @@ def save_tutor_profile():
                 WHERE id_user=%s
             """, (age, university, course, about_me, subjects, availability, uid))
         else:
-            cur.execute("""
-                INSERT INTO tutor_profiles (id_user, age, university, course, about_me, subjects, availability)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (uid, age, university, course, about_me, subjects, availability))
+            # First time creating — set status='pending' for admin review
+            try:
+                cur.execute("""
+                    INSERT INTO tutor_profiles
+                        (id_user, age, university, course, about_me, subjects, availability, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, 'pending')
+                """, (uid, age, university, course, about_me, subjects, availability))
+            except Exception:
+                # status column may not exist yet — insert without it
+                conn.rollback()
+                cur.execute("""
+                    INSERT INTO tutor_profiles (id_user, age, university, course, about_me, subjects, availability)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, (uid, age, university, course, about_me, subjects, availability))
         conn.commit()
-        return jsonify({'message': 'Profile saved'})
+
+        # Return current status so frontend can show review banner
+        try:
+            cur.execute("SELECT status FROM tutor_profiles WHERE id_user = %s", (uid,))
+            status_row = cur.fetchone()
+            profile_status = status_row[0] if status_row else None
+        except Exception:
+            profile_status = None
+
+        return jsonify({'message': 'Profile saved', 'status': profile_status, 'is_new': not exists})
     finally:
         cur.close(); conn.close()
 
@@ -1297,6 +1433,59 @@ def get_classroom_students(classroom_id):
             if _classrooms_missing(e):
                 return jsonify({'students': []})
             raise
+    finally:
+        cur.close(); conn.close()
+
+
+# ── Admin — tutor approval ────────────────────────────────────────────────────
+# Protected by X-Admin-Secret header. Set ADMIN_SECRET env var in production.
+
+def _check_admin():
+    secret = request.headers.get('X-Admin-Secret', '')
+    return secret == os.environ.get('ADMIN_SECRET', 'dev-admin-secret')
+
+@app.route('/api/admin/tutors', methods=['GET'])
+def admin_list_tutors():
+    if not _check_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT tp.id_tutor, u.name, u.email, tp.university, tp.course,
+                   tp.subjects, tp.status, tp.age
+            FROM tutor_profiles tp
+            JOIN users u ON u.id_user = tp.id_user
+            ORDER BY tp.id_tutor DESC
+        """)
+        return jsonify({'tutors': cur.fetchall()})
+    finally:
+        cur.close(); conn.close()
+
+@app.route('/api/admin/tutors/<int:tutor_id>/approve', methods=['POST'])
+def admin_approve_tutor(tutor_id):
+    if not _check_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    conn = get_db(); cur = conn.cursor()
+    try:
+        cur.execute("UPDATE tutor_profiles SET status = 'approved' WHERE id_tutor = %s", (tutor_id,))
+        conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({'error': 'Tutor not found'}), 404
+        return jsonify({'message': f'Tutor {tutor_id} approved'})
+    finally:
+        cur.close(); conn.close()
+
+@app.route('/api/admin/tutors/<int:tutor_id>/reject', methods=['POST'])
+def admin_reject_tutor(tutor_id):
+    if not _check_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    conn = get_db(); cur = conn.cursor()
+    try:
+        cur.execute("UPDATE tutor_profiles SET status = 'rejected' WHERE id_tutor = %s", (tutor_id,))
+        conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({'error': 'Tutor not found'}), 404
+        return jsonify({'message': f'Tutor {tutor_id} rejected'})
     finally:
         cur.close(); conn.close()
 

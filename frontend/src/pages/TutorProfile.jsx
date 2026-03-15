@@ -230,17 +230,125 @@ function Field({ label, hint, children }) {
   )
 }
 
+// ── Status banner ─────────────────────────────────────────────────────────────
+function StatusBanner({ status }) {
+  if (!status || status === 'approved') return null
+
+  const isPending  = status === 'pending'
+  const isRejected = status === 'rejected'
+  const color = isPending ? '#fbbf24' : '#f87171'
+  const icon  = isPending ? 'pending' : 'cancel'
+
+  return (
+    <div style={{
+      marginBottom: '20px',
+      borderRadius: '16px',
+      padding: '18px 22px',
+      background: `${color}0d`,
+      border: `1px solid ${color}35`,
+      display: 'flex', alignItems: 'flex-start', gap: '14px',
+    }}>
+      <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: `${color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <span className="material-symbols-outlined" style={{ fontSize: '20px', color }}>{icon}</span>
+      </div>
+      <div>
+        {isPending ? (
+          <>
+            <p style={{ fontWeight: '800', fontSize: '14px', color, marginBottom: '4px' }}>Profile under review</p>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6, margin: 0 }}>
+              Our team reviews all tutor applications within <strong style={{ color }}>24–48 hours</strong>.
+              We'll email you at <strong>{' '}confirmation once approved. You can continue editing your profile in the meantime.</strong>
+            </p>
+            <div style={{ marginTop: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {['ID verified', 'University checked', 'Code of conduct reviewed'].map(t => (
+                <span key={t} style={{ fontSize: '10px', fontWeight: '600', color: '#fbbf24', background: 'rgba(251,191,36,0.08)', padding: '2px 8px', borderRadius: '20px', border: '1px solid rgba(251,191,36,0.18)' }}>
+                  ⏳ {t}
+                </span>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <p style={{ fontWeight: '800', fontSize: '14px', color, marginBottom: '4px' }}>Application not approved</p>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6, margin: 0 }}>
+              Your tutor profile was not approved at this time. Please update your profile with more detail and resubmit. Contact support if you believe this is an error.
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Tutor pledge (shown to first-time creators) ───────────────────────────────
+function TutorPledge({ confirmed, onToggle }) {
+  const checks = [
+    { icon: 'school',        text: 'I am a current university or college student' },
+    { icon: 'verified_user', text: 'I am at least 18 years old' },
+    { icon: 'handshake',     text: 'I will tutor honestly and to the best of my ability' },
+    { icon: 'policy',        text: 'I agree to the Tutor Code of Conduct' },
+  ]
+  return (
+    <div style={{
+      borderRadius: '16px',
+      background: `${CORAL}08`,
+      border: `1px solid ${CORAL}28`,
+      padding: '20px 22px',
+      marginBottom: '20px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+        <span className="material-symbols-outlined" style={{ fontSize: '22px', color: CORAL }}>verified</span>
+        <div>
+          <h3 style={{ fontWeight: '800', fontSize: '14px', color: 'var(--text)', margin: 0 }}>Tutor Verification Pledge</h3>
+          <p style={{ fontSize: '11px', color: 'var(--text-faint)', margin: '2px 0 0' }}>Please confirm before your profile is submitted for review</p>
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+        {checks.map(({ icon, text }) => (
+          <div key={text} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: `${CORAL}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '15px', color: CORAL }}>{icon}</span>
+            </div>
+            <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{text}</span>
+          </div>
+        ))}
+      </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '10px 12px', borderRadius: '10px', background: confirmed ? `${GREEN}10` : 'rgba(255,255,255,0.03)', border: `1px solid ${confirmed ? GREEN + '35' : 'var(--border)'}`, transition: 'all 0.15s' }}>
+        <input
+          type="checkbox"
+          checked={confirmed}
+          onChange={e => onToggle(e.target.checked)}
+          style={{ width: '16px', height: '16px', accentColor: GREEN, cursor: 'pointer' }}
+        />
+        <span style={{ fontSize: '13px', fontWeight: '600', color: confirmed ? GREEN : 'var(--text-muted)' }}>
+          I confirm all of the above and agree to have my profile reviewed
+        </span>
+      </label>
+    </div>
+  )
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function TutorProfile() {
   const { user, updateUser } = useAuth()
-  const [form,    setForm]    = useState({ age: '', university: '', course: '', about_me: '', subjects: '', availability: '' })
-  const [loading, setLoading] = useState(true)
-  const [saving,  setSaving]  = useState(false)
-  const [mounted, setMounted] = useState(false)
+  const [form,          setForm]          = useState({ age: '', university: '', course: '', about_me: '', subjects: '', availability: '' })
+  const [profileStatus, setProfileStatus] = useState(null)   // 'pending' | 'approved' | 'rejected' | null
+  const [isNewProfile,  setIsNewProfile]  = useState(false)  // true until first successful save
+  const [pledgeOk,      setPledgeOk]      = useState(false)
+  const [loading,       setLoading]       = useState(true)
+  const [saving,        setSaving]        = useState(false)
+  const [mounted,       setMounted]       = useState(false)
 
   useEffect(() => {
     getTutorProfile()
-      .then(({ data }) => { if (data.profile) setForm(data.profile) })
+      .then(({ data }) => {
+        if (data.profile) {
+          setForm(data.profile)
+          setProfileStatus(data.profile.status ?? null)
+        } else {
+          setIsNewProfile(true)
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
 
@@ -271,11 +379,18 @@ export default function TutorProfile() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (isNewProfile && !pledgeOk) { toast.error('Please confirm the Tutor Pledge first'); return }
     setSaving(true)
     try {
-      await saveTutorProfile(form)
+      const { data } = await saveTutorProfile(form)
       updateUser({ is_tutor: true })
-      toast.success('Profile saved!')
+      setProfileStatus(data.status ?? null)
+      if (data.is_new) {
+        setIsNewProfile(false)
+        toast.success("Profile submitted for review! We'll notify you within 24–48 hours.")
+      } else {
+        toast.success('Profile updated!')
+      }
     } catch (err) {
       toast.error(err.response?.data?.error ?? 'Failed to save')
     } finally {
@@ -303,6 +418,14 @@ export default function TutorProfile() {
   return (
     <HubLayout initialMode="tutor">
       <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+
+        {/* ── Status banner (shown when pending/rejected) ─────────────── */}
+        <StatusBanner status={profileStatus} />
+
+        {/* ── First-time pledge ───────────────────────────────────────── */}
+        {isNewProfile && (
+          <TutorPledge confirmed={pledgeOk} onToggle={setPledgeOk} />
+        )}
 
         {/* ── Hero banner ────────────────────────────────────────────────── */}
         <div
@@ -343,9 +466,19 @@ export default function TutorProfile() {
                 <h1 style={{ fontSize: '26px', fontWeight: '900', color: 'var(--text)', lineHeight: 1 }}>
                   {user?.name ?? 'Your Name'}
                 </h1>
-                {completion === 100 && (
+                {completion === 100 && profileStatus === 'approved' && (
                   <span style={{ padding: '3px 10px', borderRadius: '20px', background: 'rgba(52,211,153,0.14)', border: '1px solid rgba(52,211,153,0.30)', fontSize: '11px', fontWeight: '700', color: GREEN }}>
-                    ✓ Profile Complete
+                    ✓ Approved Tutor
+                  </span>
+                )}
+                {profileStatus === 'pending' && (
+                  <span style={{ padding: '3px 10px', borderRadius: '20px', background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.28)', fontSize: '11px', fontWeight: '700', color: '#fbbf24' }}>
+                    ⏳ Under Review
+                  </span>
+                )}
+                {profileStatus === 'rejected' && (
+                  <span style={{ padding: '3px 10px', borderRadius: '20px', background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.28)', fontSize: '11px', fontWeight: '700', color: '#f87171' }}>
+                    ✗ Not Approved
                   </span>
                 )}
               </div>
@@ -553,26 +686,38 @@ export default function TutorProfile() {
             </div>
 
             {/* Save button */}
-            <button
-              type="submit" disabled={saving}
-              className={mounted ? 'animate-slide-up delay-300' : ''}
-              style={{
-                width: '100%', padding: '15px', fontSize: '15px', fontWeight: '800',
-                borderRadius: '14px', border: 'none', cursor: saving ? 'default' : 'pointer',
-                background: saving ? 'rgba(255,255,255,0.08)' : `linear-gradient(135deg, ${CORAL}, #ff9a3c)`,
-                color: saving ? 'var(--text-muted)' : 'white',
-                boxShadow: saving ? 'none' : `0 6px 24px ${CORAL}30`,
-                transition: 'all 0.15s ease',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-              }}
-              onMouseEnter={e => { if (!saving) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = `0 10px 32px ${CORAL}40` } }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = saving ? 'none' : `0 6px 24px ${CORAL}30` }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>
-                {saving ? 'hourglass_empty' : 'save'}
-              </span>
-              {saving ? 'Saving…' : 'Save Profile'}
-            </button>
+            {(() => {
+              const blocked = isNewProfile && !pledgeOk
+              const label   = saving ? 'Saving…'
+                : isNewProfile ? 'Submit for Review'
+                : profileStatus === 'pending' ? 'Update Profile'
+                : 'Save Profile'
+              const icon = saving ? 'hourglass_empty' : isNewProfile ? 'send' : 'save'
+              return (
+                <button
+                  type="submit" disabled={saving || blocked}
+                  className={mounted ? 'animate-slide-up delay-300' : ''}
+                  style={{
+                    width: '100%', padding: '15px', fontSize: '15px', fontWeight: '800',
+                    borderRadius: '14px', border: 'none',
+                    cursor: saving || blocked ? 'default' : 'pointer',
+                    background: saving || blocked
+                      ? 'rgba(255,255,255,0.08)'
+                      : `linear-gradient(135deg, ${CORAL}, #ff9a3c)`,
+                    color: saving || blocked ? 'var(--text-muted)' : 'white',
+                    boxShadow: saving || blocked ? 'none' : `0 6px 24px ${CORAL}30`,
+                    opacity: blocked ? 0.55 : 1,
+                    transition: 'all 0.15s ease',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  }}
+                  onMouseEnter={e => { if (!saving && !blocked) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = `0 10px 32px ${CORAL}40` } }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = (saving || blocked) ? 'none' : `0 6px 24px ${CORAL}30` }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{icon}</span>
+                  {label}
+                </button>
+              )
+            })()}
 
           </form>
 
