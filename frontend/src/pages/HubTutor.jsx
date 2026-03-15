@@ -364,7 +364,7 @@ export default function HubTutor() {
               icon="bar_chart"
               title="Earnings"
               subtitle="last 6 months"
-              extra={<Link to="/payments" style={{ color: CORAL, fontSize: '12px', fontWeight: '600' }}>Details →</Link>}
+              extra={<Link to="/earnings" style={{ color: CORAL, fontSize: '12px', fontWeight: '600' }}>Details →</Link>}
               style={{ flexShrink: 0 }}
             >
               <EarningsGraph
@@ -514,7 +514,7 @@ function EarningsGraph({ events, loading, thisMonth, total, thisWeek }) {
     return { year: d.getFullYear(), month: d.getMonth(), label: d.toLocaleDateString('en-GB', { month: 'short' }), total: 0 }
   })
   for (const ev of events) {
-    if ((ev.status !== 'confirmed' && ev.status !== 'paid') || !ev.start_time) continue
+    if (ev.status !== 'paid' || !ev.start_time) continue
     const d = new Date(ev.start_time)
     const bucket = months.find(m => m.year === d.getFullYear() && m.month === d.getMonth())
     if (bucket) bucket.total += Number(ev.amount || 0)

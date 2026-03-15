@@ -6,18 +6,18 @@ import toast from 'react-hot-toast'
 
 // ── Tier definitions ──────────────────────────────────────────────────────────
 const STUDENT_TIERS = [
-  { name: 'Rookie',   xp: 0,    color: '#94a3b8', emoji: '🌱' },
+  { name: 'Rookie',   xp: 0,    color: '#34d399', emoji: '🌱' },
   { name: 'Explorer', xp: 500,  color: '#60a5fa', emoji: '🔭' },
   { name: 'Scholar',  xp: 1500, color: '#a78bfa', emoji: '📚' },
   { name: 'Prodigy',  xp: 3500, color: '#fbbf24', emoji: '⚡' },
-  { name: 'Elite',    xp: 7000, color: '#ff725e', emoji: '🏆' },
+  { name: 'Elite',    xp: 7000, color: '#e879f9', emoji: '🏆' },
 ]
 const TUTOR_TIERS = [
-  { name: 'Guide',    xp: 0,    color: '#94a3b8', emoji: '🌱' },
+  { name: 'Guide',    xp: 0,    color: '#34d399', emoji: '🌱' },
   { name: 'Mentor',   xp: 500,  color: '#60a5fa', emoji: '💡' },
   { name: 'Educator', xp: 1500, color: '#a78bfa', emoji: '🎓' },
   { name: 'Expert',   xp: 3500, color: '#fbbf24', emoji: '⭐' },
-  { name: 'Master',   xp: 7000, color: '#ff725e', emoji: '👑' },
+  { name: 'Master',   xp: 7000, color: '#e879f9', emoji: '👑' },
 ]
 
 const STUDENT_ACTIONS = [

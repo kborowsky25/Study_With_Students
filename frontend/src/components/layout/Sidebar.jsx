@@ -51,7 +51,7 @@ const studentSections = [
     title: 'Account',
     links: [
       { to: '/payments',            label: 'Payments',     icon: 'payments',           key: 'p' },
-      { to: '/xp',                  label: 'Graduation',   icon: 'military_tech',      key: 'x' },
+      { to: '/xp',                  label: 'Graduation',   icon: 'military_tech',      key: 'x', accent: '#fbbf24' },
     ],
   },
 ]
@@ -85,7 +85,7 @@ const tutorSections = [
     title: 'Account',
     links: [
       { to: '/earnings',            label: 'Earnings',     icon: 'payments',           key: 'e' },
-      { to: '/xp',                  label: 'Graduation',   icon: 'military_tech',      key: 'x' },
+      { to: '/xp',                  label: 'Graduation',   icon: 'military_tech',      key: 'x', accent: '#fbbf24' },
     ],
   },
 ]
@@ -194,8 +194,13 @@ export default function Sidebar({ mode = 'student', chordActive = false }) {
         {sections.map((section, si) => (
           <div key={si}>
             {section.title && <SectionLabel title={section.title} />}
-            {section.links.map(({ to, label, icon }) => {
-              const active = pathname === to || pathname.startsWith(to + '/')
+            {section.links.map(({ to, label, icon, accent: linkAccent }) => {
+              const active      = pathname === to || pathname.startsWith(to + '/')
+              const activeColor = linkAccent ?? pal.accent
+              const activeBg    = linkAccent ? `${linkAccent}18` : pal.activeBg
+              const activeBdr   = linkAccent ? `${linkAccent}35` : pal.activeBorder
+              const idleColor   = linkAccent ? `${linkAccent}90` : 'rgba(255,255,255,0.45)'
+              const idleText    = linkAccent ? `${linkAccent}cc` : 'rgba(255,255,255,0.60)'
               return (
                 <Link
                   key={to}
@@ -203,30 +208,30 @@ export default function Sidebar({ mode = 'student', chordActive = false }) {
                   style={{
                     display: 'flex', alignItems: 'center', gap: '9px',
                     padding: '9px 10px', borderRadius: '10px', marginBottom: '1px',
-                    background: active ? pal.activeBg : 'transparent',
-                    border: `1px solid ${active ? pal.activeBorder : 'transparent'}`,
+                    background: active ? activeBg : 'transparent',
+                    border: `1px solid ${active ? activeBdr : 'transparent'}`,
                     textDecoration: 'none', transition: 'all 0.15s ease',
                   }}
                   onMouseEnter={e => {
                     if (!active) {
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
-                      e.currentTarget.style.border = '1px solid rgba(255,255,255,0.08)'
+                      e.currentTarget.style.background = linkAccent ? `${linkAccent}0d` : 'rgba(255,255,255,0.06)'
+                      e.currentTarget.style.border = `1px solid ${linkAccent ? `${linkAccent}25` : 'rgba(255,255,255,0.08)'}`
                     }
                   }}
                   onMouseLeave={e => {
-                    e.currentTarget.style.background = active ? pal.activeBg : 'transparent'
-                    e.currentTarget.style.border = `1px solid ${active ? pal.activeBorder : 'transparent'}`
+                    e.currentTarget.style.background = active ? activeBg : 'transparent'
+                    e.currentTarget.style.border = `1px solid ${active ? activeBdr : 'transparent'}`
                   }}
                 >
                   <span
                     className="material-symbols-outlined"
-                    style={{ fontSize: '19px', color: active ? pal.accent : 'rgba(255,255,255,0.45)', flexShrink: 0 }}
+                    style={{ fontSize: '19px', color: active ? activeColor : idleColor, flexShrink: 0 }}
                   >
                     {icon}
                   </span>
                   <span style={{
                     fontSize: '13px', fontWeight: active ? '700' : '500',
-                    color: active ? pal.accent : 'rgba(255,255,255,0.60)',
+                    color: active ? activeColor : idleText,
                     letterSpacing: '0.01em', flex: 1, minWidth: 0,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
