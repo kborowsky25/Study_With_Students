@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { getLikedTutors, likeTutor, activateTutor, getActiveTutors } from '../api/tutors'
+import { getLikedTutors, likeTutor, requestTutor, getActiveTutors, getTutorRequestsSent } from '../api/tutors'
 import HubLayout from '../components/layout/HubLayout'
 import { PageTitle } from '../context/PageTitleContext'
 import TutorCard from '../components/features/TutorCard'
@@ -9,16 +9,23 @@ import toast from 'react-hot-toast'
 
 export default function LikedTutors() {
   const [tutors,    setTutors]    = useState([])
-  const [activated, setActivated] = useState(new Set())
+  const [activated, setActivated] = useState(new Set())  // already accepted
+  const [pending,   setPending]   = useState(new Set())  // request sent
   const [loading,   setLoading]   = useState(true)
 
   async function load() {
-    try {
-      const [likedRes, activeRes] = await Promise.all([getLikedTutors(), getActiveTutors()])
-      setTutors(likedRes.data.tutors ?? [])
-      setActivated(new Set((activeRes.data.tutors ?? []).map(t => t.id_tutor)))
-    } catch { toast.error('Could not load liked tutors') }
-    finally  { setLoading(false) }
+    const [likedRes, activeRes, sentRes] = await Promise.allSettled([
+      getLikedTutors(), getActiveTutors(), getTutorRequestsSent(),
+    ])
+    if (likedRes.status === 'fulfilled')  setTutors(likedRes.value.data.tutors ?? [])
+    else toast.error('Could not load liked tutors')
+    if (activeRes.status === 'fulfilled') setActivated(new Set((activeRes.value.data.tutors ?? []).map(t => t.id_tutor)))
+    if (sentRes.status === 'fulfilled') {
+      const pendingIds = (sentRes.value.data.requests ?? [])
+        .filter(r => r.status === 'pending').map(r => r.tutor_id)
+      setPending(new Set(pendingIds))
+    }
+    setLoading(false)
   }
 
   useEffect(() => { load() }, [])
@@ -28,13 +35,15 @@ export default function LikedTutors() {
     load()
   }
 
-  async function handleActivate(tutorId) {
+  async function handleRequest(tutorId) {
     try {
-      await activateTutor(tutorId)
-      setActivated(prev => new Set([...prev, tutorId]))
-      toast.success('Tutor added to My Tutors!')
+      await requestTutor(tutorId)
+      setPending(prev => new Set([...prev, tutorId]))
+      toast.success('Request sent! Waiting for the tutor to accept.')
     } catch (err) {
-      toast.error(err.response?.data?.error ?? 'Could not add tutor')
+      const msg = err.response?.data?.error ?? 'Could not send request'
+      if (msg.includes('already')) setPending(prev => new Set([...prev, tutorId]))
+      else toast.error(msg)
     }
   }
 
@@ -73,8 +82,9 @@ export default function LikedTutors() {
               tutor={tutor}
               liked
               onLike={handleLike}
-              onActivate={handleActivate}
+              onActivate={handleRequest}
               activated={activated.has(tutor.id_tutor)}
+              pending={!activated.has(tutor.id_tutor) && pending.has(tutor.id_tutor)}
             />
           ))}
         </div>

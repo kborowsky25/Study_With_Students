@@ -36,17 +36,17 @@ export default function ActiveTutors() {
   const [expanded, setExpanded] = useState(new Set())
 
   async function load() {
-    try {
-      const [{ data: td }, { data: ed }, { data: rd }] = await Promise.all([
-        getActiveTutors(),
-        getEvents(),
-        getTutorRequestsSent(),
-      ])
-      setTutors(td.tutors ?? [])
-      setEvents(ed.events ?? [])
-      setRequests((rd.requests ?? []).filter(r => r.status === 'pending'))
-    } catch { toast.error('Could not load tutors') }
-    finally  { setLoading(false); setTimeout(() => setMounted(true), 80) }
+    const [tutorsRes, eventsRes, requestsRes] = await Promise.allSettled([
+      getActiveTutors(),
+      getEvents(),
+      getTutorRequestsSent(),
+    ])
+    if (tutorsRes.status === 'fulfilled')   setTutors(tutorsRes.value.data.tutors ?? [])
+    else toast.error('Could not load tutors')
+    if (eventsRes.status === 'fulfilled')   setEvents(eventsRes.value.data.events ?? [])
+    if (requestsRes.status === 'fulfilled') setRequests((requestsRes.value.data.requests ?? []).filter(r => r.status === 'pending'))
+    setLoading(false)
+    setTimeout(() => setMounted(true), 80)
   }
 
   useEffect(() => { load() }, [])

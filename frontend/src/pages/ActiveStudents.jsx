@@ -30,15 +30,15 @@ export default function ActiveStudents() {
   const [mounted,  setMounted]  = useState(false)
 
   async function load() {
-    try {
-      const [{ data: sd }, { data: rd }] = await Promise.all([
-        getActiveStudents(),
-        getTutorRequestsRec(),
-      ])
-      setStudents(sd.students ?? [])
-      setInvites(rd.requests ?? [])
-    } catch { toast.error('Could not load students') }
-    finally { setLoading(false); setTimeout(() => setMounted(true), 80) }
+    const [studentsRes, invitesRes] = await Promise.allSettled([
+      getActiveStudents(),
+      getTutorRequestsRec(),
+    ])
+    if (studentsRes.status === 'fulfilled') setStudents(studentsRes.value.data.students ?? [])
+    else toast.error('Could not load students')
+    if (invitesRes.status === 'fulfilled')  setInvites(invitesRes.value.data.requests ?? [])
+    setLoading(false)
+    setTimeout(() => setMounted(true), 80)
   }
 
   useEffect(() => { load() }, [])

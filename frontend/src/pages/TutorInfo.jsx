@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from '@tanstack/react-router'
-import { getTutor, likeTutor, activateTutor } from '../api/tutors'
+import { getTutor, likeTutor, requestTutor, getActiveTutors, getTutorRequestsSent } from '../api/tutors'
 import HubLayout from '../components/layout/HubLayout'
 import toast from 'react-hot-toast'
 
@@ -34,14 +34,34 @@ export default function TutorInfo() {
   const [activating, setActivating] = useState(false)
   const [mounted,    setMounted]    = useState(false)
   const [likeAnim,   setLikeAnim]   = useState(false)
-  const [activated,  setActivated]  = useState(false)
+  const [activated,  setActivated]  = useState(false)  // already accepted/active
+  const [pending,    setPending]    = useState(false)   // request sent, awaiting tutor
   const [aboutOpen,  setAboutOpen]  = useState(false)
 
   useEffect(() => {
-    getTutor(tutorId)
-      .then(({ data }) => { setTutor(data.tutor); setLiked(data.liked ?? false) })
-      .catch(() => toast.error('Could not load tutor'))
-      .finally(() => { setLoading(false); setTimeout(() => setMounted(true), 80) })
+    const id = Number(tutorId)
+    Promise.allSettled([
+      getTutor(tutorId),
+      getActiveTutors(),
+      getTutorRequestsSent(),
+    ]).then(([tutorRes, activeRes, sentRes]) => {
+      if (tutorRes.status === 'fulfilled') {
+        setTutor(tutorRes.value.data.tutor)
+        setLiked(tutorRes.value.data.liked ?? false)
+      } else { toast.error('Could not load tutor') }
+      if (activeRes.status === 'fulfilled') {
+        const activeIds = (activeRes.value.data.tutors ?? []).map(t => t.id_tutor)
+        setActivated(activeIds.includes(id))
+      }
+      if (sentRes.status === 'fulfilled') {
+        const pendingIds = (sentRes.value.data.requests ?? [])
+          .filter(r => r.status === 'pending')
+          .map(r => r.tutor_id)
+        setPending(pendingIds.includes(id))
+      }
+      setLoading(false)
+      setTimeout(() => setMounted(true), 80)
+    })
   }, [tutorId])
 
   async function handleLike() {
@@ -55,13 +75,16 @@ export default function TutorInfo() {
   }
 
   async function handleActivate() {
+    if (activated || pending || activating) return
     setActivating(true)
     try {
-      await activateTutor(tutorId)
-      setActivated(true)
-      toast.success('Tutor added to your active list!')
+      await requestTutor(tutorId)
+      setPending(true)
+      toast.success('Request sent! Waiting for the tutor to accept.')
     } catch (err) {
-      toast.error(err.response?.data?.error ?? 'Failed to add tutor')
+      const msg = err.response?.data?.error ?? 'Failed to send request'
+      if (msg.includes('already')) setPending(true)
+      else toast.error(msg)
     } finally { setActivating(false) }
   }
 
@@ -232,23 +255,27 @@ export default function TutorInfo() {
                 <div style={{ display: 'flex', gap: '8px', flexShrink: 0, alignSelf: 'center' }}>
                   <button
                     onClick={handleActivate}
-                    disabled={activating || activated}
+                    disabled={activating || activated || pending}
                     style={{
                       padding: '11px 22px', borderRadius: '12px', fontSize: '14px', fontWeight: '700',
                       background: activated
-                        ? `linear-gradient(135deg, ${GREEN}, #059669)`
+                        ? `${GREEN}20`
+                        : pending
+                        ? `${AMBER}20`
                         : `linear-gradient(135deg, ${CORAL}, #ff9a3c)`,
-                      color: 'white', border: 'none', cursor: activated || activating ? 'default' : 'pointer',
+                      color: activated ? GREEN : pending ? AMBER : 'white',
+                      border: activated ? `1px solid ${GREEN}35` : pending ? `1px solid ${AMBER}35` : 'none',
+                      cursor: (activated || pending || activating) ? 'default' : 'pointer',
                       display: 'flex', alignItems: 'center', gap: '7px',
                       opacity: activating ? 0.8 : 1,
-                      boxShadow: activated ? `0 4px 14px ${GREEN}40` : `0 4px 14px ${CORAL}40`,
+                      boxShadow: (activated || pending) ? 'none' : `0 4px 14px ${CORAL}40`,
                       transition: 'opacity 0.15s, box-shadow 0.3s',
                     }}
                   >
                     <span className="material-symbols-outlined" style={{ fontSize: '17px' }}>
-                      {activated ? 'check_circle' : 'person_add'}
+                      {activated ? 'check_circle' : pending ? 'hourglass_top' : activating ? 'hourglass_empty' : 'person_add'}
                     </span>
-                    {activating ? 'Adding…' : activated ? 'Added to My Tutors' : 'Add to My Tutors'}
+                    {activated ? 'Added' : pending ? 'Pending…' : activating ? 'Sending…' : 'Request Tutor'}
                   </button>
                   <Link
                     to="/messages"
