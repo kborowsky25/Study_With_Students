@@ -2,9 +2,10 @@ import { Link, useRouterState } from '@tanstack/react-router'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from '@tanstack/react-router'
 
-// ── Per-mode accent palettes ──────────────────────────────────────────────────
-const STUDENT = {
-  accent:       '#ff725e',
+// ── Accent ────────────────────────────────────────────────────────────────────
+const CORAL = '#ff725e'
+const PAL = {
+  accent:       CORAL,
   avatarGrad:   'linear-gradient(135deg, #ff725e, #e05a48)',
   avatarShadow: '0 4px 14px rgba(255,114,94,0.38)',
   activeBg:     'rgba(255,114,94,0.12)',
@@ -15,20 +16,6 @@ const STUDENT = {
   upgradeBg:    'linear-gradient(135deg, rgba(255,114,94,0.14), rgba(255,154,60,0.10))',
   upgradeBgHov: 'linear-gradient(135deg, rgba(255,114,94,0.22), rgba(255,154,60,0.16))',
   upgradeBor:   'rgba(255,114,94,0.28)',
-}
-
-const TUTOR = {
-  accent:       '#a78bfa',
-  avatarGrad:   'linear-gradient(135deg, #a78bfa, #7c3aed)',
-  avatarShadow: '0 4px 14px rgba(167,139,250,0.38)',
-  activeBg:     'rgba(167,139,250,0.11)',
-  activeBorder: 'rgba(167,139,250,0.22)',
-  badgeBg:      'rgba(167,139,250,0.14)',
-  badgeBorder:  'rgba(167,139,250,0.28)',
-  badgeColor:   '#a78bfa',
-  upgradeBg:    'linear-gradient(135deg, rgba(167,139,250,0.13), rgba(124,58,237,0.09))',
-  upgradeBgHov: 'linear-gradient(135deg, rgba(167,139,250,0.20), rgba(124,58,237,0.15))',
-  upgradeBor:   'rgba(167,139,250,0.26)',
 }
 
 // ── Section-grouped nav definitions ──────────────────────────────────────────
@@ -124,7 +111,7 @@ export default function Sidebar({ mode = 'student', chordActive = false }) {
   const router   = useRouterState()
   const pathname = router.location.pathname
   const sections = mode === 'tutor' ? tutorSections : studentSections
-  const pal      = mode === 'tutor' ? TUTOR : STUDENT
+  const pal      = PAL
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
@@ -181,10 +168,11 @@ export default function Sidebar({ mode = 'student', chordActive = false }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
             <span style={{
               display: 'inline-block',
-              background: pal.badgeBg, border: `1px solid ${pal.badgeBorder}`,
+              background: mode === 'tutor' ? 'rgba(255,114,94,0.15)' : 'rgba(255,255,255,0.08)',
+              border: mode === 'tutor' ? '1px solid rgba(255,114,94,0.30)' : '1px solid rgba(255,255,255,0.10)',
               borderRadius: '6px', padding: '2px 8px',
               fontSize: '10px', fontWeight: '700',
-              color: pal.badgeColor,
+              color: mode === 'tutor' ? CORAL : 'rgba(255,255,255,0.50)',
               letterSpacing: '0.05em', textTransform: 'uppercase',
             }}>
               {mode === 'tutor' ? 'Tutor' : 'Student'}
