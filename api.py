@@ -1152,35 +1152,37 @@ def search_users():
 @app.route('/api/membership/upgrade', methods=['POST'])
 @jwt_required()
 def upgrade_membership():
-    """Upgrade the current user to Explorer (premium) plan.
-
-    Simulation stub — in production, verify a Stripe payment before calling this.
-    Automatically adds the is_premium column if it doesn't exist yet.
-    """
+    """Upgrade the current user to Explorer (premium) plan (simulation stub)."""
     uid  = current_user_id()
     conn = get_db(); cur = conn.cursor(dictionary=True)
     try:
-        # Ensure column exists (idempotent migration)
-        try:
+        # Check if is_premium column exists; add it if missing (one-time migration)
+        cur.execute("""
+            SELECT COUNT(*) AS cnt
+            FROM information_schema.columns
+            WHERE table_schema = DATABASE()
+              AND table_name   = 'users'
+              AND column_name  = 'is_premium'
+        """)
+        if cur.fetchone()['cnt'] == 0:
             cur.execute(
                 "ALTER TABLE users ADD COLUMN is_premium BOOLEAN NOT NULL DEFAULT FALSE"
             )
             conn.commit()
-        except Exception:
-            conn.rollback()  # column already exists — ignore
-        try:
-            cur.execute(
-                "UPDATE users SET is_premium = TRUE WHERE id_user = %s", (uid,)
-            )
-            conn.commit()
-            cur.execute(
-                "SELECT id_user AS id, name, email, is_premium FROM users WHERE id_user = %s",
-                (uid,)
-            )
-            user = cur.fetchone()
-            return jsonify({'message': 'Upgraded to Explorer Plan!', 'user': user})
-        except Exception as e:
-            return jsonify({'message': f'DB error: {e}'}), 500
+
+        cur.execute("UPDATE users SET is_premium = TRUE WHERE id_user = %s", (uid,))
+        conn.commit()
+
+        cur.execute(
+            "SELECT id_user AS id, name, email, is_premium FROM users WHERE id_user = %s",
+            (uid,)
+        )
+        user = cur.fetchone()
+        return jsonify({'message': 'Upgraded to Explorer Plan!', 'user': user})
+    except Exception as e:
+        try: conn.rollback()
+        except Exception: pass
+        return jsonify({'message': str(e)}), 500
     finally:
         cur.close(); conn.close()
 
@@ -1192,6 +1194,15 @@ def membership_status():
     uid  = current_user_id()
     conn = get_db(); cur = conn.cursor(dictionary=True)
     try:
+        cur.execute("""
+            SELECT COUNT(*) AS cnt
+            FROM information_schema.columns
+            WHERE table_schema = DATABASE()
+              AND table_name   = 'users'
+              AND column_name  = 'is_premium'
+        """)
+        if cur.fetchone()['cnt'] == 0:
+            return jsonify({'is_premium': False})
         cur.execute("SELECT is_premium FROM users WHERE id_user = %s", (uid,))
         row = cur.fetchone()
         return jsonify({'is_premium': bool(row and row.get('is_premium'))})
