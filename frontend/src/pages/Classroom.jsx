@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'react-hot-toast'
 import HubLayout from '../components/layout/HubLayout'
+import { PageTitle } from '../context/PageTitleContext'
+import PaywallGate from '../components/features/PaywallGate'
+import { useAuth } from '../context/AuthContext'
 
 const CORAL = '#ff725e'
 
@@ -72,6 +75,7 @@ const HOW_IT_WORKS = [
 
 export default function Classroom() {
   const [hoveredCard, setHoveredCard] = useState(null)
+  const { isTutor } = useAuth()
 
   function handleComingSoon() {
     toast.error('Coming soon! This feature is under construction.')
@@ -79,6 +83,8 @@ export default function Classroom() {
 
   return (
     <HubLayout>
+      <PageTitle title="Classroom" icon="school" />
+      <PaywallGate feature="Classroom" bypass={isTutor}>
       <div style={{ maxWidth: '900px' }}>
 
         {/* ── Page header ─────────────────────────────────────────────── */}
@@ -176,6 +182,7 @@ export default function Classroom() {
         </div>
 
       </div>
+      </PaywallGate>
     </HubLayout>
   )
 }

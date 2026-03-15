@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { getCategories } from '../api/forum'
 import HubLayout from '../components/layout/HubLayout'
+import { PageTitle } from '../context/PageTitleContext'
 import PaywallGate from '../components/features/PaywallGate'
 import toast from 'react-hot-toast'
 
@@ -44,6 +45,7 @@ export default function ForumHome() {
 
   return (
     <HubLayout>
+      <PageTitle title="Forum" icon="forum" />
       <PaywallGate feature="Community Forum">
         <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', maxWidth: '1100px', margin: '0 auto' }}>
 

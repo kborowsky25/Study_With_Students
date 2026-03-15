@@ -1,18 +1,22 @@
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { getLikedTutors, likeTutor, activateTutor } from '../api/tutors'
+import { getLikedTutors, likeTutor, activateTutor, getActiveTutors } from '../api/tutors'
 import HubLayout from '../components/layout/HubLayout'
+import { PageTitle } from '../context/PageTitleContext'
 import TutorCard from '../components/features/TutorCard'
+import PageHeader from '../components/features/PageHeader'
 import toast from 'react-hot-toast'
 
 export default function LikedTutors() {
-  const [tutors,  setTutors]  = useState([])
-  const [loading, setLoading] = useState(true)
+  const [tutors,    setTutors]    = useState([])
+  const [activated, setActivated] = useState(new Set())
+  const [loading,   setLoading]   = useState(true)
 
   async function load() {
     try {
-      const { data } = await getLikedTutors()
-      setTutors(data.tutors ?? [])
+      const [likedRes, activeRes] = await Promise.all([getLikedTutors(), getActiveTutors()])
+      setTutors(likedRes.data.tutors ?? [])
+      setActivated(new Set((activeRes.data.tutors ?? []).map(t => t.id_tutor)))
     } catch { toast.error('Could not load liked tutors') }
     finally  { setLoading(false) }
   }
@@ -24,20 +28,31 @@ export default function LikedTutors() {
     load()
   }
 
+  async function handleActivate(tutorId) {
+    try {
+      await activateTutor(tutorId)
+      setActivated(prev => new Set([...prev, tutorId]))
+      toast.success('Tutor added to My Tutors!')
+    } catch (err) {
+      toast.error(err.response?.data?.error ?? 'Could not add tutor')
+    }
+  }
+
   return (
     <HubLayout>
-      <div className="animate-slide-up mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-black text-white mb-1">
-            Liked Tutors <span style={{ color: '#ff725e' }}>✦</span>
-          </h1>
-          <p className="text-white/50">{loading ? '…' : tutors.length} saved</p>
-        </div>
-        <Link to="/find-tutors" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>explore</span>
-          Explore more
-        </Link>
-      </div>
+      <PageTitle title="Saved Tutors" icon="favorite" />
+      <PageHeader
+        icon="favorite"
+        iconColor="#ff725e"
+        title="Liked Tutors"
+        subtitle={`${loading ? '…' : tutors.length} saved`}
+        right={
+          <Link to="/find-tutors" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>explore</span>
+            Explore more
+          </Link>
+        }
+      />
 
       {loading ? (
         <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -58,6 +73,8 @@ export default function LikedTutors() {
               tutor={tutor}
               liked
               onLike={handleLike}
+              onActivate={handleActivate}
+              activated={activated.has(tutor.id_tutor)}
             />
           ))}
         </div>

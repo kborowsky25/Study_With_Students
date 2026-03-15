@@ -11,10 +11,10 @@ import { useAuth } from '../../context/AuthContext'
  *
  * If the user is on the free plan, they see an upgrade prompt instead.
  */
-export default function PaywallGate({ feature = 'This feature', children }) {
+export default function PaywallGate({ feature = 'This feature', children, bypass = false }) {
   const { isPremium } = useAuth()
 
-  if (isPremium) return children
+  if (isPremium || bypass) return children
 
   return (
     <div style={{
@@ -60,8 +60,8 @@ export default function PaywallGate({ feature = 'This feature', children }) {
         {[
           { icon: 'forum',   label: 'Community Forum — ask questions, share knowledge' },
           { icon: 'groups',  label: 'Study Rooms — join live group sessions' },
+          { icon: 'school',  label: 'Classroom — join live group tutoring sessions' },
           { icon: 'star',    label: 'Explorer badge on your profile' },
-          { icon: 'support', label: 'Priority support' },
         ].map(({ icon, label }) => (
           <div key={icon} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
             <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#fbbf24', flexShrink: 0, marginTop: '1px' }}>{icon}</span>

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { getEvents } from '../api/events'
 import HubLayout from '../components/layout/HubLayout'
+import { PageTitle } from '../context/PageTitleContext'
 import EventCard from '../components/features/EventCard'
+import PageHeader from '../components/features/PageHeader'
 import toast from 'react-hot-toast'
 
 const FILTERS = ['all', 'pending', 'confirmed', 'canceled', 'paid']
@@ -25,12 +27,13 @@ export default function Events() {
 
   return (
     <HubLayout>
-      <div className="animate-slide-up mb-8">
-        <h1 className="text-3xl font-black text-white mb-1">
-          Sessions <span style={{ color: '#ff725e' }}>✦</span>
-        </h1>
-        <p className="text-white/50">{loading ? '…' : events.length} total sessions</p>
-      </div>
+      <PageTitle title="Events" icon="event" />
+      <PageHeader
+        icon="event"
+        iconColor="#fbbf24"
+        title="Sessions"
+        subtitle={`${loading ? '…' : events.length} total sessions`}
+      />
 
       {/* Filter tabs */}
       <div className="flex gap-2 flex-wrap mb-6">

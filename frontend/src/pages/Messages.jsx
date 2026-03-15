@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { getConversations, getMessages, sendMessage, searchUsers } from '../api/messages'
 import HubLayout from '../components/layout/HubLayout'
+import { PageTitle } from '../context/PageTitleContext'
 import toast from 'react-hot-toast'
 
 const CORAL = '#ff725e'
@@ -206,6 +207,7 @@ export default function Messages() {
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <HubLayout raw>
+      <PageTitle title="Messages" icon="message" />
       <div style={{ display: 'flex', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
 
         {/* ── Left panel: conversation list ──────────────────────────── */}
@@ -222,15 +224,29 @@ export default function Messages() {
         >
           {/* Header */}
           <div style={{
-            padding: '18px 16px 14px',
+            padding: '16px',
             borderBottom: '1px solid var(--border)',
             flexShrink: 0,
             background: 'var(--bg-card)',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-              <h2 style={{ color: 'var(--text)', fontWeight: '800', fontSize: '18px', letterSpacing: '-0.3px' }}>
-                Messages
-              </h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0,
+                  background: CORAL + '18', border: `1px solid ${CORAL}30`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px', color: CORAL }}>message</span>
+                </div>
+                <div>
+                  <h2 style={{ color: 'var(--text)', fontWeight: '800', fontSize: '15px', letterSpacing: '-0.3px', margin: 0, lineHeight: 1.2 }}>
+                    Messages
+                  </h2>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '11px', margin: '2px 0 0' }}>
+                    {loading ? '…' : `${convos.length} conversation${convos.length !== 1 ? 's' : ''}`}
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={openCompose}
                 title="New conversation"

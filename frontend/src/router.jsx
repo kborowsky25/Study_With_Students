@@ -46,8 +46,10 @@ import CalendarTutor     from './pages/CalendarTutor'
 
 // Pages — payments & events
 import Payments   from './pages/Payments'
+import Earnings   from './pages/Earnings'
 import Events     from './pages/Events'
 import Classroom  from './pages/Classroom'
+import XP         from './pages/XP'
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 const rootRoute = createRootRoute({
@@ -162,6 +164,10 @@ const paymentsRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/payments',
   beforeLoad: requireAuth, component: Payments,
 })
+const earningsRoute = createRoute({
+  getParentRoute: () => rootRoute, path: '/earnings',
+  beforeLoad: requireAuth, component: Earnings,
+})
 const eventsRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/events',
   beforeLoad: requireAuth, component: Events,
@@ -169,6 +175,10 @@ const eventsRoute = createRoute({
 const classroomRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/classroom',
   beforeLoad: requireAuth, component: Classroom,
+})
+const xpRoute = createRoute({
+  getParentRoute: () => rootRoute, path: '/xp',
+  beforeLoad: requireAuth, component: XP,
 })
 
 // ─── Build router ─────────────────────────────────────────────────────────────
@@ -181,7 +191,7 @@ const routeTree = rootRoute.addChildren([
   forumHomeRoute, forumCategoryRoute, forumThreadRoute, newThreadRoute,
   studyRoomsStudentRoute, studyRoomsTutorRoute,
   calendarStudentRoute, calendarTutorRoute,
-  paymentsRoute, eventsRoute, classroomRoute,
+  paymentsRoute, earningsRoute, eventsRoute, classroomRoute, xpRoute,
 ])
 
 export const router = createRouter({ routeTree })
