@@ -26,7 +26,7 @@ const GRAD_GLOWS = [
 
 const SUBJECT_COLORS = [CORAL, BLUE, GREEN, PURPLE, AMBER, '#fb923c', '#22d3ee', '#f472b6']
 
-export default function TutorCard({ tutor, onLike, liked = false, onActivate, activated = false }) {
+export default function TutorCard({ tutor, onLike, liked = false, onActivate, activated = false, pending = false }) {
   const [adding,   setAdding]   = useState(false)
   const [likeAnim, setLikeAnim] = useState(false)
   const [hovered,  setHovered]  = useState(false)
@@ -38,7 +38,7 @@ export default function TutorCard({ tutor, onLike, liked = false, onActivate, ac
 
   async function handleActivate(e) {
     e.preventDefault()
-    if (activated || adding || !onActivate) return
+    if (activated || pending || adding || !onActivate) return
     setAdding(true)
     try { await onActivate(tutor.id_tutor) }
     finally { setAdding(false) }
@@ -225,24 +225,32 @@ export default function TutorCard({ tutor, onLike, liked = false, onActivate, ac
           {onActivate && (
             <button
               onClick={handleActivate}
-              disabled={activated || adding}
+              disabled={activated || pending || adding}
               style={{
                 flex: 1, padding: '10px 12px', borderRadius: '12px',
-                background: activated ? `${GREEN}20` : `linear-gradient(135deg, ${CORAL}, #ff9a3c)`,
-                color: activated ? GREEN : 'white',
+                background: activated
+                  ? `${GREEN}20`
+                  : pending
+                  ? `${AMBER}20`
+                  : `linear-gradient(135deg, ${CORAL}, #ff9a3c)`,
+                color: activated ? GREEN : pending ? AMBER : 'white',
                 fontSize: '13px', fontWeight: '700',
-                cursor: activated || adding ? 'default' : 'pointer',
-                border: activated ? `1px solid ${GREEN}35` : 'none',
+                cursor: (activated || pending || adding) ? 'default' : 'pointer',
+                border: activated
+                  ? `1px solid ${GREEN}35`
+                  : pending
+                  ? `1px solid ${AMBER}35`
+                  : 'none',
                 opacity: adding ? 0.75 : 1,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
                 transition: 'opacity 0.15s, transform 0.15s',
-                boxShadow: activated ? 'none' : `0 4px 14px ${CORAL}40`,
+                boxShadow: (activated || pending) ? 'none' : `0 4px 14px ${CORAL}40`,
               }}
             >
               <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>
-                {activated ? 'check_circle' : adding ? 'hourglass_empty' : 'person_add'}
+                {activated ? 'check_circle' : pending ? 'hourglass_top' : adding ? 'hourglass_empty' : 'person_add'}
               </span>
-              {activated ? 'Added' : adding ? '…' : 'Add Tutor'}
+              {activated ? 'Added' : pending ? 'Pending…' : adding ? '…' : 'Request'}
             </button>
           )}
         </div>

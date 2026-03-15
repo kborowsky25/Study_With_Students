@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useAuth } from '../context/AuthContext'
 import HubLayout from '../components/layout/HubLayout'
-import { getActiveTutors, getTutors } from '../api/tutors'
+import { getActiveTutors, getTutors, getTutorRequestsSent } from '../api/tutors'
 import { getEvents } from '../api/events'
 import { getConversations } from '../api/messages'
 
@@ -231,19 +231,21 @@ function TopTutorsTrio({ tutors }) {
 export default function HubStudent() {
   const { user } = useAuth()
 
-  const [activeTutors,  setActiveTutors]  = useState([])
-  const [topTutors,     setTopTutors]     = useState([])
-  const [events,        setEvents]        = useState([])
-  const [conversations, setConversations] = useState([])
-  const [loading,       setLoading]       = useState(true)
-  const [mounted,       setMounted]       = useState(false)
+  const [activeTutors,   setActiveTutors]   = useState([])
+  const [topTutors,      setTopTutors]      = useState([])
+  const [events,         setEvents]         = useState([])
+  const [conversations,  setConversations]  = useState([])
+  const [pendingInvites, setPendingInvites] = useState([])  // sent requests, status='pending'
+  const [loading,        setLoading]        = useState(true)
+  const [mounted,        setMounted]        = useState(false)
 
   useEffect(() => {
     Promise.allSettled([
-      getActiveTutors().then(r  => setActiveTutors(r.data.tutors ?? [])),
-      getEvents().then(r        => setEvents(r.data.events ?? [])),
-      getConversations().then(r => setConversations(r.data.conversations ?? [])),
-      getTutors().then(r        => setTopTutors((r.data.tutors ?? []).slice(0, 8))),
+      getActiveTutors().then(r       => setActiveTutors(r.data.tutors ?? [])),
+      getEvents().then(r             => setEvents(r.data.events ?? [])),
+      getConversations().then(r      => setConversations(r.data.conversations ?? [])),
+      getTutors().then(r             => setTopTutors((r.data.tutors ?? []).slice(0, 8))),
+      getTutorRequestsSent().then(r  => setPendingInvites((r.data.requests ?? []).filter(r => r.status === 'pending'))),
     ]).finally(() => setLoading(false))
 
     const t = setTimeout(() => setMounted(true), 50)
@@ -423,16 +425,31 @@ export default function HubStudent() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', minHeight: 0 }}>
             <Panel
               title="My Tutors"
-              subtitle={activeTutors.length > 0 ? `${activeTutors.length} active` : 'add your first tutor'}
+              subtitle={
+                activeTutors.length > 0
+                  ? `${activeTutors.length} active${pendingInvites.length > 0 ? ` · ${pendingInvites.length} pending` : ''}`
+                  : pendingInvites.length > 0
+                  ? `${pendingInvites.length} request${pendingInvites.length !== 1 ? 's' : ''} pending`
+                  : 'find your first tutor'
+              }
               icon="cast_for_education"
               extra={<Link to="/active-tutors" style={{ color: CORAL, fontSize: '12px', fontWeight: '600', textDecoration: 'none' }}>View all →</Link>}
               style={{ flex: 1, minHeight: 0 }}
               animClass={mounted ? 'animate-slide-up delay-300' : ''}
             >
-              {loading ? <SkeletonList rows={3} /> : activeTutors.length === 0 ? (
-                <EmptyState icon="cast_for_education" text="No active tutors yet" action={{ to: '/find-tutors', label: 'Find one' }} />
-              ) : (
-                activeTutors.slice(0, 5).map(t => <TutorRow key={t.id_tutor} tutor={t} />)
+              {loading ? <SkeletonList rows={3} /> : (
+                <>
+                  {/* Pending invites shown at the top */}
+                  {pendingInvites.slice(0, 3).map(req => (
+                    <PendingInviteRow key={req.id} request={req} />
+                  ))}
+                  {/* Active tutors */}
+                  {activeTutors.length === 0 && pendingInvites.length === 0 ? (
+                    <EmptyState icon="cast_for_education" text="No active tutors yet" action={{ to: '/find-tutors', label: 'Find one' }} />
+                  ) : (
+                    activeTutors.slice(0, 5).map(t => <TutorRow key={t.id_tutor} tutor={t} />)
+                  )}
+                </>
               )}
             </Panel>
 
@@ -705,6 +722,44 @@ function SessionRow({ event }) {
         {event.status}
       </span>
     </div>
+  )
+}
+
+function PendingInviteRow({ request }) {
+  return (
+    <Link to="/find-tutors" style={{ textDecoration: 'none' }}>
+      <div
+        style={{
+          display: 'flex', alignItems: 'center', gap: '10px',
+          padding: '7px 6px', marginBottom: '2px',
+          borderBottom: '1px solid var(--border)', borderRadius: '8px',
+          transition: 'background 0.15s', cursor: 'pointer',
+        }}
+        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+      >
+        <div style={{
+          width: '30px', height: '30px', borderRadius: '50%',
+          background: `${AMBER}20`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: AMBER, flexShrink: 0,
+        }}>
+          <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>hourglass_top</span>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ color: 'var(--text)', fontSize: '12px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {request.tutor_name}
+          </div>
+          <div style={{ color: AMBER, fontSize: '10px', fontWeight: '600' }}>Awaiting response</div>
+        </div>
+        <span style={{
+          background: `${AMBER}18`, color: AMBER, fontSize: '9px', fontWeight: '800',
+          padding: '2px 7px', borderRadius: '9px', flexShrink: 0,
+        }}>
+          PENDING
+        </span>
+      </div>
+    </Link>
   )
 }
 

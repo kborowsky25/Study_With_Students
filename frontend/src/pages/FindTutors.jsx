@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { getTutors, getLikedTutors, likeTutor, activateTutor, getActiveTutors } from '../api/tutors'
+import { getTutors, getLikedTutors, likeTutor, getActiveTutors, requestTutor, getTutorRequestsSent } from '../api/tutors'
 import HubLayout from '../components/layout/HubLayout'
 import { PageTitle } from '../context/PageTitleContext'
 import TutorCard from '../components/features/TutorCard'
@@ -37,7 +37,8 @@ const SORT_OPTIONS = [
 export default function FindTutors() {
   const [tutors,     setTutors]     = useState([])
   const [liked,      setLiked]      = useState(new Set())
-  const [activated,  setActivated]  = useState(new Set())
+  const [activated,  setActivated]  = useState(new Set())  // tutor_id → already active (accepted)
+  const [pending,    setPending]    = useState(new Set())  // tutor_id → request sent, awaiting response
   const [loading,    setLoading]    = useState(true)
   const [mounted,    setMounted]    = useState(false)
   const [university, setUniversity] = useState('')
@@ -67,10 +68,21 @@ export default function FindTutors() {
     catch {}
   }
 
+  async function fetchPending() {
+    try {
+      const { data } = await getTutorRequestsSent()
+      const pendingIds = (data.requests ?? [])
+        .filter(r => r.status === 'pending')
+        .map(r => r.tutor_id)
+      setPending(new Set(pendingIds))
+    } catch {}
+  }
+
   useEffect(() => {
     fetchTutors()
     fetchLiked()
     fetchActivated()
+    fetchPending()
     requestAnimationFrame(() => setMounted(true))
   }, [])
 
@@ -101,12 +113,15 @@ export default function FindTutors() {
     } catch { toast.error('Failed to update like') }
   }
 
-  async function handleActivate(tutorId) {
+  async function handleRequest(tutorId) {
     try {
-      await activateTutor(tutorId)
-      setActivated(prev => new Set([...prev, tutorId]))
-      toast.success('Tutor added to My Tutors!')
-    } catch (err) { toast.error(err.response?.data?.error ?? 'Could not add tutor') }
+      await requestTutor(tutorId)
+      setPending(prev => new Set([...prev, tutorId]))
+      toast.success('Request sent! Waiting for the tutor to accept.')
+    } catch (err) {
+      const msg = err.response?.data?.error ?? 'Could not send request'
+      toast.error(msg)
+    }
   }
 
   // Client-side price filter + sort (layered on top of server-side subject/uni)
@@ -290,8 +305,9 @@ export default function FindTutors() {
                   tutor={tutor}
                   liked={liked.has(tutor.id_tutor)}
                   onLike={handleLike}
-                  onActivate={handleActivate}
+                  onActivate={handleRequest}
                   activated={activated.has(tutor.id_tutor)}
+                  pending={!activated.has(tutor.id_tutor) && pending.has(tutor.id_tutor)}
                 />
               </div>
             )

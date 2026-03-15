@@ -13,3 +13,9 @@ export const saveTutorProfile= (data)  => client.post('/tutor-profile', data)
 
 export const getActiveStudents = ()     => client.get('/active-students')
 export const addActiveStudent  = (studentId) => client.post('/active-students', { student_id: studentId })
+
+// Tutor invite / request system
+export const requestTutor           = (id)         => client.post(`/tutors/${id}/request`)
+export const getTutorRequestsSent   = ()           => client.get('/tutor-requests/sent')
+export const getTutorRequestsRec    = ()           => client.get('/tutor-requests/received')
+export const respondTutorRequest    = (id, action) => client.patch(`/tutor-requests/${id}`, { action })

@@ -51,7 +51,7 @@ const studentSections = [
     title: 'Account',
     links: [
       { to: '/payments',            label: 'Payments',     icon: 'payments',           key: 'p' },
-      { to: '/xp',                  label: 'Graduation',   icon: 'military_tech',      key: 'x', accent: '#fbbf24' },
+      { to: '/xp',                  label: 'Graduation',   icon: 'military_tech',      key: 'x', accent: '#ff725e' },
     ],
   },
 ]

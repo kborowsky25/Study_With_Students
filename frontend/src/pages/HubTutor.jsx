@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useAuth } from '../context/AuthContext'
 import HubLayout from '../components/layout/HubLayout'
-import { getActiveStudents } from '../api/tutors'
+import { getActiveStudents, getTutorRequestsRec, respondTutorRequest } from '../api/tutors'
 import { getEvents, updateStatus } from '../api/events'
 import { getConversations } from '../api/messages'
 import { getStudyRooms } from '../api/studyrooms'
@@ -107,15 +107,17 @@ export default function HubTutor() {
   const [events,        setEvents]        = useState([])
   const [conversations, setConversations] = useState([])
   const [rooms,         setRooms]         = useState([])
+  const [invites,       setInvites]       = useState([])  // pending student → tutor requests
   const [loading,       setLoading]       = useState(true)
   const [mounted,       setMounted]       = useState(false)
 
   useEffect(() => {
     Promise.allSettled([
-      getActiveStudents().then(r  => setStudents(r.data.students ?? [])),
-      getEvents().then(r          => setEvents(r.data.events ?? [])),
-      getConversations().then(r   => setConversations(r.data.conversations ?? [])),
-      getStudyRooms().then(r      => setRooms(r.data.rooms ?? [])),
+      getActiveStudents().then(r   => setStudents(r.data.students ?? [])),
+      getEvents().then(r           => setEvents(r.data.events ?? [])),
+      getConversations().then(r    => setConversations(r.data.conversations ?? [])),
+      getStudyRooms().then(r       => setRooms(r.data.rooms ?? [])),
+      getTutorRequestsRec().then(r => setInvites(r.data.requests ?? [])),
     ]).finally(() => setLoading(false))
     // Trigger entrance animations on next frame
     requestAnimationFrame(() => setMounted(true))
@@ -152,6 +154,22 @@ export default function HubTutor() {
       toast.success(status === 'confirmed' ? 'Session confirmed! 🎉' : 'Session declined')
     } catch {
       toast.error('Failed to update status')
+    }
+  }
+
+  async function handleInvite(requestId, action) {
+    try {
+      await respondTutorRequest(requestId, action)
+      setInvites(prev => prev.filter(r => r.id !== requestId))
+      if (action === 'accepted') {
+        toast.success('Student added to your active students! 🎉')
+        // Refresh students list
+        getActiveStudents().then(r => setStudents(r.data.students ?? []))
+      } else {
+        toast.success('Request declined')
+      }
+    } catch {
+      toast.error('Failed to respond to request')
     }
   }
 
@@ -301,31 +319,58 @@ export default function HubTutor() {
           style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}
         >
 
-          {/* Col 1 — Session Requests */}
-          <Panel
-            icon="hourglass_top"
-            title="Session Requests"
-            subtitle={pending.length > 0 ? `${pending.length} awaiting your response` : 'no pending requests'}
-            extra={
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {pending.length > 0 && (
-                  <span style={{ background: AMBER, color: '#1b263b', fontSize: '9px', fontWeight: '800', padding: '2px 7px', borderRadius: '9px' }}>
-                    {pending.length} NEW
+          {/* Col 1 — Student Invites + Session Requests */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0 }}>
+
+            {/* Student Invites (tutor_requests) */}
+            <Panel
+              icon="person_add"
+              title="Student Invites"
+              subtitle={invites.length > 0 ? `${invites.length} student${invites.length !== 1 ? 's' : ''} want${invites.length === 1 ? 's' : ''} you as tutor` : 'no pending invites'}
+              extra={
+                invites.length > 0 ? (
+                  <span style={{ background: CORAL, color: 'white', fontSize: '9px', fontWeight: '800', padding: '2px 7px', borderRadius: '9px' }}>
+                    {invites.length} NEW
                   </span>
-                )}
-                <Link to="/events" style={{ color: CORAL, fontSize: '12px', fontWeight: '600' }}>View all →</Link>
-              </div>
-            }
-            style={{ minHeight: 0 }}
-          >
-            {loading ? <SkeletonRows rows={3} /> : pending.length === 0 ? (
-              <EmptyState icon="hourglass_empty" text="No pending requests" action={{ to: '/tutor-profile', label: 'Update your profile' }} />
-            ) : (
-              pending.slice(0, 4).map(ev => (
-                <PendingRow key={ev.id_event} event={ev} onAction={handleStatus} />
-              ))
-            )}
-          </Panel>
+                ) : null
+              }
+              style={{ flexShrink: 0 }}
+            >
+              {loading ? <SkeletonRows rows={2} /> : invites.length === 0 ? (
+                <EmptyState icon="group_add" text="No student invites yet" />
+              ) : (
+                invites.slice(0, 3).map(req => (
+                  <InviteRow key={req.id} invite={req} onAction={handleInvite} />
+                ))
+              )}
+            </Panel>
+
+            {/* Session Requests */}
+            <Panel
+              icon="hourglass_top"
+              title="Session Requests"
+              subtitle={pending.length > 0 ? `${pending.length} awaiting your response` : 'no pending requests'}
+              extra={
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {pending.length > 0 && (
+                    <span style={{ background: AMBER, color: '#1b263b', fontSize: '9px', fontWeight: '800', padding: '2px 7px', borderRadius: '9px' }}>
+                      {pending.length} NEW
+                    </span>
+                  )}
+                  <Link to="/events" style={{ color: CORAL, fontSize: '12px', fontWeight: '600' }}>View all →</Link>
+                </div>
+              }
+              style={{ flex: 1, minHeight: 0 }}
+            >
+              {loading ? <SkeletonRows rows={3} /> : pending.length === 0 ? (
+                <EmptyState icon="hourglass_empty" text="No pending requests" action={{ to: '/tutor-profile', label: 'Update your profile' }} />
+              ) : (
+                pending.slice(0, 4).map(ev => (
+                  <PendingRow key={ev.id_event} event={ev} onAction={handleStatus} />
+                ))
+              )}
+            </Panel>
+          </div>
 
           {/* Col 2 — Active Students + Confirmed Sessions */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0 }}>
@@ -593,6 +638,71 @@ function EarningsRow({ label, value, icon, color }) {
       <span className="material-symbols-outlined" style={{ color, fontSize: '15px', flexShrink: 0 }}>{icon}</span>
       <span style={{ flex: 1, color: 'var(--text-muted)', fontSize: '11px' }}>{label}</span>
       <span style={{ color: 'var(--text)', fontSize: '13px', fontWeight: '800' }}>{value}</span>
+    </div>
+  )
+}
+
+function InviteRow({ invite, onAction }) {
+  const [acting, setActing] = useState(false)
+  const initials = invite.student_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() ?? '?'
+
+  async function act(action) {
+    setActing(true)
+    await onAction(invite.id, action)
+    setActing(false)
+  }
+
+  return (
+    <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '10px', marginBottom: '10px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '9px', marginBottom: '8px' }}>
+        <div style={{
+          width: '30px', height: '30px', borderRadius: '8px',
+          background: `${CORAL}1a`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: CORAL, fontSize: '11px', fontWeight: '800', flexShrink: 0,
+        }}>
+          {initials}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ color: 'var(--text)', fontSize: '12px', fontWeight: '700', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {invite.student_name}
+          </div>
+          <div style={{ color: 'var(--text-faint)', fontSize: '10px', marginTop: '1px' }}>
+            {invite.student_email} · wants you as their tutor
+          </div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: '6px', paddingLeft: '39px' }}>
+        <button
+          onClick={() => act('accepted')}
+          disabled={acting}
+          style={{
+            flex: 1, padding: '5px 0',
+            background: 'rgba(52,211,153,0.14)', color: GREEN,
+            border: `1px solid rgba(52,211,153,0.28)`, borderRadius: '8px',
+            fontSize: '10px', fontWeight: '800', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px',
+            opacity: acting ? 0.6 : 1,
+          }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>check</span>
+          Accept
+        </button>
+        <button
+          onClick={() => act('declined')}
+          disabled={acting}
+          style={{
+            flex: 1, padding: '5px 0',
+            background: 'rgba(248,113,113,0.12)', color: '#f87171',
+            border: '1px solid rgba(248,113,113,0.25)', borderRadius: '8px',
+            fontSize: '10px', fontWeight: '800', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px',
+            opacity: acting ? 0.6 : 1,
+          }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>close</span>
+          Decline
+        </button>
+      </div>
     </div>
   )
 }

@@ -605,6 +605,178 @@ def add_active_student():
     finally:
         cur.close(); conn.close()
 
+# ── Tutor invite/request system ───────────────────────────────────────────────
+#
+# Required DB migration (run once):
+#   CREATE TABLE IF NOT EXISTS tutor_requests (
+#     id         INT AUTO_INCREMENT PRIMARY KEY,
+#     student_id INT NOT NULL,
+#     tutor_id   INT NOT NULL,
+#     status     ENUM('pending','accepted','declined') DEFAULT 'pending',
+#     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+#     UNIQUE KEY uniq_sr   (student_id, tutor_id),
+#     INDEX idx_tr_tutor   (tutor_id),
+#     INDEX idx_tr_student (student_id)
+#   );
+
+@app.route('/api/tutors/<int:tutor_id>/request', methods=['POST'])
+@jwt_required()
+def send_tutor_request(tutor_id):
+    """Student sends an invite to a tutor (pending until tutor accepts)."""
+    uid  = current_user_id()
+    conn = get_db(); cur = conn.cursor()
+    try:
+        # Get or auto-create student profile
+        cur.execute("SELECT id_student FROM student_profiles WHERE id_user = %s", (uid,))
+        row = cur.fetchone()
+        if not row:
+            cur.execute("INSERT INTO student_profiles (id_user) VALUES (%s)", (uid,))
+            conn.commit()
+            student_id = cur.lastrowid
+        else:
+            student_id = row[0]
+
+        # Check for existing request
+        cur.execute(
+            "SELECT id, status FROM tutor_requests WHERE student_id = %s AND tutor_id = %s",
+            (student_id, tutor_id)
+        )
+        existing = cur.fetchone()
+        if existing:
+            existing_status = existing[1]
+            if existing_status == 'pending':
+                return jsonify({'error': 'Request already sent'}), 409
+            if existing_status == 'accepted':
+                return jsonify({'error': 'Already an active tutor'}), 409
+            # Declined — allow re-request by resetting to pending
+            cur.execute(
+                "UPDATE tutor_requests SET status = 'pending', created_at = NOW() WHERE id = %s",
+                (existing[0],)
+            )
+            conn.commit()
+            return jsonify({'message': 'Request re-sent', 'request_id': existing[0]})
+
+        cur.execute(
+            "INSERT INTO tutor_requests (student_id, tutor_id, status) VALUES (%s, %s, 'pending')",
+            (student_id, tutor_id)
+        )
+        conn.commit()
+        return jsonify({'message': 'Request sent', 'request_id': cur.lastrowid})
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/tutor-requests/sent', methods=['GET'])
+@jwt_required()
+def get_sent_requests():
+    """Student sees all their sent tutor requests with statuses."""
+    uid  = current_user_id()
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT id_student FROM student_profiles WHERE id_user = %s", (uid,))
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'requests': []})
+        student_id = row['id_student']
+        cur.execute("""
+            SELECT tr.id, tr.tutor_id, tr.status, tr.created_at,
+                   u.name AS tutor_name, tp.university, tp.subjects
+            FROM tutor_requests tr
+            JOIN tutor_profiles tp ON tp.id_tutor = tr.tutor_id
+            JOIN users u ON u.id_user = tp.id_user
+            WHERE tr.student_id = %s
+            ORDER BY tr.created_at DESC
+        """, (student_id,))
+        return jsonify({'requests': cur.fetchall()})
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/tutor-requests/received', methods=['GET'])
+@jwt_required()
+def get_received_requests():
+    """Tutor sees incoming pending student requests."""
+    uid  = current_user_id()
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT id_tutor FROM tutor_profiles WHERE id_user = %s", (uid,))
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'requests': []})
+        tutor_id = row['id_tutor']
+        cur.execute("""
+            SELECT tr.id, tr.student_id, tr.status, tr.created_at,
+                   u.name AS student_name, u.email AS student_email
+            FROM tutor_requests tr
+            JOIN student_profiles sp ON sp.id_student = tr.student_id
+            JOIN users u ON u.id_user = sp.id_user
+            WHERE tr.tutor_id = %s AND tr.status = 'pending'
+            ORDER BY tr.created_at DESC
+        """, (tutor_id,))
+        return jsonify({'requests': cur.fetchall()})
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/tutor-requests/<int:request_id>', methods=['PATCH'])
+@jwt_required()
+def respond_tutor_request(request_id):
+    """Tutor accepts or declines a student invite.
+    On accept: automatically adds to active_tutors (student side) and active_students (tutor side).
+    """
+    uid    = current_user_id()
+    action = request.get_json().get('action')  # 'accepted' or 'declined'
+    if action not in ('accepted', 'declined'):
+        return jsonify({'error': 'Invalid action — must be accepted or declined'}), 400
+
+    conn = get_db(); cur = conn.cursor()
+    try:
+        # Verify this tutor owns the request
+        cur.execute("SELECT id_tutor FROM tutor_profiles WHERE id_user = %s", (uid,))
+        tp_row = cur.fetchone()
+        if not tp_row:
+            return jsonify({'error': 'Tutor profile not found'}), 404
+        tutor_id = tp_row[0]
+
+        cur.execute(
+            "SELECT id, student_id FROM tutor_requests WHERE id = %s AND tutor_id = %s AND status = 'pending'",
+            (request_id, tutor_id)
+        )
+        req = cur.fetchone()
+        if not req:
+            return jsonify({'error': 'Pending request not found'}), 404
+        student_id = req[1]
+
+        # Update request status
+        cur.execute("UPDATE tutor_requests SET status = %s WHERE id = %s", (action, request_id))
+
+        if action == 'accepted':
+            # Resolve the student's user_id
+            cur.execute("SELECT id_user FROM student_profiles WHERE id_student = %s", (student_id,))
+            sp_row = cur.fetchone()
+            if sp_row:
+                student_user_id = sp_row[0]
+                # Add to active_tutors (student sees this tutor in My Tutors)
+                cur.execute(
+                    "SELECT 1 FROM active_tutors WHERE id_user = %s AND id_tutor = %s",
+                    (student_user_id, tutor_id)
+                )
+                if not cur.fetchone():
+                    cur.execute(
+                        "INSERT INTO active_tutors (id_user, id_student, id_tutor) VALUES (%s, %s, %s)",
+                        (student_user_id, student_id, tutor_id)
+                    )
+            # Add to active_students (tutor sees this student in Active Students)
+            cur.execute(
+                "INSERT IGNORE INTO active_students (id_tutor, id_student) VALUES (%s, %s)",
+                (tutor_id, student_id)
+            )
+
+        conn.commit()
+        return jsonify({'message': f'Request {action}'})
+    finally:
+        cur.close(); conn.close()
+
 # ── Events / Sessions ─────────────────────────────────────────────────────────
 
 @app.route('/api/events', methods=['GET'])
