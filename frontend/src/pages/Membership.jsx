@@ -113,12 +113,14 @@ export default function Membership() {
     setLoading(true)
     try {
       const res = await upgradeToExplorer()
-      const updated = res.data?.user ?? {}
-      updateUser({ is_premium: true, ...updated })
+      // Merge whatever the server returns (name, email, is_premium) into auth context
+      const serverUser = res.data?.user ?? {}
+      updateUser({ is_premium: true, ...serverUser })
       setPurchased(true)
       toast.success('🎉 Welcome to Explorer Plan!')
     } catch (err) {
-      toast.error(err?.response?.data?.message ?? 'Something went wrong — try again')
+      const msg = err?.response?.data?.message ?? err?.message ?? 'Something went wrong — try again'
+      toast.error(msg)
     } finally {
       setLoading(false)
     }

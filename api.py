@@ -1154,18 +1154,49 @@ def search_users():
 def upgrade_membership():
     """Upgrade the current user to Explorer (premium) plan.
 
-    This is a stub — in production, verify a Stripe payment before
-    setting is_premium.  For now it upgrades immediately (useful for testing).
+    Simulation stub — in production, verify a Stripe payment before calling this.
+    Automatically adds the is_premium column if it doesn't exist yet.
     """
     uid  = current_user_id()
-    conn = get_db(); cur = conn.cursor()
+    conn = get_db(); cur = conn.cursor(dictionary=True)
     try:
-        cur.execute(
-            "UPDATE users SET is_premium = TRUE WHERE id_user = %s",
-            (uid,)
-        )
-        conn.commit()
-        return jsonify({'message': 'Upgraded to Explorer plan'})
+        # Ensure column exists (idempotent migration)
+        try:
+            cur.execute(
+                "ALTER TABLE users ADD COLUMN is_premium BOOLEAN NOT NULL DEFAULT FALSE"
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()  # column already exists — ignore
+        try:
+            cur.execute(
+                "UPDATE users SET is_premium = TRUE WHERE id_user = %s", (uid,)
+            )
+            conn.commit()
+            cur.execute(
+                "SELECT id_user AS id, name, email, is_premium FROM users WHERE id_user = %s",
+                (uid,)
+            )
+            user = cur.fetchone()
+            return jsonify({'message': 'Upgraded to Explorer Plan!', 'user': user})
+        except Exception as e:
+            return jsonify({'message': f'DB error: {e}'}), 500
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/membership/status', methods=['GET'])
+@jwt_required()
+def membership_status():
+    """Return current premium status for the logged-in user."""
+    uid  = current_user_id()
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT is_premium FROM users WHERE id_user = %s", (uid,))
+        row = cur.fetchone()
+        return jsonify({'is_premium': bool(row and row.get('is_premium'))})
+    except Exception:
+        return jsonify({'is_premium': False})
     finally:
         cur.close(); conn.close()
 
@@ -1183,6 +1214,8 @@ def downgrade_membership():
         )
         conn.commit()
         return jsonify({'message': 'Subscription cancelled'})
+    except Exception as e:
+        return jsonify({'message': f'DB error: {e}'}), 500
     finally:
         cur.close(); conn.close()
 
@@ -1494,41 +1527,3 @@ def admin_reject_tutor(tutor_id):
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
 
-
-# ── Membership ────────────────────────────────────────────────────────────────
-
-@app.route('/api/membership/upgrade', methods=['POST'])
-@jwt_required()
-def membership_upgrade():
-    """Simulate upgrading to Explorer Plan. In production this would be called
-    after a successful Stripe payment webhook."""
-    uid = get_jwt_identity()
-    conn = get_db(); cur = conn.cursor(dictionary=True)
-    try:
-        try:
-            cur.execute("ALTER TABLE users ADD COLUMN is_premium BOOLEAN NOT NULL DEFAULT FALSE")
-            conn.commit()
-        except Exception:
-            pass
-        cur.execute("UPDATE users SET is_premium = TRUE WHERE id_user = %s", (uid,))
-        conn.commit()
-        cur.execute("SELECT id_user AS id, name, email, is_premium FROM users WHERE id_user = %s", (uid,))
-        user = cur.fetchone()
-        return jsonify({'message': 'Upgraded to Explorer Plan!', 'user': user})
-    finally:
-        cur.close(); conn.close()
-
-@app.route('/api/membership/status', methods=['GET'])
-@jwt_required()
-def membership_status():
-    uid = get_jwt_identity()
-    conn = get_db(); cur = conn.cursor(dictionary=True)
-    try:
-        try:
-            cur.execute("SELECT is_premium FROM users WHERE id_user = %s", (uid,))
-            row = cur.fetchone()
-            return jsonify({'is_premium': bool(row and row.get('is_premium'))})
-        except Exception:
-            return jsonify({'is_premium': False})
-    finally:
-        cur.close(); conn.close()
