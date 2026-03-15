@@ -6,7 +6,7 @@ import { getActiveTutors, getTutors } from '../api/tutors'
 import { getEvents } from '../api/events'
 import { getConversations } from '../api/messages'
 
-const CORAL  = '#f97316'   // student hub — warm orange
+const CORAL  = '#ff725e'   // student hub — coral (warm but distinct from amber)
 const GREEN  = '#34d399'
 const BLUE   = '#60a5fa'
 const AMBER  = '#fbbf24'
