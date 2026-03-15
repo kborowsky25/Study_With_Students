@@ -78,36 +78,6 @@ const tutorSections = [
   },
 ]
 
-// ── Shortcut badge ────────────────────────────────────────────────────────────
-function ShortcutBadge({ keyHint, chordActive }) {
-  return (
-    <div
-      style={{
-        marginLeft: 'auto',
-        padding: '1px 5px',
-        borderRadius: '4px',
-        flexShrink: 0,
-        background: chordActive ? `${CORAL}18` : 'rgba(255,255,255,0.04)',
-        border: `1px solid ${chordActive ? `${CORAL}30` : 'rgba(255,255,255,0.07)'}`,
-        transition: 'all 0.15s',
-      }}
-    >
-      <span
-        style={{
-          fontSize: '9px',
-          fontFamily: 'monospace',
-          fontWeight: '700',
-          letterSpacing: '0.04em',
-          color: chordActive ? CORAL : 'rgba(255,255,255,0.28)',
-          transition: 'color 0.15s',
-        }}
-      >
-        g·{keyHint}
-      </span>
-    </div>
-  )
-}
-
 // ── Section header ────────────────────────────────────────────────────────────
 function SectionLabel({ title }) {
   return (
@@ -270,7 +240,6 @@ export default function Sidebar({ mode = 'student', chordActive = false }) {
                   >
                     {label}
                   </span>
-                  {key && <ShortcutBadge keyHint={key} chordActive={chordActive} />}
                 </Link>
               )
             })}
