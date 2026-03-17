@@ -152,22 +152,55 @@ export default function AboutUs() {
       `}</style>
       <Navbar />
 
-      {/* ── HERO ──────────────────────────────────────────────────────────── */}
-      <section style={{ position: 'relative', overflow: 'hidden', padding: '100px 24px 88px', borderBottom: `1px solid ${BORDER}` }}>
+      {/* ── HERO — diagonal split ─────────────────────────────────────────── */}
+      <section style={{ position: 'relative', overflow: 'hidden', minHeight: '420px', borderBottom: `1px solid ${BORDER}` }}>
+        <style>{`
+          @keyframes diagLineGrow {
+            from { stroke-dashoffset: 1200; }
+            to   { stroke-dashoffset: 0; }
+          }
+        `}</style>
         <div aria-hidden style={GRID_STYLE} />
-        <div aria-hidden style={{ position: 'absolute', inset: 0, WebkitMaskImage: 'radial-gradient(ellipse 70% 80% at 50% 50%, black 20%, transparent 80%)', maskImage: 'radial-gradient(ellipse 70% 80% at 50% 50%, black 20%, transparent 80%)', ...GRID_STYLE }} />
-        <div aria-hidden style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '600px', height: '400px', background: `radial-gradient(ellipse, ${CORAL}08 0%, transparent 65%)`, pointerEvents: 'none' }} />
-        <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', maxWidth: '760px', margin: '0 auto' }}>
-          <p data-reveal style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: CORAL, marginBottom: '24px' }}>Our story</p>
-          <h1 data-reveal data-d="1" style={{ fontSize: 'clamp(32px, 5vw, 58px)', fontWeight: 900, margin: '0 0 12px', letterSpacing: '-0.03em', lineHeight: 1.08 }}>
+        {/* Diagonal divider line */}
+        <svg aria-hidden viewBox="0 0 1440 420" preserveAspectRatio="none"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1 }}
+        >
+          <line x1="0" y1="380" x2="1440" y2="60"
+            stroke={`${CORAL}20`} strokeWidth="1"
+            strokeDasharray="1200" strokeDashoffset="1200"
+            style={{ animation: 'diagLineGrow 1.4s ease 0.3s forwards' }}
+          />
+        </svg>
+        {/* Ambient glows */}
+        <div aria-hidden style={{ position: 'absolute', top: '-10%', left: '-5%', width: '50vw', height: '80%', background: `radial-gradient(ellipse, ${CORAL}07 0%, transparent 65%)`, pointerEvents: 'none', zIndex: 0 }} />
+        <div aria-hidden style={{ position: 'absolute', bottom: '-10%', right: '-5%', width: '50vw', height: '80%', background: `radial-gradient(ellipse, rgba(96,165,250,0.06) 0%, transparent 65%)`, pointerEvents: 'none', zIndex: 0 }} />
+
+        {/* Top-left: first statement */}
+        <div style={{ position: 'relative', zIndex: 2, padding: '80px 8% 0 8%' }}>
+          <p data-reveal style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: CORAL, marginBottom: '20px' }}>Our story</p>
+          <h1 data-reveal data-d="1" style={{
+            fontSize: 'clamp(32px, 5vw, 62px)', fontWeight: 900,
+            margin: 0, letterSpacing: '-0.03em', lineHeight: 1.05,
+            maxWidth: '640px', color: 'white',
+          }}>
             We think tutors are getting scammed.
           </h1>
-          <h2 data-reveal data-d="2" style={{ fontSize: 'clamp(22px, 3.5vw, 38px)', fontWeight: 700, margin: '0 0 24px', letterSpacing: '-0.02em', lineHeight: 1.15, color: 'rgba(255,255,255,0.55)' }}>
-            And tutoring should be fun.
-          </h2>
-          <p data-reveal data-d="3" style={{ fontSize: '17px', color: 'rgba(255,255,255,0.48)', maxWidth: '480px', margin: '0 auto', lineHeight: 1.7 }}>
-            Built by a student who was tired of watching agencies take 50% — when the best tutors were already in the next lecture hall.
-          </p>
+        </div>
+
+        {/* Bottom-right: second statement */}
+        <div style={{ position: 'relative', zIndex: 2, padding: '32px 8% 80px 8%', display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ textAlign: 'right', maxWidth: '560px' }}>
+            <h2 data-reveal data-d="2" style={{
+              fontSize: 'clamp(22px, 3.8vw, 46px)', fontWeight: 800,
+              margin: '0 0 18px', letterSpacing: '-0.025em', lineHeight: 1.1,
+              color: CORAL, opacity: 0.85,
+            }}>
+              And tutoring should be fun.
+            </h2>
+            <p data-reveal data-d="3" style={{ fontSize: '15px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.7, margin: 0 }}>
+              Built by a student tired of watching agencies take 50% — when the best tutors were already in the next lecture hall.
+            </p>
+          </div>
         </div>
       </section>
 

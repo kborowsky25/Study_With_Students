@@ -126,16 +126,13 @@ const STEPS = [
   },
 ]
 
-// ── Perks ──────────────────────────────────────────────────────────────────────
+// ── Perks (unique items not covered by MORE_CARDS) ─────────────────────────────
 const PERKS = [
   { icon: 'schedule',     text: 'Teach when you want' },
   { icon: 'tune',         text: 'Set your own rate' },
-  { icon: 'cast_for_education', text: 'Host live classrooms' },
   { icon: 'emoji_events', text: 'Earn XP & level up' },
   { icon: 'star_rate',    text: 'Build reviews & rep' },
   { icon: 'chat',         text: 'Message before booking' },
-  { icon: 'auto_stories', text: 'Contribute study notes' },
-  { icon: 'workspace_premium', text: 'Unlock tutor badges' },
 ]
 
 const MORE_CARDS = [
@@ -164,15 +161,18 @@ const MORE_CARDS = [
 
 export default function BecomeATutor() {
   useReveal()
-  const [activeStep, setActiveStep] = useState(null)
 
   return (
     <div style={{ background: BG, minHeight: '100vh', color: 'white', fontFamily: 'inherit' }}>
       <style>{`
-        [data-reveal]{opacity:0;transform:translateY(18px);transition:opacity 0.6s cubic-bezier(0.16,1,0.3,1),transform 0.6s cubic-bezier(0.16,1,0.3,1)}
-        [data-reveal].sws-vis{opacity:1;transform:translateY(0)}
-        [data-reveal][data-d="1"]{transition-delay:.10s}[data-reveal][data-d="2"]{transition-delay:.20s}
-        [data-reveal][data-d="3"]{transition-delay:.30s}[data-reveal][data-d="4"]{transition-delay:.40s}
+        [data-reveal]{opacity:0;transform:translateY(22px);transition:opacity 0.65s cubic-bezier(0.16,1,0.3,1),transform 0.65s cubic-bezier(0.16,1,0.3,1)}
+        [data-reveal][data-from="left"]{transform:translate(-32px,0)}
+        [data-reveal][data-from="right"]{transform:translate(32px,0)}
+        [data-reveal].sws-vis{opacity:1;transform:translate(0,0)!important}
+        [data-reveal][data-d="1"]{transition-delay:.08s}[data-reveal][data-d="2"]{transition-delay:.16s}
+        [data-reveal][data-d="3"]{transition-delay:.24s}[data-reveal][data-d="4"]{transition-delay:.32s}
+        [data-reveal][data-d="5"]{transition-delay:.40s}[data-reveal][data-d="6"]{transition-delay:.48s}
+        @keyframes zeroCount{from{opacity:0;transform:scale(0.7)}to{opacity:1;transform:scale(1)}}
       `}</style>
       <Navbar />
 
@@ -198,44 +198,37 @@ export default function BecomeATutor() {
             Become a tutor
           </p>
 
-          {/* Giant 0% */}
+          {/* Giant 0% — animated entrance */}
           <div data-reveal data-d="1" style={{
-            fontSize: 'clamp(96px, 15vw, 160px)',
+            fontSize: 'clamp(96px, 15vw, 180px)',
             fontWeight: 900,
             color: CORAL,
             lineHeight: 1,
-            letterSpacing: '-0.05em',
+            letterSpacing: '-0.06em',
             marginBottom: '0',
+            textShadow: `0 0 80px ${CORAL}30`,
+            animation: 'zeroCount 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.2s both',
           }}>
             0%
           </div>
 
           <h1 data-reveal data-d="2" style={{
-            fontSize: 'clamp(20px, 3vw, 28px)',
-            fontWeight: 800,
-            margin: '8px 0 20px',
-            letterSpacing: '-0.02em',
-            color: 'white',
+            fontSize: 'clamp(18px, 2.5vw, 24px)',
+            fontWeight: 700,
+            margin: '6px 0 18px',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            color: 'rgba(255,255,255,0.55)',
           }}>
-            Platform commission
+            Platform commission — always
           </h1>
 
-          <p data-reveal data-d="2" style={{
-            color: 'rgba(255,255,255,0.50)',
-            fontSize: '16px',
-            maxWidth: '440px',
-            margin: '0 auto 32px',
-            lineHeight: 1.7,
-          }}>
-            Your rate is your income. No setup fee, no monthly charge, no per-session cut. Not now, not later.
-          </p>
-
           {/* Three checks */}
-          <div data-reveal data-d="3" style={{ display: 'flex', gap: '24px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '40px' }}>
+          <div data-reveal data-d="3" style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '36px' }}>
             {['No setup fee', 'No monthly charge', 'No per-session cut'].map(label => (
-              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#22c55e' }}>check_circle</span>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.72)' }}>{label}</span>
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`, borderRadius: '20px', padding: '6px 14px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#22c55e' }}>check_circle</span>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.72)' }}>{label}</span>
               </div>
             ))}
           </div>
@@ -285,90 +278,47 @@ export default function BecomeATutor() {
 
       {/* ── WHAT WE NEED FROM YOU ──────────────────────────────────────────── */}
       <section style={{ padding: '88px 24px', borderTop: `1px solid ${BORDER}` }}>
-        <div style={{ maxWidth: '640px', margin: '0 auto' }}>
-          <p data-reveal style={{ textAlign: 'center', fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '14px' }}>Before you apply</p>
+        <div style={{ maxWidth: '860px', margin: '0 auto' }}>
+          <p data-reveal style={{ textAlign: 'center', fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '14px' }}>Requirements</p>
           <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(22px, 3vw, 30px)', fontWeight: 800, textAlign: 'center', margin: '0 0 44px', letterSpacing: '-0.02em' }}>
-            What we need from you
+            Three things. That's it.
           </h2>
 
-          {/* Three requirement cards */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+          {/* Horizontal requirement cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '24px' }}>
             {[
-              {
-                icon: 'alternate_email',
-                title: 'Valid .ac.uk email address',
-                desc: 'Your university email ending in .ac.uk. We send a verification link to confirm it\'s active.',
-              },
-              {
-                icon: 'badge',
-                title: 'Proof of enrolment',
-                desc: 'A student ID photo or enrolment letter showing your name and institution. One upload is enough.',
-              },
-              {
-                icon: 'event',
-                title: 'Expected graduation date',
-                desc: 'Month and year you expect to graduate. This helps us keep the platform current and show your year to students.',
-              },
+              { icon: 'alternate_email', title: '.ac.uk email',     desc: 'Your active university email. We send a verification link.' },
+              { icon: 'badge',           title: 'Proof of enrolment', desc: 'Student ID or enrolment letter — one upload.' },
+              { icon: 'event',           title: 'Graduation date',   desc: 'Your expected month and year of graduation.' },
             ].map((req, i) => (
-              <div key={req.icon} data-reveal data-d={String(i + 2)} style={{
-                display: 'flex', gap: '18px', alignItems: 'center',
-                padding: '22px 26px',
-                background: `${CORAL}07`,
-                border: `1px solid ${CORAL}22`,
-                borderRadius: '16px',
-              }}>
-                <div style={{
-                  width: '44px', height: '44px', borderRadius: '11px',
-                  background: `${CORAL}16`, border: `1px solid ${CORAL}28`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0,
-                }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '20px', color: CORAL }}>{req.icon}</span>
+              <div key={req.icon} data-reveal data-d={String(i + 2)} data-from={i === 0 ? 'left' : i === 2 ? 'right' : undefined} style={{
+                padding: '28px 22px', textAlign: 'center',
+                background: `${CORAL}06`, border: `1px solid ${CORAL}20`, borderRadius: '18px',
+                transition: 'border-color 0.2s, box-shadow 0.2s',
+              }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = `${CORAL}40`; e.currentTarget.style.boxShadow = `0 8px 28px ${CORAL}12` }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = `${CORAL}20`; e.currentTarget.style.boxShadow = 'none' }}
+              >
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: `${CORAL}15`, border: `1px solid ${CORAL}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '22px', color: CORAL }}>{req.icon}</span>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '14px', fontWeight: 800, marginBottom: '4px' }}>{req.title}</div>
-                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.55 }}>{req.desc}</div>
-                </div>
-                <div style={{
-                  fontSize: '10px', fontWeight: 800, color: CORAL,
-                  background: `${CORAL}15`, border: `1px solid ${CORAL}28`,
-                  padding: '4px 10px', borderRadius: '20px',
-                  flexShrink: 0,
-                }}>
-                  Required
-                </div>
+                <div style={{ fontSize: '14px', fontWeight: 800, marginBottom: '8px' }}>{req.title}</div>
+                <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6 }}>{req.desc}</div>
               </div>
             ))}
           </div>
 
-          {/* Not a uni student? */}
-          <div data-reveal data-d="3" style={{
-            padding: '20px 24px',
-            background: 'rgba(255,255,255,0.025)',
-            border: `1px solid ${BORDER}`,
-            borderRadius: '14px',
-          }}>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'rgba(255,255,255,0.40)', marginTop: '1px', flexShrink: 0 }}>help_outline</span>
-              <div>
-                <p style={{ fontSize: '14px', fontWeight: 700, margin: '0 0 6px', color: 'rgba(255,255,255,0.80)' }}>
-                  Not a university student?
-                </p>
-                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.7, margin: '0 0 12px' }}>
-                  No worries — Study With Students is primarily built to help university students earn money and combat rising student loan costs. But if you've graduated or studied at a recognised institution,{' '}
-                  <Link to="/contact" style={{ color: CORAL, fontWeight: 700, textDecoration: 'none' }}
-                    onMouseEnter={e => e.currentTarget.style.opacity = '0.75'}
-                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-                  >
-                    contact us here
-                  </Link>
-                  {' '}with where you studied and we'll see if we can get you on the platform.
-                </p>
-                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.28)', fontStyle: 'italic' }}>
-                  We review these case-by-case.
-                </span>
-              </div>
-            </div>
+          {/* Not a uni student? — compact */}
+          <div data-reveal data-d="3" style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '14px 20px', background: 'rgba(255,255,255,0.025)', border: `1px solid ${BORDER}`, borderRadius: '12px' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '16px', color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>help_outline</span>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.6, margin: 0 }}>
+              <strong style={{ color: 'rgba(255,255,255,0.70)' }}>Not currently enrolled?</strong>{' '}
+              Graduated or studied at a UK institution?{' '}
+              <Link to="/contact" style={{ color: CORAL, fontWeight: 700, textDecoration: 'none' }}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.75'}
+                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+              >Contact us</Link>{' '}— we review case-by-case.
+            </p>
           </div>
         </div>
       </section>
@@ -382,65 +332,77 @@ export default function BecomeATutor() {
           WebkitMaskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%)',
           maskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%)',
         }} />
-        <div style={{ maxWidth: '860px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+        <div style={{ maxWidth: '720px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <p data-reveal style={{ textAlign: 'center', fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '14px' }}>Getting started</p>
-          <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(22px, 3vw, 30px)', fontWeight: 800, textAlign: 'center', margin: '0 0 48px', letterSpacing: '-0.02em' }}>
+          <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(22px, 3vw, 30px)', fontWeight: 800, textAlign: 'center', margin: '0 0 56px', letterSpacing: '-0.02em' }}>
             Six steps. Under 10 minutes.
           </h2>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+          {/* Alternating timeline */}
+          <div style={{ position: 'relative' }}>
+            {/* Vertical spine */}
+            <div aria-hidden style={{
+              position: 'absolute', left: '50%', top: '20px', bottom: '20px',
+              width: '1px', transform: 'translateX(-50%)',
+              background: `linear-gradient(to bottom, transparent, ${CORAL}22 12%, ${CORAL}22 88%, transparent)`,
+            }} />
+
             {STEPS.map((step, i) => {
-              const isActive = activeStep === i
-              return (
-                <div
-                  key={step.n}
-                  data-reveal
-                  data-d={String((i % 3) + 1)}
-                  onClick={() => setActiveStep(isActive ? null : i)}
-                  style={{
-                    padding: '22px', borderRadius: '14px',
-                    cursor: 'pointer',
-                    background: isActive ? `${CORAL}0c` : 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${isActive ? CORAL + '40' : BORDER}`,
-                    boxShadow: isActive ? `0 8px 28px ${CORAL}12` : 'none',
-                    transition: 'border-color 0.25s, box-shadow 0.25s, background 0.25s',
-                  }}
-                  onMouseEnter={e => { if (!isActive) { e.currentTarget.style.borderColor = `${CORAL}28`; e.currentTarget.style.boxShadow = `0 4px 16px ${CORAL}08` } }}
-                  onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.boxShadow = 'none' } }}
+              const isLeft = i % 2 === 0
+              const card = (
+                <div style={{
+                  padding: '22px 24px',
+                  background: 'rgba(255,255,255,0.025)',
+                  border: `1px solid ${BORDER}`,
+                  borderRadius: '14px',
+                  textAlign: isLeft ? 'right' : 'left',
+                  transition: 'border-color 0.2s, box-shadow 0.2s',
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = `${CORAL}30`; e.currentTarget.style.boxShadow = `0 6px 20px ${CORAL}0c` }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.boxShadow = 'none' }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                    <div style={{
-                      width: '28px', height: '28px', borderRadius: '7px',
-                      background: isActive ? CORAL : `${CORAL}18`,
-                      border: `1px solid ${isActive ? CORAL : CORAL + '28'}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '10px', fontWeight: 900,
-                      color: isActive ? 'white' : CORAL,
-                      flexShrink: 0,
-                      transition: 'background 0.2s, color 0.2s',
-                    }}>{step.n}</div>
+                  <div style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '8px',
+                    flexDirection: isLeft ? 'row-reverse' : 'row',
+                    marginBottom: '8px',
+                  }}>
                     <span className="material-symbols-outlined" style={{ fontSize: '18px', color: CORAL }}>{step.icon}</span>
-                    <span className="material-symbols-outlined" style={{
-                      fontSize: '16px', color: 'rgba(255,255,255,0.28)',
-                      marginLeft: 'auto',
-                      transform: isActive ? 'rotate(180deg)' : 'rotate(0deg)',
-                      transition: 'transform 0.25s ease',
-                    }}>expand_more</span>
+                    <span style={{ fontSize: '10px', fontWeight: 900, color: `${CORAL}60`, letterSpacing: '0.06em' }}>{step.n}</span>
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '5px' }}>{step.title}</div>
-                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.55 }}>{step.desc}</div>
-                  {isActive && (
+                  <div style={{ fontWeight: 800, fontSize: '14px', marginBottom: '5px' }}>{step.title}</div>
+                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.65 }}>{step.desc}</div>
+                </div>
+              )
+
+              return (
+                <div key={step.n}
+                  data-reveal
+                  data-from={isLeft ? 'left' : 'right'}
+                  data-d={String((i % 2) + 1)}
+                  style={{ display: 'grid', gridTemplateColumns: '1fr 56px 1fr', alignItems: 'start', gap: '16px', marginBottom: i < 5 ? '20px' : 0 }}
+                >
+                  {/* Left slot */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    {isLeft ? card : <div style={{ minHeight: '70px' }} />}
+                  </div>
+
+                  {/* Node */}
+                  <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '12px' }}>
                     <div style={{
-                      marginTop: '14px',
-                      paddingTop: '14px',
-                      borderTop: `1px solid ${CORAL}20`,
-                      fontSize: '12px',
-                      color: 'rgba(255,255,255,0.62)',
-                      lineHeight: 1.7,
+                      width: '38px', height: '38px', borderRadius: '50%',
+                      background: `${CORAL}12`, border: `2px solid ${CORAL}35`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      position: 'relative', zIndex: 1,
+                      boxShadow: `0 0 0 5px ${BG}`,
                     }}>
-                      {step.detail}
+                      <span className="material-symbols-outlined" style={{ fontSize: '16px', color: CORAL }}>{step.icon}</span>
                     </div>
-                  )}
+                  </div>
+
+                  {/* Right slot */}
+                  <div>
+                    {!isLeft ? card : <div style={{ minHeight: '70px' }} />}
+                  </div>
                 </div>
               )
             })}

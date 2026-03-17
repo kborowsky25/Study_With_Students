@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from '@tanstack/react-router'
 import Navbar from '../components/layout/Navbar'
 import Footer from '../components/layout/Footer'
@@ -6,141 +6,6 @@ import Footer from '../components/layout/Footer'
 const BG     = '#1b263b'
 const CORAL  = '#ff725e'
 const BORDER = 'rgba(255,255,255,0.08)'
-
-// ── Grid canvas with dot + traces ─────────────────────────────────────────────
-function PageCanvas({ targetRef }) {
-  const canvasRef = useRef(null)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    const GRID = 56
-    const SPEED = 1.6
-    let traces = []
-    let dot = null
-    let rafId
-
-    const resize = () => {
-      canvas.width = canvas.offsetWidth
-      canvas.height = canvas.offsetHeight
-    }
-    const ro = new ResizeObserver(resize)
-    ro.observe(canvas)
-    resize()
-
-    class Trace {
-      constructor() {
-        const isH = Math.random() > 0.5
-        this.sx = Math.round((Math.random() * canvas.width) / GRID) * GRID
-        this.sy = Math.round((Math.random() * canvas.height) / GRID) * GRID
-        this.x = this.sx; this.y = this.sy
-        this.maxLen = (2 + Math.random() * 4) * GRID
-        this.speed = 0.5 + Math.random() * 0.8
-        this.dx = isH ? (Math.random() > 0.5 ? 1 : -1) : 0
-        this.dy = isH ? 0 : (Math.random() > 0.5 ? 1 : -1)
-        this.len = 0; this.opacity = 0; this.fading = false; this.dead = false
-      }
-      update() {
-        if (!this.fading) {
-          this.len += this.speed
-          this.x = this.sx + this.dx * this.len
-          this.y = this.sy + this.dy * this.len
-          this.opacity = Math.min(1, this.len / (GRID * 0.5)) * 0.25
-          if (this.len >= this.maxLen) this.fading = true
-        } else {
-          this.opacity -= 0.007
-          if (this.opacity <= 0) this.dead = true
-        }
-      }
-      draw() {
-        ctx.strokeStyle = `rgba(255,255,255,${this.opacity})`
-        ctx.lineWidth = 1
-        ctx.beginPath()
-        ctx.moveTo(this.sx, this.sy)
-        ctx.lineTo(this.x, this.y)
-        ctx.stroke()
-      }
-    }
-
-    class Dot {
-      constructor() { this.trail = []; this.waiting = false; this.spawn() }
-      spawn() {
-        const side = Math.floor(Math.random() * 4)
-        const cols = Math.ceil(canvas.width / GRID)
-        const rows = Math.ceil(canvas.height / GRID)
-        if (side === 0) { this.x = Math.floor(Math.random() * cols) * GRID; this.y = 0 }
-        else if (side === 1) { this.x = canvas.width; this.y = Math.floor(Math.random() * rows) * GRID }
-        else if (side === 2) { this.x = Math.floor(Math.random() * cols) * GRID; this.y = canvas.height }
-        else { this.x = 0; this.y = Math.floor(Math.random() * rows) * GRID }
-        this.trail = []; this.waiting = false
-      }
-      getTarget() {
-        if (targetRef?.current) {
-          const cr = canvas.getBoundingClientRect()
-          const pr = targetRef.current.getBoundingClientRect()
-          return { tx: pr.left - cr.left + pr.width / 2, ty: pr.top - cr.top + pr.height / 2 }
-        }
-        return { tx: canvas.width / 2, ty: canvas.height * 0.35 }
-      }
-      update() {
-        if (this.waiting) return
-        const { tx, ty } = this.getTarget()
-        const dx = tx - this.x; const dy = ty - this.y
-        const dist = Math.sqrt(dx * dx + dy * dy)
-        if (dist < 8) {
-          this.waiting = true
-          setTimeout(() => { this.spawn() }, 1600)
-          return
-        }
-        if (Math.abs(dx) >= Math.abs(dy)) {
-          this.x += Math.sign(dx) * SPEED
-          this.y += (Math.round(this.y / GRID) * GRID - this.y) * 0.14
-        } else {
-          this.y += Math.sign(dy) * SPEED
-          this.x += (Math.round(this.x / GRID) * GRID - this.x) * 0.14
-        }
-        this.trail.push({ x: this.x, y: this.y })
-        if (this.trail.length > 22) this.trail.shift()
-      }
-      draw() {
-        for (let i = 0; i < this.trail.length; i++) {
-          const t = this.trail[i]
-          ctx.beginPath()
-          ctx.arc(t.x, t.y, 1.5, 0, Math.PI * 2)
-          ctx.fillStyle = `rgba(255,114,94,${(i / this.trail.length) * 0.45})`
-          ctx.fill()
-        }
-        ctx.beginPath()
-        ctx.arc(this.x, this.y, 3, 0, Math.PI * 2)
-        ctx.fillStyle = CORAL
-        ctx.shadowBlur = 10; ctx.shadowColor = CORAL
-        ctx.fill(); ctx.shadowBlur = 0
-      }
-    }
-
-    dot = new Dot()
-
-    const loop = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-      if (Math.random() < 0.035) traces.push(new Trace())
-      traces.forEach(t => { t.update(); t.draw() })
-      traces = traces.filter(t => !t.dead)
-      dot.update(); dot.draw()
-      rafId = requestAnimationFrame(loop)
-    }
-    loop()
-
-    return () => { cancelAnimationFrame(rafId); ro.disconnect() }
-  }, [targetRef])
-
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2 }}
-    />
-  )
-}
 
 // ── Mock browser shell ────────────────────────────────────────────────────────
 function Browser({ children, animKey }) {
@@ -604,6 +469,179 @@ const TUTOR_XP = [
   { level: 4, xp: '800+ XP',    reward: '"Expert Tutor" featured badge', icon: 'workspace_premium', color: '#60a5fa'               },
 ]
 
+// ── XP Bar ───────────────────────────────────────────────────────────────────
+const XP_DATA = {
+  student: {
+    icon: 'school', label: 'Student XP', max: 600,
+    milestones: [
+      { xp: 0,   pct: 0,    reward: 'Platform access',        icon: 'lock_open',          color: 'rgba(255,255,255,0.55)' },
+      { xp: 100, pct: 0.22, reward: 'Free classroom session', icon: 'cast_for_education', color: CORAL },
+      { xp: 300, pct: 0.58, reward: 'Free Explorer month',    icon: 'star',               color: '#fbbf24' },
+      { xp: 600, pct: 1.0,  reward: 'Pioneer badge',          icon: 'workspace_premium',  color: '#60a5fa' },
+    ],
+  },
+  tutor: {
+    icon: 'auto_stories', label: 'Tutor XP', max: 800,
+    milestones: [
+      { xp: 0,   pct: 0,    reward: 'Active tutor',              icon: 'school',             color: 'rgba(255,255,255,0.55)' },
+      { xp: 150, pct: 0.22, reward: '"Rising Star" badge',       icon: 'trending_up',        color: CORAL },
+      { xp: 400, pct: 0.56, reward: 'Promoted in search',        icon: 'campaign',           color: '#fbbf24' },
+      { xp: 800, pct: 1.0,  reward: '"Expert Tutor" badge',      icon: 'workspace_premium',  color: '#60a5fa' },
+    ],
+  },
+}
+
+function XPBar() {
+  const [roleXP, setRoleXP] = useState('student')
+  const [progress, setProgress] = useState(0.38)
+  const [dragging, setDragging] = useState(false)
+  const barRef = useRef(null)
+
+  const data = XP_DATA[roleXP]
+
+  const updateProgress = (clientX) => {
+    if (!barRef.current) return
+    const rect = barRef.current.getBoundingClientRect()
+    setProgress(Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)))
+  }
+
+  const onMouseMove = (e) => { if (dragging) updateProgress(e.clientX) }
+  const onMouseUp   = () => setDragging(false)
+
+  useEffect(() => {
+    if (dragging) {
+      window.addEventListener('mousemove', onMouseMove)
+      window.addEventListener('mouseup', onMouseUp)
+    }
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [dragging])
+
+  const currentXP = Math.round(progress * data.max)
+  const activeMs  = data.milestones.filter(m => progress >= m.pct)
+  const active    = activeMs[activeMs.length - 1] || data.milestones[0]
+
+  return (
+    <div>
+      {/* Role toggle */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 36 }}>
+        <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`, borderRadius: 12, padding: 3, gap: 3 }}>
+          {Object.entries(XP_DATA).map(([key, d]) => (
+            <button key={key} onClick={() => { setRoleXP(key); setProgress(0.38) }} style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 20px', borderRadius: 9, border: 'none', cursor: 'pointer',
+              fontWeight: 700, fontSize: 13, transition: 'all 0.18s',
+              background: roleXP === key ? CORAL : 'transparent',
+              color: roleXP === key ? 'white' : 'rgba(255,255,255,0.45)',
+              boxShadow: roleXP === key ? `0 3px 12px ${CORAL}35` : 'none',
+            }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 15 }}>{d.icon}</span>
+              {d.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Bar track */}
+      <div
+        ref={barRef}
+        onMouseDown={(e) => { setDragging(true); updateProgress(e.clientX) }}
+        onMouseMove={(e) => { if (!dragging) updateProgress(e.clientX) }}
+        style={{ position: 'relative', height: 12, borderRadius: 999, background: 'rgba(255,255,255,0.08)', cursor: 'grab', userSelect: 'none', marginBottom: 8 }}
+      >
+        {/* Fill */}
+        <div style={{
+          position: 'absolute', left: 0, top: 0, bottom: 0,
+          width: `${progress * 100}%`,
+          borderRadius: 999,
+          background: `linear-gradient(90deg, ${CORAL}80, ${active.color})`,
+          transition: dragging ? 'none' : 'width 0.1s',
+          boxShadow: `0 0 12px ${active.color}55`,
+        }} />
+
+        {/* Milestone markers */}
+        {data.milestones.map((m) => {
+          const unlocked = progress >= m.pct
+          return (
+            <div key={m.xp} style={{
+              position: 'absolute', top: '50%',
+              left: `${m.pct * 100}%`,
+              transform: 'translate(-50%, -50%)',
+              width: unlocked ? 16 : 12,
+              height: unlocked ? 16 : 12,
+              borderRadius: '50%',
+              background: unlocked ? m.color : 'rgba(255,255,255,0.15)',
+              border: `2px solid ${unlocked ? m.color : 'rgba(255,255,255,0.12)'}`,
+              boxShadow: unlocked ? `0 0 10px ${m.color}70` : 'none',
+              transition: 'all 0.25s cubic-bezier(0.34,1.56,0.64,1)',
+              zIndex: 2,
+            }} />
+          )
+        })}
+
+        {/* Scrubber handle */}
+        <div style={{
+          position: 'absolute', top: '50%',
+          left: `${progress * 100}%`,
+          transform: 'translate(-50%, -50%)',
+          width: 22, height: 22, borderRadius: '50%',
+          background: 'white',
+          boxShadow: `0 2px 10px rgba(0,0,0,0.35), 0 0 0 3px ${active.color}60`,
+          transition: dragging ? 'none' : 'left 0.1s',
+          zIndex: 3, cursor: 'grab',
+        }} />
+      </div>
+
+      {/* XP label */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 36 }}>
+        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 600 }}>0 XP</span>
+        <span style={{ fontSize: 12, fontWeight: 800, color: active.color }}>
+          {currentXP} XP — {active.reward}
+        </span>
+        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: 600 }}>{data.max} XP</span>
+      </div>
+
+      {/* Milestone cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+        {data.milestones.map((m) => {
+          const unlocked = progress >= m.pct
+          return (
+            <div key={m.xp} style={{
+              padding: '16px 14px', borderRadius: 12,
+              background: unlocked ? `${m.color}0c` : 'rgba(255,255,255,0.025)',
+              border: `1px solid ${unlocked ? m.color + '30' : BORDER}`,
+              opacity: unlocked ? 1 : 0.4,
+              transition: 'all 0.35s cubic-bezier(0.34,1.56,0.64,1)',
+              transform: unlocked ? 'translateY(0) scale(1)' : 'translateY(4px) scale(0.97)',
+              textAlign: 'center',
+            }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: '50%',
+                background: `${m.color}18`, border: `1px solid ${m.color}35`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 10px',
+                boxShadow: unlocked ? `0 0 12px ${m.color}40` : 'none',
+                transition: 'box-shadow 0.3s',
+              }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 16, color: m.color }}>{m.icon}</span>
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 3, lineHeight: 1.3 }}>{m.reward}</div>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{m.xp} XP</div>
+              {unlocked && (
+                <div style={{ marginTop: 8, fontSize: 9, fontWeight: 800, color: m.color, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  Unlocked ✓
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ── FAQ ───────────────────────────────────────────────────────────────────────
 const FAQ = [
   { q: 'Is it really free?',                a: 'Yes. Finding tutors, messaging, and booking sessions are completely free. You only pay for sessions you book (directly to your tutor) and optionally £2/month for community features.' },
@@ -634,7 +672,6 @@ function FAQItem({ item }) {
 export default function HowItWorks() {
   const [role, setRole] = useState('student')
   const [active, setActive] = useState(0)
-  const headingRef = useRef(null)
 
   const steps = role === 'student' ? STUDENT_STEPS : TUTOR_STEPS
 
@@ -646,13 +683,11 @@ export default function HowItWorks() {
 
       {/* ── HEADER + TOGGLE ─────────────────────────────────────────────── */}
       <div style={{ padding: '80px 24px 72px', textAlign: 'center', borderBottom: `1px solid ${BORDER}`, position: 'relative', overflow: 'hidden' }}>
-        {/* Canvas behind header */}
-        <PageCanvas targetRef={headingRef} />
         {/* Grid */}
         <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', backgroundImage: `linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)`, backgroundSize: '56px 56px', WebkitMaskImage: 'radial-gradient(ellipse 80% 100% at 50% 50%, black 30%, transparent 100%)', maskImage: 'radial-gradient(ellipse 80% 100% at 50% 50%, black 30%, transparent 100%)' }} />
 
         <div style={{ position: 'relative', zIndex: 3 }}>
-          <h1 ref={headingRef} style={{ fontSize: 'clamp(36px, 6vw, 64px)', fontWeight: '900', margin: '0 0 32px', letterSpacing: '-0.03em', lineHeight: 1.05 }}>
+          <h1 style={{ fontSize: 'clamp(36px, 6vw, 64px)', fontWeight: '900', margin: '0 0 32px', letterSpacing: '-0.03em', lineHeight: 1.05 }}>
             How it works
           </h1>
 
@@ -746,53 +781,10 @@ export default function HowItWorks() {
         <h2 style={{ fontSize: 'clamp(22px, 3vw, 30px)', fontWeight: 800, margin: '0 0 10px', letterSpacing: '-0.02em', textAlign: 'center' }}>
           The more you do, the more you unlock
         </h2>
-        <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.42)', fontSize: 14, margin: '0 0 48px' }}>
-          Earn XP by participating — real rewards, not vanity points.
+        <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.42)', fontSize: 14, margin: '0 0 40px' }}>
+          Drag the bar to see what you unlock as you earn XP.
         </p>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-          {/* Student XP */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 18, color: CORAL }}>school</span>
-              <span style={{ fontWeight: 800, fontSize: 14 }}>Student XP</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {STUDENT_XP.map((row, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${i >= 1 ? row.color + '25' : BORDER}`, borderRadius: 10 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${row.color}18`, border: `1px solid ${row.color}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 14, color: row.color }}>{row.icon}</span>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13 }}>{row.reward}</div>
-                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>Level {row.level} · {row.xp}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Tutor XP */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 18, color: CORAL }}>auto_stories</span>
-              <span style={{ fontWeight: 800, fontSize: 14 }}>Tutor XP</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {TUTOR_XP.map((row, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${i >= 1 ? row.color + '25' : BORDER}`, borderRadius: 10 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${row.color}18`, border: `1px solid ${row.color}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 14, color: row.color }}>{row.icon}</span>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13 }}>{row.reward}</div>
-                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>Level {row.level} · {row.xp}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <XPBar />
       </div>
 
       {/* ── FAQ ─────────────────────────────────────────────────────────── */}

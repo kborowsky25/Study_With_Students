@@ -122,27 +122,16 @@ function HeroCanvas({ pillRef, onGlow }) {
       constructor() {
         this.trail = [];
         this.waiting = false;
-        this.spawn();
+        this.phase = 'right'; // right → left → down → glow
+        this.x = 0;
+        this.y = GRID; // travel along first grid row (below navbar)
       }
       spawn() {
-        const side = Math.floor(Math.random() * 4);
-        const cols = Math.ceil(canvas.width / GRID);
-        const rows = Math.ceil(canvas.height / GRID);
-        if (side === 0) {
-          this.x = Math.floor(Math.random() * cols) * GRID;
-          this.y = 0;
-        } else if (side === 1) {
-          this.x = canvas.width;
-          this.y = Math.floor(Math.random() * rows) * GRID;
-        } else if (side === 2) {
-          this.x = Math.floor(Math.random() * cols) * GRID;
-          this.y = canvas.height;
-        } else {
-          this.x = 0;
-          this.y = Math.floor(Math.random() * rows) * GRID;
-        }
         this.trail = [];
         this.waiting = false;
+        this.phase = 'right';
+        this.x = 0;
+        this.y = GRID;
       }
       getTarget() {
         if (!pillRef.current) return { tx: canvas.width / 2, ty: canvas.height / 2 };
@@ -156,33 +145,40 @@ function HeroCanvas({ pillRef, onGlow }) {
       update() {
         if (this.waiting) return;
         const { tx, ty } = this.getTarget();
-        const dx = tx - this.x;
-        const dy = ty - this.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 6) {
-          onGlow?.();
-          this.waiting = true;
-          setTimeout(() => {
-            this.spawn();
-          }, 1600);
-          return;
-        }
-        if (Math.abs(dx) >= Math.abs(dy)) {
-          this.x += Math.sign(dx) * SPEED;
-          const snapY = Math.round(this.y / GRID) * GRID;
-          this.y += (snapY - this.y) * 0.14;
-        } else {
+        const pillCol = Math.round(tx / GRID) * GRID;
+
+        if (this.phase === 'right') {
+          this.x += SPEED;
+          if (this.x >= canvas.width - GRID) {
+            this.x = canvas.width - GRID;
+            this.phase = 'left';
+          }
+        } else if (this.phase === 'left') {
+          this.x -= SPEED;
+          if (this.x <= pillCol) {
+            this.x = pillCol;
+            this.phase = 'down';
+          }
+        } else if (this.phase === 'down') {
+          const dy = ty - this.y;
+          if (Math.abs(dy) < 6) {
+            onGlow?.();
+            this.waiting = true;
+            setTimeout(() => this.spawn(), 1600);
+            return;
+          }
           this.y += Math.sign(dy) * SPEED;
-          const snapX = Math.round(this.x / GRID) * GRID;
-          this.x += (snapX - this.x) * 0.14;
+          // Soft-snap x to pill column while dropping
+          this.x += (pillCol - this.x) * 0.12;
         }
+
         this.trail.push({ x: this.x, y: this.y });
-        if (this.trail.length > 24) this.trail.shift();
+        if (this.trail.length > 28) this.trail.shift();
       }
       draw() {
         for (let i = 0; i < this.trail.length; i++) {
           const t = this.trail[i];
-          const alpha = (i / this.trail.length) * 0.5;
+          const alpha = (i / this.trail.length) * 0.45;
           ctx.beginPath();
           ctx.arc(t.x, t.y, 1.5, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(255,114,94,${alpha})`;
@@ -713,41 +709,22 @@ function PricingSection() {
   );
 }
 
-// ── Why £2 section — hover-expand cards ───────────────────────────────────────
+// ── Why £2 section — orbital UNICEF design ────────────────────────────────────
 function WhyTwoPounds() {
-  const [hovered, setHovered] = useState(null);
-
-  const reasons = [
-    {
-      icon: "handshake",
-      title: "Keep everything running",
-      desc: "Servers, dev, and keeping the platform fast — £2/month lets us build this sustainably without ads or agency fees.",
-      planet: false,
-    },
-    {
-      icon: "volunteer_activism",
-      title: "A portion goes to UNICEF",
-      desc: "A share of every Explorer subscription funds UNICEF's education programmes globally. Learning for every child.",
-      planet: true,
-    },
-    {
-      icon: "lock_open",
-      title: "Core tutoring stays free — always",
-      desc: "Finding tutors, booking sessions, and UCAS guidance will never sit behind a paywall. That's a promise.",
-      planet: false,
-    },
-  ];
-
   return (
-    <section style={{ padding: "100px 24px", borderTop: `1px solid ${BORDER}` }}>
+    <section style={{ padding: "100px 24px", borderTop: `1px solid ${BORDER}`, overflow: "hidden" }}>
       <style>{`
-        @keyframes orbitRing {
-          from { transform: translate(-50%, -50%) rotate(0deg); }
-          to   { transform: translate(-50%, -50%) rotate(360deg); }
+        @keyframes orbit1 {
+          from { transform: rotate(0deg)   translateX(155px) rotate(0deg); }
+          to   { transform: rotate(360deg) translateX(155px) rotate(-360deg); }
         }
-        @keyframes orbitDot {
-          from { transform: rotate(0deg) translateX(28px) rotate(0deg); }
-          to   { transform: rotate(360deg) translateX(28px) rotate(-360deg); }
+        @keyframes orbit2 {
+          from { transform: rotate(180deg)   translateX(205px) rotate(-180deg); }
+          to   { transform: rotate(540deg)   translateX(205px) rotate(-540deg); }
+        }
+        @keyframes unicefPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(1,152,218,0.3), 0 0 32px rgba(1,152,218,0.12); }
+          50%       { box-shadow: 0 0 0 12px rgba(1,152,218,0), 0 0 48px rgba(1,152,218,0.22); }
         }
       `}</style>
       <div style={{ maxWidth: "900px", margin: "0 auto" }}>
@@ -758,124 +735,95 @@ function WhyTwoPounds() {
           Why do we charge £2?
         </h2>
         <p data-reveal data-d="2" style={{ textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: "16px", margin: "0 auto 64px", lineHeight: 1.7, maxWidth: "540px" }}>
-          We charge £2 for those that believe in our mission and are as excited about this community as we are!
+          We charge £2 for those who believe in our mission and want to be part of this community.
         </p>
 
-        <div
-          data-reveal
-          data-d="3"
-          style={{ display: "flex", gap: "12px", alignItems: "stretch", minHeight: "260px" }}
-        >
-          {reasons.map((r, i) => {
-            const isH = hovered === i;
-            const isO = hovered !== null && hovered !== i;
-            return (
-              <div
-                key={r.title}
-                onMouseEnter={() => setHovered(i)}
-                onMouseLeave={() => setHovered(null)}
-                style={{
-                  flex: isH ? 2.6 : isO ? 0.55 : 1,
-                  background: isH ? `${CORAL}08` : "rgba(255,255,255,0.03)",
-                  border: `1px solid ${isH ? CORAL + "35" : BORDER}`,
-                  borderRadius: "16px",
-                  padding: "28px",
-                  transition: "flex 0.45s cubic-bezier(0.34,1.56,0.64,1), border-color 0.3s, background 0.3s",
-                  overflow: "hidden",
-                  position: "relative",
-                  cursor: "default",
-                  minWidth: 0,
-                }}
-              >
-                {/* UNICEF planet orbit */}
-                {r.planet && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "50%", left: "50%",
-                      width: "70px", height: "70px",
-                      opacity: isH ? 0.55 : 0.18,
-                      transition: "opacity 0.4s",
-                      pointerEvents: "none",
-                    }}
-                  >
-                    {/* Orbit ring */}
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: "50%", left: "50%",
-                        width: "60px", height: "60px",
-                        border: "1px solid rgba(1,152,218,0.5)",
-                        borderRadius: "50%",
-                        animation: "orbitRing 6s linear infinite",
-                      }}
-                    />
-                    {/* Planet */}
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: "50%", left: "50%",
-                        transform: "translate(-50%, -50%)",
-                        fontSize: "20px",
-                        lineHeight: 1,
-                      }}
-                    >
-                      🌍
-                    </div>
-                    {/* Orbiting dot */}
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: "50%", left: "50%",
-                        width: "7px", height: "7px",
-                        marginTop: "-3.5px", marginLeft: "-3.5px",
-                        animation: "orbitDot 6s linear infinite",
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: "7px", height: "7px", borderRadius: "50%",
-                          background: "rgba(1,152,218,0.9)",
-                          boxShadow: "0 0 6px rgba(1,152,218,0.8)",
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
+        {/* Orbital system */}
+        <div data-reveal data-d="3" style={{ position: "relative", height: "480px", display: "flex", alignItems: "center", justifyContent: "center" }}>
 
-                <div style={{ position: "relative", zIndex: 1 }}>
-                  {i === 1 && (
-                    <div style={{ marginBottom: "10px" }}>
-                      <UnicefBadge />
-                    </div>
-                  )}
-                  <span
-                    className="material-symbols-outlined"
-                    style={{ fontSize: "22px", color: CORAL, display: "block", marginBottom: "14px", transition: "transform 0.3s", transform: isH ? "scale(1.1)" : "scale(1)" }}
-                  >
-                    {r.icon}
-                  </span>
-                  <h3 style={{ fontSize: "14px", fontWeight: "700", margin: "0 0 10px", letterSpacing: "-0.01em", whiteSpace: isO ? "nowrap" : "normal", overflow: "hidden" }}>
-                    {r.title}
-                  </h3>
-                  <p
-                    style={{
-                      fontSize: "13px",
-                      color: "rgba(255,255,255,0.46)",
-                      margin: 0,
-                      lineHeight: 1.7,
-                      opacity: isO ? 0 : 1,
-                      transition: "opacity 0.2s",
-                      maxHeight: isO ? 0 : "200px",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {r.desc}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
+          {/* Orbit ring 1 */}
+          <div aria-hidden="true" style={{
+            position: "absolute", width: "310px", height: "310px", borderRadius: "50%",
+            border: "1px solid rgba(1,152,218,0.18)",
+            pointerEvents: "none",
+          }} />
+          {/* Orbit ring 2 */}
+          <div aria-hidden="true" style={{
+            position: "absolute", width: "410px", height: "410px", borderRadius: "50%",
+            border: "1px solid rgba(255,255,255,0.06)",
+            pointerEvents: "none",
+          }} />
+
+          {/* Center — UNICEF */}
+          <div style={{
+            position: "absolute",
+            width: "100px", height: "100px", borderRadius: "50%",
+            background: "rgba(1,102,172,0.22)",
+            border: "2px solid rgba(1,152,218,0.50)",
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            gap: "3px", zIndex: 3,
+            animation: "unicefPulse 3.5s ease-in-out infinite",
+          }}>
+            <span style={{ fontSize: "32px", lineHeight: 1 }}>🌍</span>
+            <span style={{ fontSize: "9px", fontWeight: "800", color: "#0198da", letterSpacing: "0.1em" }}>UNICEF</span>
+          </div>
+
+          {/* Orbiting card 1 — "Keep everything running" — inner orbit */}
+          <div style={{
+            position: "absolute",
+            width: 0, height: 0,
+            animation: "orbit1 14s linear infinite",
+            zIndex: 2,
+          }}>
+            <div style={{
+              transform: "translate(-50%, -50%)",
+              background: "rgba(255,255,255,0.04)",
+              border: `1px solid ${BORDER}`,
+              borderRadius: "14px",
+              padding: "14px 18px",
+              width: "170px",
+              backdropFilter: "blur(8px)",
+              textAlign: "center",
+            }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "20px", color: CORAL, display: "block", marginBottom: "6px" }}>handshake</span>
+              <div style={{ fontSize: "12px", fontWeight: "700", marginBottom: "4px", lineHeight: 1.3 }}>Keep everything running</div>
+              <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.42)", lineHeight: 1.5 }}>Servers, dev, and a platform built without ads.</div>
+            </div>
+          </div>
+
+          {/* Orbiting card 2 — "Core tutoring stays free" — outer orbit */}
+          <div style={{
+            position: "absolute",
+            width: 0, height: 0,
+            animation: "orbit2 20s linear infinite",
+            zIndex: 2,
+          }}>
+            <div style={{
+              transform: "translate(-50%, -50%)",
+              background: "rgba(255,255,255,0.04)",
+              border: `1px solid ${BORDER}`,
+              borderRadius: "14px",
+              padding: "14px 18px",
+              width: "180px",
+              backdropFilter: "blur(8px)",
+              textAlign: "center",
+            }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "20px", color: CORAL, display: "block", marginBottom: "6px" }}>lock_open</span>
+              <div style={{ fontSize: "12px", fontWeight: "700", marginBottom: "4px", lineHeight: 1.3 }}>Core tutoring stays free</div>
+              <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.42)", lineHeight: 1.5 }}>Finding tutors and booking sessions — always free.</div>
+            </div>
+          </div>
+
+          {/* UNICEF desc below center */}
+          <div style={{
+            position: "absolute", bottom: "24px",
+            textAlign: "center", maxWidth: "360px",
+          }}>
+            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.40)", lineHeight: 1.65, margin: 0 }}>
+              A share of every Explorer subscription funds UNICEF's education programmes globally.{" "}
+              <span style={{ color: "#0198da", fontWeight: 600 }}>Learning for every child.</span>
+            </p>
+          </div>
         </div>
       </div>
     </section>
