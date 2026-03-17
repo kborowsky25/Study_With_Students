@@ -47,7 +47,7 @@ function fmtFull(iso) {
 
 const STATUS_COLOR = {
   pending:   '#fbbf24',
-  confirmed: '#34d399',
+  confirmed: '#ff725e',
   canceled:  '#f87171',
   paid:      '#60a5fa',
 }
@@ -139,7 +139,7 @@ export default function CalendarTutor() {
   function getDotColor(dateStr) {
     const dayEvents = eventsByDate[dateStr] ?? []
     if (dayEvents.some(e => e.status === 'pending'))   return '#fbbf24'
-    if (dayEvents.some(e => e.status === 'confirmed')) return '#34d399'
+    if (dayEvents.some(e => e.status === 'confirmed')) return '#ff725e'
     return '#ff725e'
   }
 
@@ -373,7 +373,7 @@ export default function CalendarTutor() {
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {upcoming.map(ev => (
                     <div key={ev.id_event} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                      <span className="material-symbols-outlined" style={{ color: '#34d399', fontSize: '16px', flexShrink: 0 }}>event_available</span>
+                      <span className="material-symbols-outlined" style={{ color: '#ff725e', fontSize: '16px', flexShrink: 0 }}>event_available</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ color: 'var(--text)', fontSize: '12px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.title}</p>
                         <p style={{ color: 'var(--text-muted)', fontSize: '10px' }}>{fmtFull(ev.start_time)}</p>
@@ -424,7 +424,7 @@ function PendingCard({ ev, onConfirm, onDecline }) {
       </p>
       <div style={{ display: 'flex', gap: '6px' }}>
         <button onClick={onConfirm}
-          style={{ flex: 1, padding: '5px', borderRadius: '7px', border: 'none', background: 'rgba(52,211,153,0.15)', color: '#34d399', fontWeight: '700', fontSize: '11px', cursor: 'pointer', transition: 'background 0.15s' }}
+          style={{ flex: 1, padding: '5px', borderRadius: '7px', border: 'none', background: 'rgba(52,211,153,0.15)', color: '#ff725e', fontWeight: '700', fontSize: '11px', cursor: 'pointer', transition: 'background 0.15s' }}
           onMouseEnter={e => e.currentTarget.style.background = 'rgba(52,211,153,0.28)'}
           onMouseLeave={e => e.currentTarget.style.background = 'rgba(52,211,153,0.15)'}
         >Confirm</button>
@@ -453,7 +453,7 @@ function TutorEventCard({ ev, onConfirm, onDecline }) {
       </p>
       {ev.status === 'pending' && (
         <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
-          <button onClick={onConfirm} style={{ flex: 1, padding: '5px', borderRadius: '7px', border: 'none', background: 'rgba(52,211,153,0.15)', color: '#34d399', fontWeight: '700', fontSize: '11px', cursor: 'pointer' }}>Confirm</button>
+          <button onClick={onConfirm} style={{ flex: 1, padding: '5px', borderRadius: '7px', border: 'none', background: 'rgba(52,211,153,0.15)', color: '#ff725e', fontWeight: '700', fontSize: '11px', cursor: 'pointer' }}>Confirm</button>
           <button onClick={onDecline} style={{ flex: 1, padding: '5px', borderRadius: '7px', border: 'none', background: 'rgba(248,113,113,0.12)', color: '#f87171', fontWeight: '700', fontSize: '11px', cursor: 'pointer' }}>Decline</button>
         </div>
       )}

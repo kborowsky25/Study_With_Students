@@ -94,26 +94,77 @@ function EarningsCalc() {
 
 // ── Steps ──────────────────────────────────────────────────────────────────────
 const STEPS = [
-  { n:'01', icon:'person_add',             title:'Sign up free',        desc:'Email only. No card, no waiting list.' },
-  { n:'02', icon:'verified',               title:'Verify your uni',     desc:'Submit proof of enrolment. Takes 1 min.' },
-  { n:'03', icon:'edit_note',              title:'Build your profile',  desc:'Subjects, rate, bio. Takes 5 mins.' },
-  { n:'04', icon:'account_balance_wallet', title:'Connect Stripe',      desc:'Set up payouts once. Done forever.' },
-  { n:'05', icon:'explore',               title:'Go live',              desc:'Profile instantly visible to students.' },
-  { n:'06', icon:'payments',              title:'Get paid 100%',        desc:'Full rate, every session. Always.' },
+  {
+    n:'01', icon:'person_add', title:'Sign up free',
+    desc:'Email only. No card, no waiting list.',
+    detail: 'Create your account with just your email. No credit card required — ever. You can be up and running in under a minute.',
+  },
+  {
+    n:'02', icon:'verified', title:'Verify your university',
+    desc:'Submit your .ac.uk email + graduation date.',
+    detail: 'We verify every tutor via a valid .ac.uk university email and your expected graduation date. This keeps the platform trusted — students know every tutor is a real university student.',
+  },
+  {
+    n:'03', icon:'edit_note', title:'Build your profile',
+    desc:'Subjects, rate, bio. Takes 5 mins.',
+    detail: 'Add your subjects, hourly rate, a short bio, and your availability. You can edit everything at any time — there\'s no approval process to wait for.',
+  },
+  {
+    n:'04', icon:'account_balance_wallet', title:'Connect Stripe',
+    desc:'Set up payouts once. Done forever.',
+    detail: 'Link your Stripe account (free) to receive direct payments from students. Once connected, every session fee lands in your account automatically.',
+  },
+  {
+    n:'05', icon:'explore', title:'Go live',
+    desc:'Profile instantly visible to students.',
+    detail: 'Once your profile is saved, you\'re immediately searchable by students. Your XP and reviews build your ranking over time — the more you teach, the higher you appear.',
+  },
+  {
+    n:'06', icon:'payments', title:'Get paid 100%',
+    desc:'Full rate, every session. Always.',
+    detail: 'Students pay directly. We take 0%. Every pound your student pays is every pound you receive. No deductions, no surprises.',
+  },
 ]
 
 // ── Perks ──────────────────────────────────────────────────────────────────────
 const PERKS = [
   { icon: 'schedule',     text: 'Teach when you want' },
   { icon: 'tune',         text: 'Set your own rate' },
-  { icon: 'groups',       text: 'Host study rooms' },
+  { icon: 'cast_for_education', text: 'Host live classrooms' },
   { icon: 'emoji_events', text: 'Earn XP & level up' },
   { icon: 'star_rate',    text: 'Build reviews & rep' },
   { icon: 'chat',         text: 'Message before booking' },
+  { icon: 'auto_stories', text: 'Contribute study notes' },
+  { icon: 'workspace_premium', text: 'Unlock tutor badges' },
+]
+
+const MORE_CARDS = [
+  {
+    icon: 'cast_for_education',
+    title: 'Host live classrooms',
+    desc: 'Run group sessions for multiple students at once — earn more per hour and build your reputation faster.',
+    xp: '+50 XP per session',
+    color: '#60a5fa',
+  },
+  {
+    icon: 'auto_stories',
+    title: 'Contribute study notes',
+    desc: 'Upload your notes, past papers, or revision guides. Every contribution earns XP and helps students across the platform.',
+    xp: '+20 XP per upload',
+    color: '#fbbf24',
+  },
+  {
+    icon: 'workspace_premium',
+    title: 'Earn tutor badges',
+    desc: 'Hit milestones to unlock Rising Star, Expert Tutor, and Pioneer badges that boost your search ranking.',
+    xp: 'Visible on your profile',
+    color: CORAL,
+  },
 ]
 
 export default function BecomeATutor() {
   useReveal()
+  const [activeStep, setActiveStep] = useState(null)
 
   return (
     <div style={{ background: BG, minHeight: '100vh', color: 'white', fontFamily: 'inherit' }}>
@@ -240,39 +291,54 @@ export default function BecomeATutor() {
             What we need from you
           </h2>
 
-          {/* Single requirement */}
-          <div data-reveal data-d="2" style={{
-            display: 'flex', gap: '18px', alignItems: 'center',
-            padding: '24px 28px',
-            background: `${CORAL}08`,
-            border: `1px solid ${CORAL}25`,
-            borderRadius: '16px',
-            marginBottom: '16px',
-          }}>
-            <div style={{
-              width: '48px', height: '48px', borderRadius: '12px',
-              background: `${CORAL}18`, border: `1px solid ${CORAL}30`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-            }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '22px', color: CORAL }}>school</span>
-            </div>
-            <div>
-              <div style={{ fontSize: '15px', fontWeight: 800, marginBottom: '4px' }}>
-                Proof of enrolment at a university
+          {/* Three requirement cards */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+            {[
+              {
+                icon: 'alternate_email',
+                title: 'Valid .ac.uk email address',
+                desc: 'Your university email ending in .ac.uk. We send a verification link to confirm it\'s active.',
+              },
+              {
+                icon: 'badge',
+                title: 'Proof of enrolment',
+                desc: 'A student ID photo or enrolment letter showing your name and institution. One upload is enough.',
+              },
+              {
+                icon: 'event',
+                title: 'Expected graduation date',
+                desc: 'Month and year you expect to graduate. This helps us keep the platform current and show your year to students.',
+              },
+            ].map((req, i) => (
+              <div key={req.icon} data-reveal data-d={String(i + 2)} style={{
+                display: 'flex', gap: '18px', alignItems: 'center',
+                padding: '22px 26px',
+                background: `${CORAL}07`,
+                border: `1px solid ${CORAL}22`,
+                borderRadius: '16px',
+              }}>
+                <div style={{
+                  width: '44px', height: '44px', borderRadius: '11px',
+                  background: `${CORAL}16`, border: `1px solid ${CORAL}28`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '20px', color: CORAL }}>{req.icon}</span>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '14px', fontWeight: 800, marginBottom: '4px' }}>{req.title}</div>
+                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.55 }}>{req.desc}</div>
+                </div>
+                <div style={{
+                  fontSize: '10px', fontWeight: 800, color: CORAL,
+                  background: `${CORAL}15`, border: `1px solid ${CORAL}28`,
+                  padding: '4px 10px', borderRadius: '20px',
+                  flexShrink: 0,
+                }}>
+                  Required
+                </div>
               </div>
-              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.55 }}>
-                A valid .ac.uk email address or an enrolment letter. We verify every tutor to protect students.
-              </div>
-            </div>
-            <div style={{
-              fontSize: '10px', fontWeight: 800, color: CORAL,
-              background: `${CORAL}15`, border: `1px solid ${CORAL}30`,
-              padding: '4px 10px', borderRadius: '20px',
-              flexShrink: 0,
-            }}>
-              Required
-            </div>
+            ))}
           </div>
 
           {/* Not a uni student? */}
@@ -323,49 +389,129 @@ export default function BecomeATutor() {
           </h2>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-            {STEPS.map((step, i) => (
-              <div
-                key={step.n}
-                data-reveal
-                data-d={String((i % 3) + 1)}
-                style={{
-                  padding: '22px', background: 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${BORDER}`, borderRadius: '14px',
-                  transition: 'border-color 0.2s, box-shadow 0.2s',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = `${CORAL}30`; e.currentTarget.style.boxShadow = `0 6px 24px ${CORAL}08` }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.boxShadow = 'none' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: `${CORAL}18`, border: `1px solid ${CORAL}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 900, color: CORAL, flexShrink: 0 }}>{step.n}</div>
-                  <span className="material-symbols-outlined" style={{ fontSize: '18px', color: CORAL }}>{step.icon}</span>
+            {STEPS.map((step, i) => {
+              const isActive = activeStep === i
+              return (
+                <div
+                  key={step.n}
+                  data-reveal
+                  data-d={String((i % 3) + 1)}
+                  onClick={() => setActiveStep(isActive ? null : i)}
+                  style={{
+                    padding: '22px', borderRadius: '14px',
+                    cursor: 'pointer',
+                    background: isActive ? `${CORAL}0c` : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${isActive ? CORAL + '40' : BORDER}`,
+                    boxShadow: isActive ? `0 8px 28px ${CORAL}12` : 'none',
+                    transition: 'border-color 0.25s, box-shadow 0.25s, background 0.25s',
+                  }}
+                  onMouseEnter={e => { if (!isActive) { e.currentTarget.style.borderColor = `${CORAL}28`; e.currentTarget.style.boxShadow = `0 4px 16px ${CORAL}08` } }}
+                  onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.boxShadow = 'none' } }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                    <div style={{
+                      width: '28px', height: '28px', borderRadius: '7px',
+                      background: isActive ? CORAL : `${CORAL}18`,
+                      border: `1px solid ${isActive ? CORAL : CORAL + '28'}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '10px', fontWeight: 900,
+                      color: isActive ? 'white' : CORAL,
+                      flexShrink: 0,
+                      transition: 'background 0.2s, color 0.2s',
+                    }}>{step.n}</div>
+                    <span className="material-symbols-outlined" style={{ fontSize: '18px', color: CORAL }}>{step.icon}</span>
+                    <span className="material-symbols-outlined" style={{
+                      fontSize: '16px', color: 'rgba(255,255,255,0.28)',
+                      marginLeft: 'auto',
+                      transform: isActive ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.25s ease',
+                    }}>expand_more</span>
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '5px' }}>{step.title}</div>
+                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.55 }}>{step.desc}</div>
+                  {isActive && (
+                    <div style={{
+                      marginTop: '14px',
+                      paddingTop: '14px',
+                      borderTop: `1px solid ${CORAL}20`,
+                      fontSize: '12px',
+                      color: 'rgba(255,255,255,0.62)',
+                      lineHeight: 1.7,
+                    }}>
+                      {step.detail}
+                    </div>
+                  )}
                 </div>
-                <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '5px' }}>{step.title}</div>
-                <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.55 }}>{step.desc}</div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </section>
 
       <Wave flip />
 
-      {/* ── PERKS STRIP ────────────────────────────────────────────────────── */}
-      <section style={{ padding: '64px 24px', borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
+      {/* ── MORE THAN TUTORING ─────────────────────────────────────────────── */}
+      <section style={{ padding: '88px 24px', borderTop: `1px solid ${BORDER}` }}>
         <div style={{ maxWidth: '860px', margin: '0 auto' }}>
-          <p data-reveal style={{ textAlign: 'center', fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '36px' }}>More than tutoring</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
+          <p data-reveal style={{ textAlign: 'center', fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '14px' }}>More than tutoring</p>
+          <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(22px, 3vw, 30px)', fontWeight: 800, textAlign: 'center', margin: '0 0 12px', letterSpacing: '-0.02em' }}>
+            Build something bigger than sessions.
+          </h2>
+          <p data-reveal data-d="2" style={{ textAlign: 'center', color: 'rgba(255,255,255,0.45)', fontSize: '14px', maxWidth: '480px', margin: '0 auto 48px', lineHeight: 1.7 }}>
+            Every action on the platform earns XP — classrooms, notes, reviews. Your profile grows as you do.
+          </p>
+
+          {/* Feature cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px', marginBottom: '36px' }}>
+            {MORE_CARDS.map((card, i) => (
+              <div key={card.icon} data-reveal data-d={String(i + 1)} style={{
+                padding: '28px 24px',
+                background: 'rgba(255,255,255,0.025)',
+                border: `1px solid ${BORDER}`,
+                borderRadius: '16px',
+                transition: 'border-color 0.25s, box-shadow 0.25s',
+              }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = `${card.color}35`; e.currentTarget.style.boxShadow = `0 8px 28px ${card.color}10` }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.boxShadow = 'none' }}
+              >
+                <div style={{
+                  width: '44px', height: '44px', borderRadius: '12px',
+                  background: `${card.color}14`, border: `1px solid ${card.color}28`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  marginBottom: '16px',
+                }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '22px', color: card.color }}>{card.icon}</span>
+                </div>
+                <div style={{ fontSize: '14px', fontWeight: 800, marginBottom: '8px' }}>{card.title}</div>
+                <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.65, marginBottom: '16px' }}>{card.desc}</div>
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '5px',
+                  fontSize: '11px', fontWeight: 700,
+                  color: card.color,
+                  background: `${card.color}12`,
+                  border: `1px solid ${card.color}25`,
+                  padding: '4px 10px', borderRadius: '20px',
+                }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>bolt</span>
+                  {card.xp}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pill strip */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
             {PERKS.map((p, i) => (
               <div
                 key={p.text}
                 data-reveal
-                data-d={String((i % 3) + 1)}
-                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 18px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`, borderRadius: '40px', transition: 'border-color 0.2s, background 0.2s' }}
+                data-d={String((i % 4) + 1)}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`, borderRadius: '40px', transition: 'border-color 0.2s, background 0.2s' }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = `${CORAL}35`; e.currentTarget.style.background = `${CORAL}08` }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
               >
-                <span className="material-symbols-outlined" style={{ fontSize: '16px', color: CORAL }}>{p.icon}</span>
-                <span style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.70)', whiteSpace: 'nowrap' }}>{p.text}</span>
+                <span className="material-symbols-outlined" style={{ fontSize: '15px', color: CORAL }}>{p.icon}</span>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'rgba(255,255,255,0.65)', whiteSpace: 'nowrap' }}>{p.text}</span>
               </div>
             ))}
           </div>

@@ -20,7 +20,6 @@ function useReveal() {
   }, [])
 }
 
-// ── Shared grid background ────────────────────────────────────────────────────
 const GRID_STYLE = {
   position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
   backgroundImage: `
@@ -30,7 +29,6 @@ const GRID_STYLE = {
   backgroundSize: '60px 60px',
 }
 
-// ── Wave divider ──────────────────────────────────────────────────────────────
 function Wave({ flip }) {
   return (
     <div aria-hidden="true" style={{ lineHeight: 0, overflow: 'hidden', transform: flip ? 'scaleY(-1)' : 'none' }}>
@@ -42,59 +40,103 @@ function Wave({ flip }) {
   )
 }
 
-// ── Product card mock (right side of mission) ─────────────────────────────────
-function TutorCardMock() {
+function AgencyFeeBreakdown() {
   return (
-    <div style={{
-      background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`,
-      borderRadius: '20px', padding: '24px', maxWidth: '300px',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '18px' }}>
-        <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: `${CORAL}22`, border: `2px solid ${CORAL}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '16px', color: CORAL, flexShrink: 0 }}>AV</div>
-        <div>
-          <div style={{ fontWeight: 800, fontSize: '16px' }}>Alex V.</div>
-          <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.40)', marginTop: '2px' }}>University of Oxford</div>
-          <div style={{ display: 'flex', gap: '2px', marginTop: '5px' }}>
-            {[1,2,3,4,5].map(i => <svg key={i} width="10" height="10" viewBox="0 0 10 10"><polygon points="5,1 6.2,3.8 9,4.2 7,6.2 7.6,9 5,7.5 2.4,9 3,6.2 1,4.2 3.8,3.8" fill={CORAL} /></svg>)}
+    <div style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, borderRadius: '20px', padding: '24px', maxWidth: '320px' }}>
+      <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: '16px' }}>
+        Where your £30/hr goes
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+        {[
+          { label: 'Tutor earns', pct: '50%', val: '£15', color: 'rgba(255,255,255,0.45)', bg: 'rgba(255,255,255,0.02)', border: BORDER },
+          { label: 'Agency fee',  pct: '50%', val: '£15', color: '#ef4444', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.20)' },
+        ].map(r => (
+          <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: r.bg, border: `1px solid ${r.border}`, borderRadius: '9px' }}>
+            <div>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: r.color }}>{r.label}</span>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.30)', marginLeft: '8px' }}>{r.pct}</span>
+            </div>
+            <span style={{ fontSize: '16px', fontWeight: 900, color: r.color }}>{r.val}</span>
           </div>
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '18px' }}>
-        {['A-Level Maths','Further Maths','Statistics'].map(s => (
-          <span key={s} style={{ fontSize: '10px', fontWeight: '700', background: `${CORAL}16`, color: CORAL, padding: '3px 9px', borderRadius: '6px' }}>{s}</span>
         ))}
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '16px', borderBottom: `1px solid ${BORDER}` }}>
-        <div>
-          <div style={{ fontSize: '22px', fontWeight: '900', letterSpacing: '-0.02em' }}>£18<span style={{ fontSize: '13px', fontWeight: '500', color: 'rgba(255,255,255,0.40)' }}>/hr</span></div>
-          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.36)', marginTop: '2px' }}>0% commission</div>
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <div style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${BORDER}`, borderRadius: '8px', padding: '8px 14px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>Message</div>
-          <div style={{ background: CORAL, borderRadius: '8px', padding: '8px 14px', fontSize: '12px', fontWeight: '700', color: 'white', cursor: 'pointer', boxShadow: `0 4px 12px ${CORAL}38` }}>Book</div>
+      <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: '16px' }}>
+        <p style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: CORAL, marginBottom: '8px' }}>On StudyWithStudents</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: `${CORAL}08`, border: `1px solid ${CORAL}25`, borderRadius: '9px' }}>
+          <div>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: CORAL }}>Tutor earns</span>
+            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.30)', marginLeft: '8px' }}>100%</span>
+          </div>
+          <span style={{ fontSize: '16px', fontWeight: 900, color: CORAL }}>£30 ✓</span>
         </div>
       </div>
-      <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.40)', lineHeight: '1.65', margin: 0 }}>
-        "I love breaking down complex topics. I've been tutoring for 2 years and my students consistently improved their grades."
-      </p>
+    </div>
+  )
+}
+
+function FunTutoringMock() {
+  return (
+    <div style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, borderRadius: '20px', padding: '24px', maxWidth: '320px' }}>
+      <div style={{ marginBottom: '18px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 700 }}>Your XP</span>
+          <span style={{ fontSize: '11px', color: CORAL, fontWeight: 800 }}>Level 3</span>
+        </div>
+        <div style={{ height: '6px', background: 'rgba(255,255,255,0.08)', borderRadius: '20px', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: '72%', background: `linear-gradient(to right, ${CORAL}, #ff9f8e)`, borderRadius: '20px' }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px', fontSize: '10px', color: 'rgba(255,255,255,0.28)' }}>
+          <span>360 XP</span><span>500 XP</span>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '18px' }}>
+        {[
+          { icon: 'workspace_premium', label: 'Rising Star', color: CORAL },
+          { icon: 'star', label: 'Explorer', color: '#fbbf24' },
+          { icon: 'groups', label: 'Community', color: '#60a5fa' },
+        ].map(b => (
+          <div key={b.label} style={{ flex: 1, textAlign: 'center', background: `${b.color}10`, border: `1px solid ${b.color}25`, borderRadius: '10px', padding: '10px 4px' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '18px', color: b.color, display: 'block', marginBottom: '4px' }}>{b.icon}</span>
+            <span style={{ fontSize: '9px', fontWeight: 700, color: b.color }}>{b.label}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${BORDER}`, borderRadius: '10px', padding: '12px 14px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
+          <span className="material-symbols-outlined" style={{ fontSize: '14px', color: CORAL }}>dashboard</span>
+          <span style={{ fontSize: '11px', fontWeight: 700 }}>Dashboard</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+          {[
+            { n: '12', l: 'sessions' },
+            { n: '3', l: 'tutors' },
+            { n: '340', l: 'XP', coral: true },
+          ].map((s, i) => (
+            <div key={i} style={{ textAlign: 'center' }}>
+              <div style={{ fontWeight: 900, fontSize: '16px', color: s.coral ? CORAL : 'white' }}>{s.n}</div>
+              <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.30)' }}>{s.l}</div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
 
 const VALUES = [
-  { icon: 'percent',           title: '0% commission',          desc: 'Tutors keep every penny they earn' },
-  { icon: 'verified',          title: 'UK universities only',    desc: 'Every tutor verified via .ac.uk email' },
-  { icon: 'volunteer_activism', title: 'Supporting UNICEF',      desc: 'Explorer revenue funds global education' },
-  { icon: 'lock_open',         title: 'Core tutoring is free',   desc: 'Finding & booking tutors costs nothing' },
-  { icon: 'groups',            title: 'Community-first',         desc: 'Study rooms, forums, & peer learning' },
-  { icon: 'emoji_events',      title: 'XP & reputation',         desc: 'Earn recognition for every contribution' },
+  { icon: 'percent',            title: '0% commission',        desc: 'Tutors keep every penny they earn' },
+  { icon: 'verified',           title: 'UK universities only', desc: 'Every tutor verified via .ac.uk email' },
+  { icon: 'volunteer_activism', title: 'Supporting UNICEF',    desc: 'Explorer revenue funds global education' },
+  { icon: 'lock_open',          title: 'Core tutoring is free', desc: 'Finding & booking tutors costs nothing' },
+  { icon: 'groups',             title: 'Community-first',      desc: 'Study rooms, forums, & peer learning' },
+  { icon: 'emoji_events',       title: 'XP & reputation',      desc: 'Earn recognition for every contribution' },
 ]
 
 const FOUNDING_TUTORS = [
-  { initials: 'KB', name: 'Kiki B.',   uni: 'UCL',      color: CORAL },
-  { initials: 'AL', name: 'Amara L.',  uni: "King's",   color: '#60a5fa' },
-  { initials: 'TM', name: 'Tom M.',    uni: 'Edinburgh', color: '#34d399' },
-  { initials: 'SP', name: 'Shreya P.', uni: 'Imperial',  color: '#a78bfa' },
+  { initials: 'KB', name: 'Kiki B.',   uni: 'UCL',       color: CORAL,     role: 'Founder' },
+  { initials: 'AL', name: 'Amara L.',  uni: "King's",    color: '#60a5fa', role: null },
+  { initials: 'TM', name: 'Tom M.',    uni: 'Edinburgh', color: '#34d399', role: null },
+  { initials: 'SP', name: 'Shreya P.', uni: 'Imperial',  color: '#a78bfa', role: null },
 ]
 
 export default function AboutUs() {
@@ -110,19 +152,21 @@ export default function AboutUs() {
       `}</style>
       <Navbar />
 
-      {/* ── HERO — large manifesto + grid ─────────────────────────────────── */}
+      {/* ── HERO ──────────────────────────────────────────────────────────── */}
       <section style={{ position: 'relative', overflow: 'hidden', padding: '100px 24px 88px', borderBottom: `1px solid ${BORDER}` }}>
         <div aria-hidden style={GRID_STYLE} />
         <div aria-hidden style={{ position: 'absolute', inset: 0, WebkitMaskImage: 'radial-gradient(ellipse 70% 80% at 50% 50%, black 20%, transparent 80%)', maskImage: 'radial-gradient(ellipse 70% 80% at 50% 50%, black 20%, transparent 80%)', ...GRID_STYLE }} />
         <div aria-hidden style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '600px', height: '400px', background: `radial-gradient(ellipse, ${CORAL}08 0%, transparent 65%)`, pointerEvents: 'none' }} />
-
         <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', maxWidth: '760px', margin: '0 auto' }}>
           <p data-reveal style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: CORAL, marginBottom: '24px' }}>Our story</p>
-          <h1 data-reveal data-d="1" style={{ fontSize: 'clamp(36px, 6vw, 64px)', fontWeight: 900, margin: '0 0 24px', letterSpacing: '-0.03em', lineHeight: 1.05 }}>
-            We believe education<br />belongs to everyone.
+          <h1 data-reveal data-d="1" style={{ fontSize: 'clamp(32px, 5vw, 58px)', fontWeight: 900, margin: '0 0 12px', letterSpacing: '-0.03em', lineHeight: 1.08 }}>
+            We think tutors are getting scammed.
           </h1>
-          <p data-reveal data-d="2" style={{ fontSize: '17px', color: 'rgba(255,255,255,0.48)', maxWidth: '480px', margin: '0 auto', lineHeight: 1.7 }}>
-            Built by a student who was tired of paying agencies a fortune — when the best tutors were already in the next lecture hall.
+          <h2 data-reveal data-d="2" style={{ fontSize: 'clamp(22px, 3.5vw, 38px)', fontWeight: 700, margin: '0 0 24px', letterSpacing: '-0.02em', lineHeight: 1.15, color: 'rgba(255,255,255,0.55)' }}>
+            And tutoring should be fun.
+          </h2>
+          <p data-reveal data-d="3" style={{ fontSize: '17px', color: 'rgba(255,255,255,0.48)', maxWidth: '480px', margin: '0 auto', lineHeight: 1.7 }}>
+            Built by a student who was tired of watching agencies take 50% — when the best tutors were already in the next lecture hall.
           </p>
         </div>
       </section>
@@ -133,9 +177,9 @@ export default function AboutUs() {
       <div style={{ borderBottom: `1px solid ${BORDER}`, padding: '0 24px' }}>
         <div style={{ maxWidth: '860px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
           {[
-            { stat: '0%',   label: 'Commission taken',   sub: 'Tutors keep every penny' },
-            { stat: '£2',   label: 'Explorer plan',      sub: 'The only cost, ever' },
-            { stat: '🌍',   label: 'UNICEF partner',     sub: 'Education for every child' },
+            { stat: '0%', label: 'Commission taken', sub: 'Tutors keep every penny' },
+            { stat: '£2', label: 'Explorer plan',    sub: 'The only cost, ever' },
+            { stat: '🌍', label: 'UNICEF partner',   sub: 'Education for every child' },
           ].map((s, i) => (
             <div key={i} data-reveal data-d={String(i+1)} style={{ padding: '36px 24px', textAlign: 'center', borderRight: i < 2 ? `1px solid ${BORDER}` : 'none' }}>
               <div style={{ fontSize: 'clamp(32px, 5vw, 52px)', fontWeight: 900, letterSpacing: '-0.04em', color: CORAL, lineHeight: 1, marginBottom: '8px' }}>{s.stat}</div>
@@ -148,53 +192,58 @@ export default function AboutUs() {
 
       <Wave flip />
 
-      {/* ── MISSION + PRODUCT PREVIEW ─────────────────────────────────────── */}
+      {/* ── STORY 1: Tutors are getting scammed ───────────────────────────── */}
       <section style={{ padding: '96px 24px', position: 'relative', overflow: 'hidden' }}>
         <div aria-hidden style={{ ...GRID_STYLE, WebkitMaskImage: 'radial-gradient(ellipse 100% 100% at 0% 50%, black 0%, transparent 60%)', maskImage: 'radial-gradient(ellipse 100% 100% at 0% 50%, black 0%, transparent 60%)' }} />
         <div style={{ maxWidth: '960px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center', position: 'relative', zIndex: 1 }}>
           <div>
-            <p data-reveal style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '16px' }}>Our mission</p>
-            <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(26px, 3.5vw, 36px)', fontWeight: 800, margin: '0 0 24px', letterSpacing: '-0.02em', lineHeight: 1.15 }}>
-              Cut out the middleman.<br />Connect students directly.
+            <p data-reveal style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '16px' }}>The problem</p>
+            <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(24px, 3.2vw, 34px)', fontWeight: 800, margin: '0 0 24px', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+              Tutors are getting scammed by the middleman.
             </h2>
             <p data-reveal data-d="2" style={{ color: 'rgba(255,255,255,0.52)', fontSize: '16px', lineHeight: 1.8, margin: '0 0 16px' }}>
-              Agencies charge students a premium and keep 30–50% for themselves. Brilliant tutors get underpaid. We built the direct alternative.
+              Tutoring agencies charge students £30/hr — and pocket half. The tutor sees £15. The student pays a premium. Nobody wins except the platform.
             </p>
-            <p data-reveal data-d="3" style={{ color: 'rgba(255,255,255,0.52)', fontSize: '16px', lineHeight: 1.8, margin: 0 }}>
-              Students pay tutors directly. We take 0%. An optional £2/month covers our community features — and a portion funds UNICEF's global education work.
+            <p data-reveal data-d="3" style={{ color: 'rgba(255,255,255,0.52)', fontSize: '16px', lineHeight: 1.8, margin: '0 0 24px' }}>
+              We cut the middleman out entirely. Students agree a rate directly with their tutor and pay 100% to them. We take nothing.
             </p>
+            <div data-reveal data-d="3" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              {['0% commission', 'Direct payment', 'Tutor sets the rate'].map(pill => (
+                <span key={pill} style={{ fontSize: '12px', fontWeight: 700, background: `${CORAL}12`, color: CORAL, border: `1px solid ${CORAL}28`, padding: '5px 12px', borderRadius: '20px' }}>{pill}</span>
+              ))}
+            </div>
           </div>
           <div data-reveal data-d="2" style={{ display: 'flex', justifyContent: 'center' }}>
-            <TutorCardMock />
+            <AgencyFeeBreakdown />
           </div>
         </div>
       </section>
 
       <Wave />
 
-      {/* ── FOUNDER ───────────────────────────────────────────────────────── */}
-      <section style={{ padding: '72px 24px', borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, position: 'relative', overflow: 'hidden' }}>
+      {/* ── STORY 2: Tutoring should be fun ──────────────────────────────── */}
+      <section style={{ padding: '96px 24px', position: 'relative', overflow: 'hidden', borderTop: `1px solid ${BORDER}` }}>
         <div aria-hidden style={{ ...GRID_STYLE, WebkitMaskImage: 'radial-gradient(ellipse 100% 100% at 100% 50%, black 0%, transparent 60%)', maskImage: 'radial-gradient(ellipse 100% 100% at 100% 50%, black 0%, transparent 60%)' }} />
-        <div data-reveal style={{ maxWidth: '820px', margin: '0 auto', display: 'flex', gap: '48px', alignItems: 'center', flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
-          <div style={{ flexShrink: 0 }}>
-            <div style={{ width: '96px', height: '96px', borderRadius: '50%', background: `linear-gradient(135deg, ${CORAL}45, ${CORAL}15)`, border: `2px solid ${CORAL}35`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '44px', color: CORAL, opacity: 0.75 }}>person</span>
-            </div>
+        <div style={{ maxWidth: '960px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center', position: 'relative', zIndex: 1 }}>
+          <div data-reveal data-d="1" style={{ display: 'flex', justifyContent: 'center', order: -1 }}>
+            <FunTutoringMock />
           </div>
-          <div style={{ flex: 1, minWidth: '260px' }}>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'baseline', marginBottom: '12px', flexWrap: 'wrap' }}>
-              <h3 style={{ fontSize: '22px', fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>Kiki Boro</h3>
-              <span style={{ fontSize: '13px', color: CORAL, fontWeight: 700 }}>Founder & Developer</span>
+          <div>
+            <p data-reveal style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '16px' }}>The vision</p>
+            <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(24px, 3.2vw, 34px)', fontWeight: 800, margin: '0 0 24px', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+              Tutoring should be fun and interactive.
+            </h2>
+            <p data-reveal data-d="2" style={{ color: 'rgba(255,255,255,0.52)', fontSize: '16px', lineHeight: 1.8, margin: '0 0 16px' }}>
+              We built an XP system that makes learning feel like a game. Students level up by engaging with the platform. Tutors earn badges and boost their visibility by delivering great sessions.
+            </p>
+            <p data-reveal data-d="3" style={{ color: 'rgba(255,255,255,0.52)', fontSize: '16px', lineHeight: 1.8, margin: '0 0 24px' }}>
+              Your dashboard tracks everything — sessions, messages, upcoming bookings, and XP progress — all in one place.
+            </p>
+            <div data-reveal data-d="3" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              {['XP levelling', 'Tutor badges', 'Live dashboards', 'Study rooms'].map(pill => (
+                <span key={pill} style={{ fontSize: '12px', fontWeight: 700, background: `${CORAL}12`, color: CORAL, border: `1px solid ${CORAL}28`, padding: '5px 12px', borderRadius: '20px' }}>{pill}</span>
+              ))}
             </div>
-            <blockquote style={{ fontSize: '17px', fontStyle: 'italic', color: 'rgba(255,255,255,0.62)', lineHeight: 1.75, margin: '0 0 16px', borderLeft: `3px solid ${CORAL}40`, paddingLeft: '16px' }}>
-              "I knew brilliant tutors in my lectures charging almost nothing — and students paying agencies a fortune. That gap didn't make sense. So I built the bridge."
-            </blockquote>
-            <Link to="/how-it-works" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 700, color: CORAL, textDecoration: 'none' }}
-              onMouseEnter={e => e.currentTarget.style.opacity = '0.75'}
-              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-            >
-              How it works <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>arrow_forward</span>
-            </Link>
           </div>
         </div>
       </section>
@@ -207,13 +256,9 @@ export default function AboutUs() {
         <div style={{ maxWidth: '900px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <p data-reveal style={{ textAlign: 'center', fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '14px' }}>What we stand for</p>
           <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(22px, 3vw, 32px)', fontWeight: 800, textAlign: 'center', margin: '0 0 48px', letterSpacing: '-0.02em' }}>Six principles behind every decision</h2>
-
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', background: BORDER, borderRadius: '20px', overflow: 'hidden', border: `1px solid ${BORDER}` }}>
             {VALUES.map((v, i) => (
-              <div
-                key={v.title}
-                data-reveal
-                data-d={String((i % 3) + 1)}
+              <div key={v.title} data-reveal data-d={String((i % 3) + 1)}
                 style={{ background: BG, padding: '28px 30px', transition: 'background 0.2s' }}
                 onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.025)'}
                 onMouseLeave={e => e.currentTarget.style.background = BG}
@@ -272,10 +317,7 @@ export default function AboutUs() {
           </div>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             {FOUNDING_TUTORS.map((t, i) => (
-              <div
-                key={t.name}
-                data-reveal
-                data-d={String((i % 4) + 1)}
+              <div key={t.name} data-reveal data-d={String((i % 4) + 1)}
                 style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 18px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, borderRadius: '12px', flex: '1 1 160px', transition: 'border-color 0.2s' }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = `${t.color}35`}
                 onMouseLeave={e => e.currentTarget.style.borderColor = BORDER}
@@ -284,6 +326,9 @@ export default function AboutUs() {
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '13px' }}>{t.name}</div>
                   <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.38)', marginTop: '2px' }}>{t.uni}</div>
+                  {t.role === 'Founder' && (
+                    <div style={{ fontSize: '10px', color: CORAL, fontWeight: 700, marginTop: '2px' }}>Founder</div>
+                  )}
                 </div>
               </div>
             ))}
