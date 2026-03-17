@@ -2,9 +2,20 @@ import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useAuth } from '../context/AuthContext'
 import HubLayout from '../components/layout/HubLayout'
-import { getActiveTutors, getTutors, getTutorRequestsSent } from '../api/tutors'
+import { getActiveTutors, getTutorRequestsSent } from '../api/tutors'
 import { getEvents } from '../api/events'
 import { getConversations } from '../api/messages'
+import SpotlightTour from '../components/features/SpotlightTour'
+
+const STUDENT_TOUR_STEPS = [
+  { target: null,                         position: 'center', title: 'Welcome to Study With Students! 🎉', body: "You're in your student dashboard. Let's take a 30-second tour of the key features." },
+  { target: '[data-tour="find-tutors"]',  position: 'right',  title: 'Find Tutors',       body: 'Browse peer tutors filtered by subject, price, and availability. Add them to your dashboard with one click.' },
+  { target: '[data-tour="messages"]',     position: 'right',  title: 'Messages',           body: 'Chat directly with your tutors — no middleman, no delay.' },
+  { target: '[data-tour="forum"]',        position: 'right',  title: 'Community Forum',    body: 'Ask questions, share knowledge, and connect with students across the platform.' },
+  { target: '[data-tour="study-rooms-student"]', position: 'right', title: 'Study Rooms', body: 'Join group virtual sessions — great for staying accountable and studying alongside others.' },
+  { target: '[data-tour="payments"]',     position: 'right',  title: 'Payments',           body: 'Track every session payment. 0% platform fee — every penny goes directly to your tutor.' },
+  { target: null,                         position: 'center', title: "You're all set! 🚀",  body: 'Press ? at any time to see keyboard shortcuts. Enjoy the platform!' },
+]
 
 const CORAL  = '#ff725e'   // student hub — coral (warm but distinct from amber)
 const GREEN  = '#34d399'
@@ -12,17 +23,6 @@ const BLUE   = '#60a5fa'
 const AMBER  = '#fbbf24'
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
-
-const TUTOR_GRADS = [
-  `linear-gradient(135deg, ${CORAL}, #ff9a3c)`,
-  'linear-gradient(135deg, #60a5fa, #818cf8)',
-  'linear-gradient(135deg, #34d399, #059669)',
-  'linear-gradient(135deg, #f472b6, #ec4899)',
-  'linear-gradient(135deg, #fbbf24, #f59e0b)',
-  'linear-gradient(135deg, #a78bfa, #7c3aed)',
-  'linear-gradient(135deg, #fb923c, #ef4444)',
-  'linear-gradient(135deg, #22d3ee, #0284c7)',
-]
 
 // ── CountUp hook ─────────────────────────────────────────────────────────────
 function useCountUp(target, duration = 700) {
@@ -109,146 +109,51 @@ function XpDonut({ xpProgress, level }) {
   )
 }
 
-// ── Top Tutors Trio — mini cards, centre dominant ─────────────────────────────
-function TopTutorsTrio({ tutors }) {
-  const trio = [
-    { tutor: tutors[1], isCenter: false, gradIdx: 1, animCls: 'animate-orbit-3' },
-    { tutor: tutors[0], isCenter: true,  gradIdx: 0, animCls: 'animate-orbit-1' },
-    { tutor: tutors[2], isCenter: false, gradIdx: 2, animCls: 'animate-orbit-5' },
-  ]
-
-  return (
-    <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-      {/* Label */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-        <span className="material-symbols-outlined" style={{ fontSize: '11px', color: CORAL }}>auto_awesome</span>
-        <span style={{ fontSize: '9px', fontWeight: '700', color: 'var(--text-faint)', letterSpacing: '0.07em', textTransform: 'uppercase' }}>
-          Top Tutors Today
-        </span>
-      </div>
-
-      {/* Three mini-cards in a row */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '7px' }}>
-        {trio.map(({ tutor, isCenter, gradIdx, animCls }) => {
-          const nameParts = (tutor?.name ?? 'Unknown Tutor').split(' ')
-          const initials  = nameParts.map(n => n[0]).join('').slice(0, 2).toUpperCase() || '??'
-          const firstName = nameParts[0] ?? 'Tutor'
-          const lastName  = nameParts[1]?.[0] ? nameParts[1][0] + '.' : ''
-          const subjects  = tutor?.subjects?.split(',').map(s => s.trim()).filter(Boolean) ?? []
-          const uni       = tutor?.university ?? ''
-          const opacity   = isCenter ? 1 : 0.55
-
-          return (
-            <Link
-              key={tutor?.id_tutor ?? gradIdx}
-              to="/tutor/$tutorId"
-              params={{ tutorId: String(tutor?.id_tutor ?? '') }}
-              style={{ textDecoration: 'none', opacity, transition: 'opacity 0.25s', flexShrink: 0 }}
-              onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-              onMouseLeave={e => e.currentTarget.style.opacity = String(opacity)}
-            >
-              <div style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px',
-                padding: isCenter ? '9px 11px' : '7px 8px',
-                background: isCenter ? `${CORAL}0d` : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${isCenter ? CORAL + '30' : 'rgba(255,255,255,0.09)'}`,
-                borderRadius: '12px',
-                width: isCenter ? '108px' : '80px',
-                backdropFilter: 'blur(8px)',
-              }}>
-                {/* Avatar */}
-                <div
-                  className={animCls}
-                  style={{
-                    width: isCenter ? '42px' : '32px',
-                    height: isCenter ? '42px' : '32px',
-                    borderRadius: '50%',
-                    background: TUTOR_GRADS[gradIdx],
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: 'white',
-                    fontSize: isCenter ? '14px' : '11px',
-                    fontWeight: '900',
-                    boxShadow: isCenter ? `0 4px 14px ${CORAL}38` : '0 2px 8px rgba(0,0,0,0.2)',
-                    flexShrink: 0,
-                  }}
-                >
-                  {initials}
-                </div>
-
-                {/* Info */}
-                <div style={{ textAlign: 'center', width: '100%', minWidth: 0 }}>
-                  {/* Name */}
-                  <p style={{
-                    color: 'var(--text)', fontWeight: '700',
-                    fontSize: isCenter ? '11px' : '9.5px',
-                    lineHeight: 1.2, margin: '0 0 2px',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
-                    {`${firstName} ${lastName}`.trim()}
-                  </p>
-
-                  {/* Subjects */}
-                  {subjects.length > 0 ? (
-                    subjects.slice(0, isCenter ? 2 : 1).map((sub, i) => (
-                      <p key={sub} style={{
-                        fontSize: '8px', fontWeight: '600', margin: '0 0 1px',
-                        color: isCenter ? CORAL : `${CORAL}cc`,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        opacity: i === 1 ? 0.75 : 1,
-                      }}>
-                        {sub}
-                      </p>
-                    ))
-                  ) : (
-                    <p style={{ fontSize: '8px', color: 'var(--text-faint)', margin: '0 0 1px' }}>Tutor</p>
-                  )}
-
-                  {/* University — all cards */}
-                  {uni ? (
-                    <p style={{
-                      fontSize: '7.5px', color: 'var(--text-faint)', margin: '2px 0 0',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      lineHeight: 1.2,
-                    }}>
-                      {uni}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-            </Link>
-          )
-        })}
-      </div>
-
-      <Link to="/find-tutors" style={{ color: CORAL, fontSize: '9px', fontWeight: '600', textDecoration: 'none', opacity: 0.75 }}>
-        See all →
-      </Link>
-    </div>
-  )
-}
-
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function HubStudent() {
   const { user } = useAuth()
 
   const [activeTutors,   setActiveTutors]   = useState([])
-  const [topTutors,      setTopTutors]      = useState([])
   const [events,         setEvents]         = useState([])
   const [conversations,  setConversations]  = useState([])
   const [pendingInvites, setPendingInvites] = useState([])  // sent requests, status='pending'
   const [loading,        setLoading]        = useState(true)
   const [mounted,        setMounted]        = useState(false)
+  const [showTour,       setShowTour]       = useState(false)
+  const [streak,         setStreak]         = useState(1)
 
   useEffect(() => {
     Promise.allSettled([
       getActiveTutors().then(r       => setActiveTutors(r.data.tutors ?? [])),
       getEvents().then(r             => setEvents(r.data.events ?? [])),
       getConversations().then(r      => setConversations(r.data.conversations ?? [])),
-      getTutors().then(r             => setTopTutors((r.data.tutors ?? []).slice(0, 8))),
       getTutorRequestsSent().then(r  => setPendingInvites((r.data.requests ?? []).filter(r => r.status === 'pending'))),
     ]).finally(() => setLoading(false))
 
     const t = setTimeout(() => setMounted(true), 50)
+
+    // Daily streak
+    try {
+      const today     = new Date().toISOString().split('T')[0]
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+      const s = JSON.parse(localStorage.getItem('sws_streak') || '{"count":1,"last":""}')
+      if (s.last === today) { setStreak(s.count) }
+      else if (s.last === yesterday) {
+        const n = s.count + 1
+        localStorage.setItem('sws_streak', JSON.stringify({ count: n, last: today }))
+        setStreak(n)
+      } else {
+        localStorage.setItem('sws_streak', JSON.stringify({ count: 1, last: today }))
+        setStreak(1)
+      }
+    } catch {}
+
+    // First-time student tour
+    const tourKey = `sws_tour_student_${user?.id}`
+    if (!localStorage.getItem(tourKey)) {
+      const tourTimer = setTimeout(() => setShowTour(true), 800)
+      return () => { clearTimeout(t); clearTimeout(tourTimer) }
+    }
     return () => clearTimeout(t)
   }, [])
 
@@ -256,22 +161,33 @@ export default function HubStudent() {
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
   const name     = user?.name?.split(' ')[0] ?? 'Student'
 
-  const upcoming    = events.filter(e => e.status === 'confirmed' || e.status === 'pending')
+  const now         = new Date()
+  const upcoming    = events.filter(e =>
+    (e.status === 'confirmed' || e.status === 'pending') &&
+    new Date(e.start_time) > now
+  )
   const nextSession = [...upcoming].sort((a, b) => new Date(a.start_time) - new Date(b.start_time))[0] ?? null
   const unreadCount = conversations.reduce((acc, c) => acc + (c.unread || 0), 0)
 
-  // XP calculation
-  const totalXP    = 30 + activeTutors.length * 10 + upcoming.length * 30
+  // XP calculation (confirmed sessions only, not just upcoming)
+  const confirmedTotal = events.filter(e => e.status === 'confirmed' || e.status === 'paid').length
+  const totalXP    = 30 + activeTutors.length * 10 + confirmedTotal * 30
   const level      = Math.floor(totalXP / 100) + 1
   const xpProgress = totalXP % 100
 
+  function doneTour() {
+    localStorage.setItem(`sws_tour_student_${user?.id}`, 'done')
+    setShowTour(false)
+  }
+
   return (
     <HubLayout initialMode="student" noScroll>
+      {showTour && <SpotlightTour steps={STUDENT_TOUR_STEPS} onDone={doneTour} />}
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '12px' }}>
 
         {/* ── Welcome banner ─────────────────────────────────────────────── */}
         <div
-          className={mounted ? 'animate-slide-up' : ''}
+          className={mounted ? 'animate-from-tl' : ''}
           style={{
             flexShrink: 0,
             background: `linear-gradient(135deg, ${CORAL}14 0%, rgba(255,114,94,0.03) 55%, rgba(255,154,60,0.06) 100%)`,
@@ -282,21 +198,13 @@ export default function HubStudent() {
             overflow: 'hidden',
           }}
         >
-          {/* Ambient blobs */}
-          <div style={{ position: 'absolute', right: '-40px', top: '-40px', width: '200px', height: '200px', background: `${CORAL}08`, borderRadius: '50%', filter: 'blur(50px)', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', left: '30%', bottom: '-20px', width: '120px', height: '120px', background: 'rgba(255,154,60,0.06)', borderRadius: '50%', filter: 'blur(30px)', pointerEvents: 'none' }} />
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
 
-            {/* Left: greeting — takes all space but stops before the trio */}
-            <div style={{ flex: 1, minWidth: 0, maxWidth: 'calc(50% - 150px)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'var(--text-muted)' }}>waving_hand</span>
-                <p style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: '500' }}>{greeting}</p>
-              </div>
-              <h1 style={{ fontSize: '23px', fontWeight: '900', color: 'var(--text)', lineHeight: 1.15, marginBottom: '8px' }}>
-                {name},<br />
-                <span style={{ color: CORAL }}>Ready to learn?</span>
+            {/* Left: greeting + session chip + CTAs */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h1 style={{ fontSize: '20px', fontWeight: '900', color: 'var(--text)', lineHeight: 1.2, marginBottom: '8px' }}>
+                {greeting}, {name} — <span style={{ color: CORAL }}>ready to learn?</span>
               </h1>
 
               {/* Next session chip */}
@@ -335,42 +243,31 @@ export default function HubStudent() {
               </div>
             </div>
 
-            {/* Centre: Top Tutors Trio — absolutely centred in the banner, floats above flex flow */}
-            {topTutors.length >= 3 && (
-              <div style={{
-                position: 'absolute', left: '50%', top: '50%',
-                transform: 'translate(-50%, -50%)',
-                pointerEvents: 'none', zIndex: 1,
-              }}>
-                <div style={{ pointerEvents: 'auto' }}>
-                  <TopTutorsTrio tutors={topTutors.slice(0, 3)} />
+            {/* Right: stats summary */}
+            <div style={{ flexShrink: 0, display: 'flex', gap: '16px', alignItems: 'center' }}>
+              {/* Streak */}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', fontWeight: '900', color: AMBER, lineHeight: 1 }}>
+                  {streak}
+                </div>
+                <div style={{ fontSize: '9px', fontWeight: '700', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: '2px' }}>
+                  Day streak
                 </div>
               </div>
-            )}
 
-            {/* Right: XP section — sits at the right edge naturally */}
-            <div style={{ marginLeft: 'auto', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
-              {/* XP Donut */}
-              <XpDonut xpProgress={xpProgress} level={level} />
+              <div style={{ width: '1px', height: '40px', background: 'var(--border)' }} />
 
-              {/* XP progress bar */}
-              <div style={{ width: '96px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                  <span style={{ fontSize: '8px', color: 'var(--text-faint)', fontWeight: '600' }}>Lv {level}</span>
-                  <span style={{ fontSize: '8px', color: 'var(--text-faint)', fontWeight: '600' }}>Lv {level + 1}</span>
+              {/* XP donut */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                <XpDonut xpProgress={xpProgress} level={level} />
+                <div style={{ width: '96px' }}>
+                  <div style={{ height: '3px', borderRadius: '2px', background: `${CORAL}1a`, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${xpProgress}%`, background: `linear-gradient(90deg, ${CORAL}, ${AMBER})`, borderRadius: '2px', transition: 'width 1.5s cubic-bezier(0.4,0,0.2,1)' }} />
+                  </div>
+                  <p style={{ fontSize: '8px', color: 'var(--text-faint)', textAlign: 'center', marginTop: '3px' }}>
+                    {100 - xpProgress} XP to Lv {level + 1}
+                  </p>
                 </div>
-                <div style={{ height: '4px', borderRadius: '2px', background: `${CORAL}1a`, overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%',
-                    width: `${xpProgress}%`,
-                    background: `linear-gradient(90deg, ${CORAL}, ${AMBER})`,
-                    borderRadius: '2px',
-                    transition: 'width 1.5s cubic-bezier(0.4,0,0.2,1)',
-                  }} />
-                </div>
-                <p style={{ fontSize: '8px', color: 'var(--text-faint)', textAlign: 'center', marginTop: '3px' }}>
-                  {100 - xpProgress} XP to Lv {level + 1}
-                </p>
               </div>
             </div>
           </div>
@@ -383,14 +280,14 @@ export default function HubStudent() {
             label="Active Tutors"
             value={loading ? null : activeTutors.length}
             to="/active-tutors"
-            animClass={mounted ? 'animate-slide-up delay-150' : ''}
+            animClass={mounted ? 'animate-from-bl delay-100' : ''}
           />
           <StatCard
             icon="calendar_clock"
             label="Upcoming Sessions"
             value={loading ? null : upcoming.length}
             to="/calendar/student"
-            animClass={mounted ? 'animate-slide-up delay-200' : ''}
+            animClass={mounted ? 'animate-slide-up delay-150' : ''}
           />
           <StatCard
             icon="message"
@@ -399,7 +296,7 @@ export default function HubStudent() {
             to="/messages"
             highlight={unreadCount > 0}
             badge={unreadCount || null}
-            animClass={mounted ? 'animate-slide-up delay-300' : ''}
+            animClass={mounted ? 'animate-from-br delay-100' : ''}
           />
         </div>
 
@@ -409,10 +306,9 @@ export default function HubStudent() {
           {/* Col 1: Upcoming Sessions */}
           <Panel
             title="My Schedule"
-            subtitle={`${upcoming.length} upcoming session${upcoming.length !== 1 ? 's' : ''}`}
             icon="event"
             extra={<Link to="/calendar/student" style={{ color: CORAL, fontSize: '12px', fontWeight: '600', textDecoration: 'none' }}>Calendar →</Link>}
-            animClass={mounted ? 'animate-slide-up delay-200' : ''}
+            animClass={mounted ? 'animate-from-bl delay-200' : ''}
           >
             {loading ? <SkeletonList rows={5} /> : upcoming.length === 0 ? (
               <EmptyState icon="calendar_clock" text="No upcoming sessions" action={{ to: '/find-tutors', label: 'Book a session' }} />
@@ -425,17 +321,10 @@ export default function HubStudent() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', minHeight: 0 }}>
             <Panel
               title="My Tutors"
-              subtitle={
-                activeTutors.length > 0
-                  ? `${activeTutors.length} active${pendingInvites.length > 0 ? ` · ${pendingInvites.length} pending` : ''}`
-                  : pendingInvites.length > 0
-                  ? `${pendingInvites.length} request${pendingInvites.length !== 1 ? 's' : ''} pending`
-                  : 'find your first tutor'
-              }
               icon="cast_for_education"
               extra={<Link to="/active-tutors" style={{ color: CORAL, fontSize: '12px', fontWeight: '600', textDecoration: 'none' }}>View all →</Link>}
               style={{ flex: 1, minHeight: 0 }}
-              animClass={mounted ? 'animate-slide-up delay-300' : ''}
+              animClass={mounted ? 'animate-from-br delay-200' : ''}
             >
               {loading ? <SkeletonList rows={3} /> : (
                 activeTutors.length === 0 && pendingInvites.length === 0 ? (
@@ -451,11 +340,10 @@ export default function HubStudent() {
 
             <Panel
               title="Recent Messages"
-              subtitle={unreadCount > 0 ? `${unreadCount} unread` : 'all caught up'}
               icon="chat"
               extra={<Link to="/messages" style={{ color: CORAL, fontSize: '12px', fontWeight: '600', textDecoration: 'none' }}>Open →</Link>}
               style={{ flex: 1, minHeight: 0 }}
-              animClass={mounted ? 'animate-slide-up delay-400' : ''}
+              animClass={mounted ? 'animate-from-br delay-300' : ''}
             >
               {loading ? <SkeletonList rows={2} /> : conversations.length === 0 ? (
                 <EmptyState icon="message" text="No messages yet" />
@@ -468,11 +356,10 @@ export default function HubStudent() {
           {/* Col 3: Mini Calendar */}
           <Panel
             title="Calendar"
-            subtitle="this month at a glance"
             icon="calendar_month"
             extra={<Link to="/calendar/student" style={{ color: CORAL, fontSize: '12px', fontWeight: '600', textDecoration: 'none' }}>Full view →</Link>}
             innerStyle={{ display: 'flex', flexDirection: 'column' }}
-            animClass={mounted ? 'animate-slide-up delay-300' : ''}
+            animClass={mounted ? 'animate-from-tr delay-200' : ''}
           >
             <MiniCalendar events={events} />
           </Panel>
@@ -540,8 +427,8 @@ function MiniCalendar({ events }) {
         ))}
       </div>
 
-      {/* Days */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', flex: 1 }}>
+      {/* Days — paper unfold on mount */}
+      <div className="animate-paper-unfold" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', flex: 1 }}>
         {cells.map((d, i) => (
           <div
             key={i}
@@ -597,28 +484,21 @@ function MiniCalendar({ events }) {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function Panel({ title, subtitle, icon, extra, children, style, innerStyle, animClass }) {
+function Panel({ title, icon, extra, children, style, innerStyle, animClass }) {
   return (
     <div className={animClass} style={{ display: 'flex', flexDirection: 'column', ...style }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexShrink: 0 }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-            {icon && (
-              <div style={{
-                width: '22px', height: '22px', borderRadius: '6px',
-                background: `${CORAL}15`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '13px', color: CORAL }}>{icon}</span>
-              </div>
-            )}
-            <h2 style={{ color: 'var(--text)', fontWeight: '800', fontSize: '13px', letterSpacing: '-0.01em' }}>{title}</h2>
-          </div>
-          {subtitle && (
-            <p style={{ fontSize: '10px', color: 'var(--text-faint)', marginTop: '1px', marginLeft: icon ? '29px' : '0' }}>
-              {subtitle}
-            </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+          {icon && (
+            <div style={{
+              width: '22px', height: '22px', borderRadius: '6px',
+              background: `${CORAL}15`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '13px', color: CORAL }}>{icon}</span>
+            </div>
           )}
+          <h2 style={{ color: 'var(--text)', fontWeight: '800', fontSize: '13px', letterSpacing: '-0.01em' }}>{title}</h2>
         </div>
         {extra}
       </div>
@@ -805,9 +685,12 @@ function ConvoRow({ convo }) {
 
 function EmptyState({ icon, text, action }) {
   return (
-    <div style={{ textAlign: 'center', padding: '18px 0' }}>
-      <span className="material-symbols-outlined" style={{ fontSize: '26px', color: 'var(--text-faint)', display: 'block', marginBottom: '7px' }}>{icon}</span>
-      <p style={{ color: 'var(--text-faint)', fontSize: '12px', marginBottom: action ? '10px' : 0 }}>{text}</p>
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      height: '100%', minHeight: '80px', textAlign: 'center', gap: '6px',
+    }}>
+      <span className="material-symbols-outlined" style={{ fontSize: '26px', color: 'var(--text-faint)' }}>{icon}</span>
+      <p style={{ color: 'var(--text-faint)', fontSize: '12px' }}>{text}</p>
       {action && (
         <Link to={action.to} style={{ color: CORAL, fontSize: '11px', fontWeight: '700', textDecoration: 'none' }}>
           {action.label} →

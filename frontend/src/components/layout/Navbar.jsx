@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 
@@ -8,6 +8,19 @@ export default function Navbar() {
   const { dark, toggle } = useTheme()
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [visible, setVisible] = useState(true)
+  const lastY = useRef(0)
+
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY
+      if (y < 60) { setVisible(true); lastY.current = y; return }
+      setVisible(y < lastY.current)
+      lastY.current = y
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   function handleLogout() {
     logout()
@@ -23,14 +36,21 @@ export default function Navbar() {
   }
 
   return (
+    <>
+    {/* spacer keeps layout from jumping when nav is fixed */}
+    <div style={{ height: '64px', flexShrink: 0 }} />
     <nav style={{
-      position: 'sticky',
+      position: 'fixed',
       top: 0,
+      left: 0,
+      right: 0,
       zIndex: 50,
       background: 'rgba(27,38,59,0.93)',
       backdropFilter: 'blur(14px)',
       WebkitBackdropFilter: 'blur(14px)',
       borderBottom: '1px solid rgba(255,255,255,0.06)',
+      transform: visible ? 'translateY(0)' : 'translateY(-100%)',
+      transition: 'transform 0.30s cubic-bezier(0.4,0,0.2,1)',
     }}>
       <div style={{
         maxWidth: '1280px',
@@ -202,5 +222,6 @@ export default function Navbar() {
         </div>
       )}
     </nav>
+    </>
   )
 }

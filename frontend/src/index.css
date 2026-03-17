@@ -99,6 +99,30 @@ html.light ::-webkit-scrollbar-thumb  { background: rgba(37,99,235,0.20); border
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* ── Transformer corner slides ────────────────────────────────────────────── */
+@keyframes slideFromTL {
+  from { opacity: 0; transform: translate(-52px, -36px) rotate(-2.5deg) scale(0.96); }
+  to   { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
+}
+@keyframes slideFromTR {
+  from { opacity: 0; transform: translate(52px, -36px) rotate(2.5deg) scale(0.96); }
+  to   { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
+}
+@keyframes slideFromBL {
+  from { opacity: 0; transform: translate(-52px, 36px) rotate(2deg) scale(0.96); }
+  to   { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
+}
+@keyframes slideFromBR {
+  from { opacity: 0; transform: translate(52px, 36px) rotate(-2deg) scale(0.96); }
+  to   { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
+}
+
+/* ── Paper unfold (for calendar) ──────────────────────────────────────────── */
+@keyframes paperUnfold {
+  from { opacity: 0; transform: perspective(600px) rotateX(-18deg) scaleY(0.65); transform-origin: top center; }
+  to   { opacity: 1; transform: perspective(600px) rotateX(0deg) scaleY(1); transform-origin: top center; }
+}
+
 @keyframes slideInLeft {
   from { opacity: 0; transform: translateX(-24px); }
   to   { opacity: 1; transform: translateX(0); }
@@ -188,9 +212,75 @@ html.light ::-webkit-scrollbar-thumb  { background: rgba(37,99,235,0.20); border
   100% { transform: translate(0, 0) scale(1); }
 }
 
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes gradientPulse {
+  0%, 100% { opacity: 0.07; transform: scale(1); }
+  50%       { opacity: 0.14; transform: scale(1.08); }
+}
+
+@keyframes heroGlow {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1; }
+}
+
+@keyframes borderGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,114,94,0); }
+  50%       { box-shadow: 0 0 24px 4px rgba(255,114,94,0.22); }
+}
+
+/* ── Scroll-reveal (data-reveal attribute pattern) ────────────────────────── */
+
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity  0.62s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.62s cubic-bezier(0.16, 1, 0.3, 1);
+}
+[data-reveal="left"]  { transform: translateX(-28px); }
+[data-reveal="right"] { transform: translateX(28px); }
+[data-reveal="scale"] { transform: scale(0.92); opacity: 0; }
+
+/* Both .revealed and .sws-vis trigger the reveal — consistent across pages */
+[data-reveal].revealed,
+[data-reveal].sws-vis {
+  opacity: 1;
+  transform: translateY(0) translateX(0) scale(1);
+}
+
+/* data-reveal-delay (hub pages) */
+[data-reveal-delay="100"].revealed,  [data-reveal-delay="100"].sws-vis  { transition-delay: 0.10s; }
+[data-reveal-delay="120"].revealed,  [data-reveal-delay="120"].sws-vis  { transition-delay: 0.12s; }
+[data-reveal-delay="130"].revealed,  [data-reveal-delay="130"].sws-vis  { transition-delay: 0.13s; }
+[data-reveal-delay="150"].revealed,  [data-reveal-delay="150"].sws-vis  { transition-delay: 0.15s; }
+[data-reveal-delay="200"].revealed,  [data-reveal-delay="200"].sws-vis  { transition-delay: 0.20s; }
+[data-reveal-delay="240"].revealed,  [data-reveal-delay="240"].sws-vis  { transition-delay: 0.24s; }
+[data-reveal-delay="260"].revealed,  [data-reveal-delay="260"].sws-vis  { transition-delay: 0.26s; }
+[data-reveal-delay="300"].revealed,  [data-reveal-delay="300"].sws-vis  { transition-delay: 0.30s; }
+[data-reveal-delay="360"].revealed,  [data-reveal-delay="360"].sws-vis  { transition-delay: 0.36s; }
+[data-reveal-delay="400"].revealed,  [data-reveal-delay="400"].sws-vis  { transition-delay: 0.40s; }
+[data-reveal-delay="500"].revealed,  [data-reveal-delay="500"].sws-vis  { transition-delay: 0.50s; }
+
+/* data-d shorthand (public pages) */
+[data-reveal][data-d="1"].revealed, [data-reveal][data-d="1"].sws-vis  { transition-delay: 0.10s; }
+[data-reveal][data-d="2"].revealed, [data-reveal][data-d="2"].sws-vis  { transition-delay: 0.20s; }
+[data-reveal][data-d="3"].revealed, [data-reveal][data-d="3"].sws-vis  { transition-delay: 0.30s; }
+[data-reveal][data-d="4"].revealed, [data-reveal][data-d="4"].sws-vis  { transition-delay: 0.40s; }
+[data-reveal][data-d="5"].revealed, [data-reveal][data-d="5"].sws-vis  { transition-delay: 0.50s; }
+[data-reveal][data-d="6"].revealed, [data-reveal][data-d="6"].sws-vis  { transition-delay: 0.60s; }
+
 /* ── Animation utility classes ───────────────────────────────────────────── */
 
 .animate-slide-up       { animation: slideUpFade 0.50s cubic-bezier(.22,.68,0,1.2) both; }
+.animate-from-tl        { animation: slideFromTL 0.55s cubic-bezier(.22,.68,0,1.15) both; }
+.animate-from-tr        { animation: slideFromTR 0.55s cubic-bezier(.22,.68,0,1.15) both; }
+.animate-from-bl        { animation: slideFromBL 0.55s cubic-bezier(.22,.68,0,1.15) both; }
+.animate-from-br        { animation: slideFromBR 0.55s cubic-bezier(.22,.68,0,1.15) both; }
+.animate-paper-unfold   { animation: paperUnfold 0.65s cubic-bezier(.22,.68,0,1.1) both; }
 .animate-slide-in-left  { animation: slideInLeft 0.45s cubic-bezier(.22,.68,0,1.2) both; }
 .animate-slide-in-right { animation: slideInRight 0.45s cubic-bezier(.22,.68,0,1.2) both; }
 .animate-fade-in        { animation: fadeIn  0.4s ease both; }
@@ -204,6 +294,10 @@ html.light ::-webkit-scrollbar-thumb  { background: rgba(37,99,235,0.20); border
 .animate-number-pop     { animation: numberPop 0.55s cubic-bezier(.22,.68,0,1.3) both; }
 .animate-bar-grow       { animation: barGrow 0.7s cubic-bezier(.22,.68,0,1.0) both; }
 .animate-pulse-dot      { animation: pulse-dot 1.8s ease-in-out infinite; }
+.animate-marquee        { animation: marquee 32s linear infinite; display: inline-flex; white-space: nowrap; }
+.animate-gradient-pulse { animation: gradientPulse 5s ease-in-out infinite; }
+.animate-hero-glow      { animation: heroGlow 3s ease-in-out infinite; }
+.animate-border-glow    { animation: borderGlow 2.5s ease-in-out infinite; }
 
 .animate-orbit-1 { animation: orbit 3.2s ease-in-out infinite; }
 .animate-orbit-2 { animation: orbit 4.0s ease-in-out infinite; animation-delay: -0.8s; }
@@ -245,6 +339,47 @@ html.light .skeleton {
   );
   background-size: 400px 100%;
   animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* ── New keyframes for public page redesign ──────────────────────────────── */
+
+@keyframes gradientText {
+  0%   { background-position: 0%   50% }
+  50%  { background-position: 100% 50% }
+  100% { background-position: 0%   50% }
+}
+
+@keyframes rotateSlow {
+  from { transform: rotate(0deg)   }
+  to   { transform: rotate(360deg) }
+}
+
+@keyframes imageDrift {
+  0%, 100% { transform: translateY(0)   rotate(-1deg) }
+  50%       { transform: translateY(-16px) rotate(1deg)  }
+}
+
+@keyframes slideReveal {
+  from { clip-path: inset(0 100% 0 0); opacity: 0; }
+  to   { clip-path: inset(0 0% 0 0);   opacity: 1; }
+}
+
+/* gradient-text: orange→white shimmer — premium, on-brand */
+.animate-gradient-text {
+  background: linear-gradient(90deg, #ff725e 0%, #ffffff 45%, #ff9472 75%, #ff725e 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradientText 4s ease infinite;
+}
+
+.animate-rotate-slow {
+  animation: rotateSlow 22s linear infinite;
+}
+
+.animate-image-drift {
+  animation: imageDrift 6s ease-in-out infinite;
 }
 
 /* Gradient text utility */

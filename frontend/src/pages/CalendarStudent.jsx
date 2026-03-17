@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { getEvents } from '../api/events'
 import { getActiveTutors } from '../api/tutors'
+import { getStudyRooms } from '../api/studyrooms'
 import HubLayout from '../components/layout/HubLayout'
 import { PageTitle } from '../context/PageTitleContext'
-import PageHeader from '../components/features/PageHeader'
 import toast from 'react-hot-toast'
 
 const WEEK_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -48,55 +48,10 @@ const STATUS_COLOR = {
   paid:      '#60a5fa',
 }
 
-function XPRing({ level, progress, totalXP, xpToNext }) {
-  const r    = 30
-  const circ = 2 * Math.PI * r
-  const dash = circ * (progress / 100)
-  return (
-    <div style={{
-      background: 'linear-gradient(135deg, rgba(255,114,94,0.12), rgba(255,114,94,0.04))',
-      border: '1px solid rgba(255,114,94,0.22)',
-      borderRadius: '14px', padding: '14px',
-      display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0,
-    }}>
-      <div style={{ position: 'relative', width: '68px', height: '68px', flexShrink: 0 }}>
-        <svg width="68" height="68" style={{ transform: 'rotate(-90deg)' }}>
-          <defs>
-            <linearGradient id="xpG" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#ff725e" />
-              <stop offset="100%" stopColor="#ff9a3c" />
-            </linearGradient>
-          </defs>
-          <circle cx="34" cy="34" r={r} fill="none" stroke="rgba(255,114,94,0.15)" strokeWidth="6" />
-          <circle cx="34" cy="34" r={r} fill="none" stroke="url(#xpG)" strokeWidth="6" strokeLinecap="round"
-            strokeDasharray={`${dash} ${circ}`} style={{ transition: 'stroke-dasharray 1s ease' }} />
-        </svg>
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <span style={{ fontSize: '16px', fontWeight: '900', color: 'var(--text)', lineHeight: 1 }}>{level}</span>
-          <span style={{ fontSize: '8px', color: 'var(--text-faint)', fontWeight: '700', letterSpacing: '0.08em' }}>LEVEL</span>
-        </div>
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '4px' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '13px', color: '#ff725e' }}>military_tech</span>
-          <span style={{ fontSize: '12px', fontWeight: '800', color: '#ff725e' }}>{totalXP} XP earned</span>
-        </div>
-        <div style={{ height: '5px', background: 'rgba(255,114,94,0.15)', borderRadius: '3px', overflow: 'hidden', marginBottom: '4px' }}>
-          <div style={{ height: '100%', width: `${progress}%`, background: 'linear-gradient(90deg,#ff725e,#ff9a3c)', borderRadius: '3px', transition: 'width 1s ease' }} />
-        </div>
-        <p style={{ fontSize: '10px', color: 'var(--text-faint)' }}>{xpToNext} XP to Level {level + 1}</p>
-        <div style={{ marginTop: '5px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          {['+30 per session', '+10 per tutor'].map(t => (
-            <span key={t} style={{ fontSize: '9px', color: 'rgba(255,114,94,0.6)', background: 'rgba(255,114,94,0.08)', padding: '1px 5px', borderRadius: '4px' }}>{t}</span>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export default function CalendarStudent() {
   const [events,       setEvents]       = useState([])
+  const [studyRooms,   setStudyRooms]   = useState([])
   const [activeTutors, setActiveTutors] = useState([])
   const [loading,      setLoading]      = useState(true)
   const [viewDate,     setViewDate]     = useState(new Date())
@@ -104,11 +59,13 @@ export default function CalendarStudent() {
 
   async function load() {
     try {
-      const results = await Promise.allSettled([getEvents(), getActiveTutors()])
+      const results = await Promise.allSettled([getEvents(), getActiveTutors(), getStudyRooms()])
       const ev = results[0].status === 'fulfilled' ? results[0].value.data.events ?? [] : []
       const at = results[1].status === 'fulfilled' ? results[1].value.data.tutors ?? [] : []
+      const sr = results[2].status === 'fulfilled' ? results[2].value.data.rooms  ?? [] : []
       setEvents(ev)
       setActiveTutors(at)
+      setStudyRooms(sr)
     } catch { toast.error('Could not load calendar') }
     finally  { setLoading(false) }
   }
@@ -145,11 +102,9 @@ export default function CalendarStudent() {
     .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
     .slice(0, 8)
 
-  const confirmedCount = events.filter(e => e.status === 'confirmed' || e.status === 'paid').length
-  const totalXP    = 30 + activeTutors.length * 10 + confirmedCount * 30
-  const level      = Math.floor(totalXP / 100) + 1
-  const xpProgress = totalXP % 100
-  const xpToNext   = 100 - xpProgress
+  const now            = new Date()
+  const tutoringSessions = events.filter(e => e.status !== 'canceled' && new Date(e.start_time) > now).length
+  const upcomingGroups   = studyRooms.filter(r => new Date(r.end_time) > now).length
 
   function prevMonth() { setViewDate(new Date(year, month - 1, 1)) }
   function nextMonth() { setViewDate(new Date(year, month + 1, 1)) }
@@ -167,28 +122,6 @@ export default function CalendarStudent() {
       `}</style>
 
       <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
-
-        {/* Header */}
-        <PageHeader
-          icon="calendar_month"
-          iconColor="#ff725e"
-          title="My Calendar"
-          subtitle={upcoming.length > 0
-            ? <><span style={{ color:'#34d399', fontWeight:'700' }}>{upcoming.length}</span> upcoming session{upcoming.length!==1?'s':''}</>
-            : '0 upcoming sessions'}
-          right={!isThisMonth && (
-            <button onClick={() => setViewDate(new Date())} style={{
-              display:'flex', alignItems:'center', gap:'5px', padding:'7px 14px',
-              borderRadius:'10px', border:'1px solid rgba(255,114,94,0.30)',
-              background:'rgba(255,114,94,0.08)', color:'#ff725e',
-              fontSize:'12px', fontWeight:'700', cursor:'pointer',
-            }}>
-              <span className="material-symbols-outlined" style={{ fontSize:'14px' }}>today</span>Today
-            </button>
-          )}
-          compact
-          style={{ flexShrink: 0 }}
-        />
 
         {/* Grid */}
         <div style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'1fr 300px', gap:'14px', overflow:'hidden' }}>
@@ -300,12 +233,19 @@ export default function CalendarStudent() {
                         lineHeight:1,
                       }}>{day}</span>
                       {hasEvents && (
-                        <span style={{
-                          width:'5px', height:'5px', borderRadius:'50%',
-                          background: isSelected ? 'rgba(255,255,255,0.9)' : '#ff725e',
-                          display:'block', flexShrink:0,
-                          boxShadow: isSelected ? 'none' : '0 0 4px rgba(255,114,94,0.55)',
-                        }} />
+                        <div style={{ display: 'flex', gap: '2px', justifyContent: 'center', flexWrap: 'nowrap' }}>
+                          {eventsByDate[dateStr].slice(0, 3).map((ev, i) => (
+                            <span key={i} style={{
+                              width: '4px', height: '4px', borderRadius: '50%', display: 'block', flexShrink: 0,
+                              background: isSelected ? 'rgba(255,255,255,0.9)' : (STATUS_COLOR[ev.status] ?? '#ff725e'),
+                            }} />
+                          ))}
+                          {eventsByDate[dateStr].length > 3 && (
+                            <span style={{ fontSize: '7px', lineHeight: '4px', color: isSelected ? 'rgba(255,255,255,0.7)' : 'var(--text-faint)' }}>
+                              +{eventsByDate[dateStr].length - 3}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </button>
                   )
@@ -318,12 +258,13 @@ export default function CalendarStudent() {
               {[
                 { bg:'linear-gradient(135deg,#ff725e,#ff9a3c)', label:'Today' },
                 { bg:'rgba(255,114,94,0.04)', label:'Current week', border:'1px solid rgba(255,114,94,0.12)' },
-                { bg:'rgba(255,114,94,0.55)', dot:true, label:'Has session' },
+                { bg:'#34d399', dot:true, label:'Confirmed' },
+                { bg:'#fbbf24', dot:true, label:'Pending' },
                 { bg:'rgba(255,255,255,0.12)', label:'Past (faded)' },
               ].map(({ bg, label, border, dot }) => (
                 <div key={label} style={{ display:'flex', alignItems:'center', gap:'5px' }}>
                   {dot
-                    ? <span style={{ width:'6px', height:'6px', borderRadius:'50%', background:bg, boxShadow:'0 0 4px rgba(255,114,94,0.5)', display:'inline-block' }} />
+                    ? <span style={{ width:'6px', height:'6px', borderRadius:'50%', background:bg, display:'inline-block' }} />
                     : <span style={{ width:'14px', height:'10px', borderRadius:'4px', background:bg, border:border||'none', display:'inline-block' }} />
                   }
                   <span style={{ fontSize:'10px', color:'var(--text-faint)' }}>{label}</span>
@@ -335,8 +276,27 @@ export default function CalendarStudent() {
           {/* Right panel */}
           <div style={{ display:'flex', flexDirection:'column', gap:'10px', overflow:'hidden' }}>
 
-            {/* XP Widget */}
-            <XPRing level={level} progress={xpProgress} totalXP={totalXP} xpToNext={xpToNext} />
+            {/* Session type stat chips */}
+            <div style={{ display: 'flex', gap: '8px', flexShrink: 0, minWidth: 0 }}>
+              {[
+                { icon: 'school',      color: '#ff725e', count: tutoringSessions, label: `Tutoring Session${tutoringSessions !== 1 ? 's' : ''}` },
+                { icon: 'groups',      color: '#60a5fa', count: upcomingGroups,   label: `Study Group${upcomingGroups !== 1 ? 's' : ''}` },
+              ].map(({ icon, color, count, label }) => (
+                <div key={label} style={{
+                  flex: 1, minWidth: 0,
+                  background: `${color}10`, border: `1px solid ${color}28`,
+                  borderRadius: '12px', padding: '10px 12px',
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  overflow: 'hidden',
+                }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px', color, flexShrink: 0, fontVariationSettings: '"FILL" 1' }}>{icon}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <span style={{ fontSize: '18px', fontWeight: '900', color: 'var(--text)', lineHeight: 1, display: 'block' }}>{count}</span>
+                    <span style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{label}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
 
             {/* Selected day */}
             <div className="glass" style={{ padding:'14px', overflow:'auto', flex:'0 0 auto', maxHeight:'36%' }}>

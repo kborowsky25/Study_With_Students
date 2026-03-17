@@ -18,7 +18,6 @@ const STUDENT_HOTKEYS = {
   s: '/study-rooms/student',
   e: '/forum',
   p: '/payments',
-  x: '/xp',
 }
 
 const TUTOR_HOTKEYS = {
@@ -28,7 +27,6 @@ const TUTOR_HOTKEYS = {
   c: '/calendar/tutor',
   s: '/study-rooms/tutor',
   e: '/earnings',
-  x: '/xp',
   p: '/tutor-profile',
 }
 
@@ -43,7 +41,6 @@ const STUDENT_SHORTCUTS = [
   { key: 'g s', label: 'Study Rooms' },
   { key: 'g e', label: 'Forum' },
   { key: 'g p', label: 'Payments' },
-  { key: 'g x', label: 'Graduation' },
 ]
 
 const TUTOR_SHORTCUTS = [
@@ -53,7 +50,6 @@ const TUTOR_SHORTCUTS = [
   { key: 'g c', label: 'Calendar' },
   { key: 'g s', label: 'Study Rooms' },
   { key: 'g e', label: 'Earnings' },
-  { key: 'g x', label: 'Graduation' },
   { key: 'g p', label: 'My Profile' },
 ]
 
@@ -98,7 +94,7 @@ function ShortcutHelp({ mode, onClose }) {
             </div>
             <div>
               <h2 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text)', margin: 0 }}>Keyboard Shortcuts</h2>
-              <p style={{ fontSize: '11px', color: 'var(--text-faint)', margin: '2px 0 0' }}>Press <Kbd>g</Kbd> then a key to navigate</p>
+              <p style={{ fontSize: '11px', color: 'var(--text-faint)', margin: '2px 0 0' }}>Press <Kbd>g</Kbd> then a key to jump anywhere</p>
             </div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', padding: '4px', display: 'flex', alignItems: 'center' }}>
@@ -121,7 +117,7 @@ function ShortcutHelp({ mode, onClose }) {
         {/* Footer */}
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', gap: '12px' }}>
-            <span style={{ fontSize: '11px', color: 'var(--text-faint)' }}><Kbd>?</Kbd> toggle help</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-faint)' }}><Kbd>g</Kbd> goto mode · <Kbd>?</Kbd> toggle help</span>
             <span style={{ fontSize: '11px', color: 'var(--text-faint)' }}><Kbd>Esc</Kbd> close</span>
           </div>
           <span style={{ fontSize: '10px', color: 'var(--text-faint)', opacity: 0.6 }}>
@@ -161,11 +157,10 @@ function HubInner({ children, initialMode, raw, noScroll }) {
     return localStorage.getItem('sws_hub_mode') ?? 'student'
   })
 
-  // Keyboard chord state
-  const chordActiveRef = useRef(false)
-  const chordTimerRef  = useRef(null)
-  const [chordActive, setChordActive] = useState(false)
-  const [showHelp,    setShowHelp]    = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
+  const [gActive, setGActive]   = useState(false)
+  const gModeRef  = useRef(false)
+  const gTimerRef = useRef(null)
 
   function toggleMode() {
     const next = mode === 'student' ? 'tutor' : 'student'
@@ -174,76 +169,95 @@ function HubInner({ children, initialMode, raw, noScroll }) {
     navigate({ to: next === 'tutor' ? '/hub/tutor' : '/hub/student' })
   }
 
-  // ── Keyboard shortcut handler ──────────────────────────────────────────────
+  // ── g → letter shortcuts ──────────────────────────────────────────────────
   useEffect(() => {
     const keymap = mode === 'student' ? STUDENT_HOTKEYS : TUTOR_HOTKEYS
 
     function onKeyDown(e) {
-      // Don't fire when user is typing
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return
       if (e.target.isContentEditable) return
-      if (e.ctrlKey || e.metaKey || e.altKey) return
 
-      // Escape — cancel chord or close help
+      // Escape — close overlays, cancel g-mode
       if (e.key === 'Escape') {
-        if (chordActiveRef.current) {
-          clearTimeout(chordTimerRef.current)
-          chordActiveRef.current = false
-          setChordActive(false)
-        }
         setShowHelp(false)
+        gModeRef.current = false
+        setGActive(false)
+        clearTimeout(gTimerRef.current)
         return
       }
 
       // ? — toggle help overlay
-      if (e.key === '?') {
+      if (e.key === '?' && !e.metaKey && !e.ctrlKey) {
         e.preventDefault()
         setShowHelp(prev => !prev)
         return
       }
 
-      if (chordActiveRef.current) {
-        // Second key of chord → navigate
-        clearTimeout(chordTimerRef.current)
-        chordActiveRef.current = false
-        setChordActive(false)
-        const dest = keymap[e.key.toLowerCase()]
-        if (dest) { e.preventDefault(); navigate({ to: dest }) }
-      } else if (e.key.toLowerCase() === 'g') {
-        // Start chord
+      // g — enter goto mode
+      if (e.key.toLowerCase() === 'g' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault()
-        chordActiveRef.current = true
-        setChordActive(true)
-        chordTimerRef.current = setTimeout(() => {
-          chordActiveRef.current = false
-          setChordActive(false)
-        }, 700)
+        gModeRef.current = true
+        setGActive(true)
+        clearTimeout(gTimerRef.current)
+        gTimerRef.current = setTimeout(() => {
+          gModeRef.current = false
+          setGActive(false)
+        }, 1500)
+        return
       }
+
+      // Second key after g — navigate
+      if (gModeRef.current) {
+        clearTimeout(gTimerRef.current)
+        gModeRef.current = false
+        setGActive(false)
+        const dest = keymap[e.key.toLowerCase()]
+        if (dest) {
+          e.preventDefault()
+          navigate({ to: dest })
+        }
+        return
+      }
+
     }
 
     window.addEventListener('keydown', onKeyDown)
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
-      clearTimeout(chordTimerRef.current)
-    }
+    return () => window.removeEventListener('keydown', onKeyDown)
   }, [mode, navigate])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg)', position: 'relative' }}>
       <style>{`
-        @keyframes titleAppear {
-          from { opacity: 0; transform: translateY(5px) scale(0.95); filter: blur(3px) }
-          to   { opacity: 1; transform: translateY(0)   scale(1);    filter: blur(0) }
+        @keyframes signFall {
+          0%   { opacity: 0; transform: translateY(-20px) rotate(-2deg) }
+          55%  { transform: translateY(6px) rotate(0.6deg) }
+          75%  { transform: translateY(-3px) rotate(0deg) }
+          100% { opacity: 1; transform: translateY(0) rotate(0deg) }
         }
-        @keyframes chordPop {
-          0%   { transform: scale(0.8); opacity: 0 }
-          60%  { transform: scale(1.08) }
-          100% { transform: scale(1);   opacity: 1 }
+        @keyframes gModePop {
+          from { opacity: 0; transform: translateY(8px) scale(0.94) }
+          to   { opacity: 1; transform: translateY(0)  scale(1) }
         }
       `}</style>
 
+      {/* ── Crossed grid background ──────────────────────────────────────────── */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px)
+          `,
+          backgroundSize: '48px 48px',
+          WebkitMaskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%)',
+          maskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%)',
+        }}
+      />
+
+
       {/* ── 56px sticky top bar ─────────────────────────────────────────────── */}
-      <div className="hub-topbar" style={{ padding: '0 20px', gap: '0', position: 'relative' }}>
+      <div className="hub-topbar" style={{ padding: '0 20px', gap: '0', position: 'relative', zIndex: 10 }}>
         {/* Logo */}
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', flexShrink: 0 }}>
           <span className="material-symbols-outlined" style={{ fontSize: '22px', color: CORAL }}>rocket_launch</span>
@@ -252,79 +266,83 @@ function HubInner({ children, initialMode, raw, noScroll }) {
           </span>
         </Link>
 
-        {/* Page title — centred */}
-        <div style={{
-          position: 'absolute', left: '50%', top: '50%',
-          transform: 'translate(-50%, -50%)',
-          display: 'flex', alignItems: 'center', gap: '7px',
-          pointerEvents: 'none',
-          opacity: pageTitle ? 1 : 0,
-          animation: pageTitle ? 'titleAppear 0.3s cubic-bezier(0.34,1.56,0.64,1) both' : undefined,
-          transition: !pageTitle ? 'opacity 0.15s' : undefined,
-        }}>
-          {pageIcon && (
-            <span className="material-symbols-outlined" style={{ fontSize: '17px', color: CORAL }}>{pageIcon}</span>
-          )}
-          <span style={{ fontWeight: '800', fontSize: '14px', color: 'var(--text)', letterSpacing: '-0.01em' }}>
-            {pageTitle}
-          </span>
+        {/* Page title — truly centred via absolute positioning */}
+        <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: 0, bottom: 0, display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
           {pageTitle && (
-            <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: CORAL, display: 'inline-block', marginLeft: '2px', flexShrink: 0 }} />
+            <div
+              key={pageTitle}
+              style={{
+                pointerEvents: 'auto',
+                display: 'flex', alignItems: 'center', gap: '8px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.10)',
+                borderRadius: '12px',
+                padding: '5px 14px 5px 7px',
+                backdropFilter: 'blur(8px)',
+                animation: 'signFall 0.32s cubic-bezier(0.34,1.56,0.64,1) both',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {pageIcon && (
+                <div style={{
+                  width: '26px', height: '26px', borderRadius: '8px',
+                  background: `${CORAL}22`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '15px', color: CORAL }}>{pageIcon}</span>
+                </div>
+              )}
+              <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', letterSpacing: '-0.01em' }}>
+                {pageTitle}
+              </span>
+            </div>
           )}
         </div>
 
+        {/* Spacer — pushes right-side controls to the right */}
         <div style={{ flex: 1 }} />
 
-        {/* Chord indicator — shows when g has been pressed */}
-        {chordActive && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            marginRight: '12px', padding: '4px 12px',
-            background: `${CORAL}18`, border: `1px solid ${CORAL}35`,
-            borderRadius: '20px',
-            animation: 'chordPop 0.18s cubic-bezier(0.34,1.56,0.64,1) both',
-          }}>
-            <span style={{ fontSize: '11px', fontWeight: '700', color: CORAL, fontFamily: 'monospace', letterSpacing: '0.05em' }}>g</span>
-            <span style={{ fontSize: '13px', color: CORAL, opacity: 0.7 }}>→</span>
-            <span style={{ fontSize: '11px', color: 'var(--text-faint)' }}>_</span>
-          </div>
-        )}
-
         {/* Shortcut hint */}
-        {!chordActive && (
-          <button
-            onClick={() => setShowHelp(prev => !prev)}
-            title="Keyboard shortcuts (?)"
-            style={{
-              display: 'flex', alignItems: 'center', gap: '5px',
-              background: 'transparent', border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: '8px', padding: '4px 9px', cursor: 'pointer',
-              marginRight: '10px', transition: 'all 0.15s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'var(--text-faint)' }}>keyboard</span>
-            <span style={{ fontSize: '11px', color: 'var(--text-faint)', fontFamily: 'monospace' }}>?</span>
-          </button>
-        )}
+        <button
+          onClick={() => setShowHelp(prev => !prev)}
+          title="Keyboard shortcuts (?)"
+          style={{
+            display: 'flex', alignItems: 'center', gap: '5px',
+            background: 'transparent', border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: '8px', padding: '4px 9px', cursor: 'pointer',
+            marginRight: '10px', transition: 'all 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'var(--text-faint)' }}>keyboard</span>
+          <span style={{ fontSize: '11px', color: 'var(--text-faint)', fontFamily: 'monospace' }}>?</span>
+        </button>
 
         {/* Mode switch */}
-        <button
-          onClick={toggleMode}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            background: 'rgba(255,114,94,0.12)', border: '1px solid rgba(255,114,94,0.25)',
-            borderRadius: '20px', padding: '4px 14px', cursor: 'pointer', marginRight: '12px', transition: 'background 0.2s',
-          }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,114,94,0.20)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,114,94,0.12)'}
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: '16px', color: CORAL }}>swap_horiz</span>
-          <span style={{ fontSize: '12px', fontWeight: '700', color: CORAL }}>
-            {mode === 'tutor' ? 'Student View' : 'Tutor View'}
-          </span>
-        </button>
+        {(() => {
+          const isTutor = mode === 'tutor'
+          const btnBg  = isTutor ? 'rgba(255,255,255,0.08)' : 'rgba(255,114,94,0.12)'
+          const btnBdr = isTutor ? 'rgba(255,255,255,0.18)' : 'rgba(255,114,94,0.25)'
+          const btnClr = isTutor ? 'rgba(255,255,255,0.82)' : CORAL
+          return (
+            <button
+              onClick={toggleMode}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                background: btnBg, border: `1px solid ${btnBdr}`,
+                borderRadius: '20px', padding: '4px 14px', cursor: 'pointer', marginRight: '12px', transition: 'background 0.2s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = isTutor ? 'rgba(255,255,255,0.14)' : 'rgba(255,114,94,0.20)'}
+              onMouseLeave={e => e.currentTarget.style.background = btnBg}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '16px', color: btnClr }}>swap_horiz</span>
+              <span style={{ fontSize: '12px', fontWeight: '700', color: btnClr }}>
+                {isTutor ? 'Student View' : 'Tutor View'}
+              </span>
+            </button>
+          )
+        })()}
 
         {/* Theme toggle */}
         <button
@@ -341,13 +359,15 @@ function HubInner({ children, initialMode, raw, noScroll }) {
       </div>
 
       {/* ── Body ──────────────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', height: 'calc(100vh - 56px)' }}>
-        <Sidebar mode={mode} chordActive={chordActive} />
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', height: 'calc(100vh - 56px)', position: 'relative', zIndex: 1 }}>
+        <Sidebar mode={mode} />
         <main style={{ flex: 1, height: '100%', overflowY: noScroll ? 'hidden' : 'auto', minWidth: 0 }}>
           {raw ? children : (
             <div style={{
               maxWidth: '1200px', margin: '0 auto', padding: '20px 24px',
-              ...(noScroll ? { height: '100%', boxSizing: 'border-box' } : {}),
+              minHeight: noScroll ? undefined : '100%',
+              boxSizing: 'border-box',
+              ...(noScroll ? { height: '100%' } : {}),
             }}>
               {children}
             </div>
@@ -357,6 +377,23 @@ function HubInner({ children, initialMode, raw, noScroll }) {
 
       {/* ── Keyboard shortcut help overlay ────────────────────────────────────── */}
       {showHelp && <ShortcutHelp mode={mode} onClose={() => setShowHelp(false)} />}
+
+      {/* ── g-mode indicator ──────────────────────────────────────────────────── */}
+      {gActive && (
+        <div style={{
+          position: 'fixed', bottom: '24px', right: '24px', zIndex: 9999,
+          background: 'rgba(22,31,48,0.97)',
+          border: `1px solid ${CORAL}45`,
+          borderRadius: '14px', padding: '10px 18px',
+          display: 'flex', alignItems: 'center', gap: '10px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.45)',
+          animation: 'gModePop 0.15s cubic-bezier(0.34,1.56,0.64,1) both',
+        }}>
+          <Kbd>g</Kbd>
+          <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '13px' }}>→</span>
+          <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: '12px', fontWeight: '600' }}>type a key to navigate</span>
+        </div>
+      )}
     </div>
   )
 }

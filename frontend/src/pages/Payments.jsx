@@ -4,7 +4,7 @@ import HubLayout from '../components/layout/HubLayout'
 import toast from 'react-hot-toast'
 
 const CORAL = '#ff725e'
-const GREEN = '#34d399'
+const GREEN = CORAL   // student page — use coral for "paid" state
 const BLUE  = '#60a5fa'
 const AMBER = '#fbbf24'
 
@@ -105,7 +105,7 @@ function SpendingGraph({ events, loading }) {
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 const STATUS_STYLES = {
-  paid:      { bg:'rgba(52,211,153,0.12)',  text:GREEN,       border:'rgba(52,211,153,0.25)'  },
+  paid:      { bg:`${CORAL}18`,  text:CORAL,       border:`${CORAL}30`  },
   confirmed: { bg:'rgba(96,165,250,0.12)',  text:BLUE,        border:'rgba(96,165,250,0.25)'  },
   pending:   { bg:'rgba(251,191,36,0.12)',  text:AMBER,       border:'rgba(251,191,36,0.25)'  },
   canceled:  { bg:'rgba(248,113,113,0.12)', text:'#f87171',   border:'rgba(248,113,113,0.25)' },
@@ -187,8 +187,8 @@ function PaidRow({ ev }) {
       onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.03)'}
       onMouseLeave={e => e.currentTarget.style.background='transparent'}
     >
-      <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:'rgba(52,211,153,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-        <span className="material-symbols-outlined" style={{ fontSize:'18px', color:GREEN }}>check_circle</span>
+      <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:`${CORAL}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+        <span className="material-symbols-outlined" style={{ fontSize:'18px', color:CORAL }}>check_circle</span>
       </div>
       <div style={{ flex:1, minWidth:0 }}>
         <p style={{ color:'var(--text)', fontSize:'13px', fontWeight:'600', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ev.title}</p>
@@ -252,6 +252,8 @@ export default function Payments() {
     }
   }
 
+  const [showAllHistory, setShowAllHistory] = useState(false)
+
   const paid     = events.filter(e => e.status === 'paid')
   const unpaid   = events.filter(e => (e.status === 'confirmed' || e.status === 'pending') && Number(e.amount ?? 0) >= 0.50)
   const total    = paid.reduce((s, e) => s + Number(e.amount ?? 0), 0)
@@ -263,53 +265,42 @@ export default function Payments() {
 
   const animTotal    = useCountUp(Math.round(total * 100) / 100, 1000)
   const animMonth    = useCountUp(Math.round(thisMonth * 100) / 100, 800)
+  const visiblePaid  = showAllHistory ? paid : paid.slice(0, 6)
 
   return (
     <HubLayout>
       <div style={{ maxWidth: '960px', margin: '0 auto' }}>
 
-        {/* ── HERO — spending summary ──────────────────────────────────────── */}
+        {/* ── HERO — compact spending summary ─────────────────────────────── */}
         <div className={mounted ? 'animate-slide-up' : ''} style={{
-          borderRadius: '20px', marginBottom: '20px',
-          background: `linear-gradient(135deg, ${CORAL}14, rgba(255,154,60,0.08))`,
-          border: `1px solid ${CORAL}25`,
-          padding: '28px 32px',
-          display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: '28px',
-          position: 'relative', overflow: 'hidden',
+          borderRadius: '16px', marginBottom: '16px',
+          background: `linear-gradient(135deg, ${CORAL}12, rgba(255,154,60,0.06))`,
+          border: `1px solid ${CORAL}22`,
+          padding: '16px 20px',
+          display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap',
         }}>
-          <div style={{ position:'absolute', top:'-60px', right:'-60px', width:'220px', height:'220px', borderRadius:'50%', background:`${CORAL}10`, filter:'blur(60px)', pointerEvents:'none' }} />
-
-          {/* Wallet icon */}
-          <div style={{ width:'56px', height:'56px', borderRadius:'16px', background:`${CORAL}20`, border:`1.5px solid ${CORAL}35`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:`0 0 24px ${CORAL}30` }}>
-            <span className="material-symbols-outlined" style={{ fontSize:'28px', color:CORAL }}>wallet</span>
+          <div style={{ width:'44px', height:'44px', borderRadius:'13px', background:`${CORAL}20`, border:`1.5px solid ${CORAL}30`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <span className="material-symbols-outlined" style={{ fontSize:'22px', color:CORAL }}>wallet</span>
           </div>
-
-          {/* Total + sub-labels */}
-          <div>
-            <p style={{ fontSize:'12px', fontWeight:'700', color:'var(--text-faint)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:'4px' }}>Total Spent</p>
+          <div style={{ flex: 1, minWidth: '120px' }}>
+            <p style={{ fontSize:'11px', fontWeight:'700', color:'var(--text-faint)', textTransform:'uppercase', letterSpacing:'0.07em', margin:'0 0 2px' }}>Total Spent</p>
             {loading ? (
-              <div className="skeleton" style={{ width:'140px', height:'48px', borderRadius:'8px' }} />
+              <div className="skeleton" style={{ width:'100px', height:'28px', borderRadius:'6px' }} />
             ) : (
-              <div style={{ display:'flex', alignItems:'baseline', gap:'4px' }}>
-                <span style={{ fontSize:'52px', fontWeight:'900', color:'var(--text)', lineHeight:1, letterSpacing:'-0.04em' }}>
-                  £{animTotal.toFixed(2)}
-                </span>
-              </div>
+              <span style={{ fontSize:'28px', fontWeight:'900', color:'var(--text)', lineHeight:1, letterSpacing:'-0.03em' }}>£{animTotal.toFixed(2)}</span>
             )}
-            <p style={{ fontSize:'12px', color:'var(--text-faint)', marginTop:'4px' }}>lifetime spend · 0% platform fee</p>
+            <p style={{ fontSize:'11px', color:'var(--text-faint)', marginTop:'2px' }}>0% platform fee</p>
           </div>
-
-          {/* Stat chips — right */}
-          <div style={{ display:'flex', flexDirection:'column', gap:'8px', flexShrink:0 }}>
+          <div style={{ display:'flex', gap:'10px', flexShrink:0, flexWrap:'wrap' }}>
             {[
-              { icon:'calendar_month',  label:'This month',    value:`£${animMonth.toFixed(2)}`,                                              color:BLUE  },
-              { icon:'check_circle',    label:'Paid sessions', value:`${paid.length}`,                                                        color:GREEN },
-              { icon:'hourglass_empty', label:'Due now',       value: unpaid.length > 0 ? `£${totalDue.toFixed(2)}` : '—',                    color: unpaid.length > 0 ? AMBER : 'var(--text-faint)' },
+              { icon:'calendar_month',  label:'This month', value:`£${animMonth.toFixed(2)}`,                                                  color:BLUE  },
+              { icon:'check_circle',    label:'Paid',       value:`${paid.length} sessions`,                                                   color:GREEN },
+              { icon:'hourglass_empty', label:'Due',        value: unpaid.length > 0 ? `£${totalDue.toFixed(2)}` : 'None',                     color: unpaid.length > 0 ? AMBER : 'var(--text-faint)' },
             ].map(({ icon, label, value, color }) => (
-              <div key={label} style={{ display:'flex', alignItems:'center', gap:'8px', padding:'7px 12px', borderRadius:'10px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', minWidth:'160px' }}>
-                <span className="material-symbols-outlined" style={{ fontSize:'15px', color, flexShrink:0 }}>{icon}</span>
-                <span style={{ fontSize:'12px', color:'var(--text-muted)', flex:1 }}>{label}</span>
-                <span style={{ fontSize:'13px', fontWeight:'700', color }}>{loading ? '—' : value}</span>
+              <div key={label} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'3px', padding:'8px 14px', borderRadius:'10px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', minWidth:'80px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize:'16px', color }}>{icon}</span>
+                <span style={{ fontSize:'13px', fontWeight:'800', color }}>{loading ? '—' : value}</span>
+                <span style={{ fontSize:'10px', color:'var(--text-faint)' }}>{label}</span>
               </div>
             ))}
           </div>
@@ -345,13 +336,13 @@ export default function Payments() {
         ) : !loading && (
           <div className={mounted ? 'animate-slide-up delay-100' : ''} style={{
             marginBottom:'20px', padding:'16px 22px', borderRadius:'14px',
-            background:'linear-gradient(135deg, rgba(52,211,153,0.10), rgba(52,211,153,0.04))',
-            border:'1.5px solid rgba(52,211,153,0.22)',
+            background:`linear-gradient(135deg, ${CORAL}12, ${CORAL}05)`,
+            border:`1.5px solid ${CORAL}28`,
             display:'flex', alignItems:'center', gap:'14px',
           }}>
-            <span className="material-symbols-outlined" style={{ fontSize:'30px', color:GREEN }}>check_circle</span>
+            <span className="material-symbols-outlined" style={{ fontSize:'30px', color:CORAL }}>check_circle</span>
             <div>
-              <p style={{ fontWeight:'800', fontSize:'14px', color:GREEN, marginBottom:'2px' }}>All caught up!</p>
+              <p style={{ fontWeight:'800', fontSize:'14px', color:CORAL, marginBottom:'2px' }}>All caught up!</p>
               <p style={{ color:'var(--text-muted)', fontSize:'12px' }}>No sessions awaiting payment. Great job keeping up to date.</p>
             </div>
           </div>
@@ -363,8 +354,8 @@ export default function Payments() {
           {/* Payment History */}
           <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:'16px', overflow:'hidden', boxShadow:'var(--shadow-card)' }}>
             <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:'10px' }}>
-              <div style={{ width:'30px', height:'30px', borderRadius:'9px', background:'rgba(52,211,153,0.12)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <span className="material-symbols-outlined" style={{ fontSize:'16px', color:GREEN }}>history</span>
+              <div style={{ width:'30px', height:'30px', borderRadius:'9px', background:`${CORAL}18`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <span className="material-symbols-outlined" style={{ fontSize:'16px', color:CORAL }}>history</span>
               </div>
               <h2 style={{ fontWeight:'800', fontSize:'14px', color:'var(--text)', margin:0 }}>Payment History</h2>
               <span style={{ marginLeft:'auto', fontSize:'11px', color:'var(--text-faint)' }}>
@@ -376,13 +367,22 @@ export default function Payments() {
                 {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height:'56px', borderRadius:'10px' }} />)}
               </div>
             ) : paid.length === 0 ? (
-              <div style={{ textAlign:'center', padding:'48px 0' }}>
-                <span className="material-symbols-outlined" style={{ fontSize:'42px', color:'var(--text-faint)', display:'block', marginBottom:'10px' }}>receipt_long</span>
-                <p style={{ color:'var(--text-muted)', fontSize:'13px', marginBottom:'4px' }}>No paid sessions yet</p>
-                <p style={{ color:'var(--text-faint)', fontSize:'12px' }}>Sessions appear here after payment</p>
+              <div style={{ textAlign:'center', padding:'32px 0' }}>
+                <span className="material-symbols-outlined" style={{ fontSize:'36px', color:'var(--text-faint)', display:'block', marginBottom:'8px' }}>receipt_long</span>
+                <p style={{ color:'var(--text-muted)', fontSize:'13px' }}>No paid sessions yet</p>
               </div>
             ) : (
-              paid.map(ev => <PaidRow key={ev.id_event} ev={ev} />)
+              <>
+                {visiblePaid.map(ev => <PaidRow key={ev.id_event} ev={ev} />)}
+                {paid.length > 6 && (
+                  <button
+                    onClick={() => setShowAllHistory(p => !p)}
+                    style={{ width:'100%', padding:'10px', textAlign:'center', fontSize:'12px', fontWeight:'700', color:'var(--text-muted)', background:'transparent', border:'none', borderTop:'1px solid var(--border)', cursor:'pointer' }}
+                  >
+                    {showAllHistory ? 'Show less' : `Show all ${paid.length} payments`}
+                  </button>
+                )}
+              </>
             )}
           </div>
 

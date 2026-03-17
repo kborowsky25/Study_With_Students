@@ -5,7 +5,6 @@ import { getEvents } from '../api/events'
 import HubLayout from '../components/layout/HubLayout'
 import { PageTitle } from '../context/PageTitleContext'
 import EventCard from '../components/features/EventCard'
-import PageHeader from '../components/features/PageHeader'
 import toast from 'react-hot-toast'
 
 const CORAL  = '#ff725e'
@@ -70,17 +69,6 @@ export default function ActiveTutors() {
   return (
     <HubLayout>
       <PageTitle title="My Tutors" icon="cast_for_education" />
-      <PageHeader
-        icon="cast_for_education" iconColor={BLUE}
-        title="My Tutors"
-        subtitle={loading ? '…' : `${tutors.length} active${requests.length > 0 ? ` · ${requests.length} pending` : ''}`}
-        right={
-          <Link to="/find-tutors" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '8px 16px' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>add</span>
-            Find more
-          </Link>
-        }
-      />
 
       {/* Loading */}
       {loading ? (
@@ -94,17 +82,18 @@ export default function ActiveTutors() {
           {requests.length > 0 && (
             <div style={{ marginBottom: '28px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '15px', color: AMBER }}>hourglass_top</span>
+                <span className="material-symbols-outlined" style={{ fontSize: '15px', color: CORAL }}>hourglass_top</span>
                 <h2 style={{ color: 'var(--text)', fontWeight: '800', fontSize: '13px', letterSpacing: '-0.01em', margin: 0 }}>
                   Pending Requests
                 </h2>
-                <span style={{ background: `${AMBER}18`, color: AMBER, fontSize: '9px', fontWeight: '800', padding: '2px 7px', borderRadius: '9px' }}>
+                <span style={{ background: `${CORAL}18`, color: CORAL, fontSize: '9px', fontWeight: '800', padding: '2px 7px', borderRadius: '9px' }}>
                   {requests.length} AWAITING
                 </span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {requests.map((req, idx) => {
-                  const initials = req.tutor_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() ?? '??'
+                  const name     = req.tutor_name || 'Unknown Tutor'
+                  const initials = name.split(' ').map(n => n[0] ?? '').join('').slice(0, 2).toUpperCase() || '?'
                   const subjects = req.subjects?.split(',').map(s => s.trim()).filter(Boolean) ?? []
                   const gradIdx  = (req.tutor_id ?? idx) % TUTOR_GRADS.length
                   const DELAYS   = ['', 'delay-50', 'delay-100', 'delay-150']
@@ -113,39 +102,39 @@ export default function ActiveTutors() {
                       key={req.id}
                       className={mounted ? `animate-slide-up ${DELAYS[Math.min(idx, DELAYS.length - 1)]}` : ''}
                       style={{
-                        background: `${AMBER}07`,
-                        border: `1px solid ${AMBER}28`,
-                        borderRadius: '18px',
-                        padding: '16px 20px',
-                        display: 'flex', alignItems: 'center', gap: '14px',
-                        backdropFilter: 'blur(12px)',
+                        background: 'var(--bg-card)',
+                        border: `1px solid var(--border)`,
+                        borderLeft: `3px solid ${CORAL}`,
+                        borderRadius: '14px',
+                        padding: '14px 16px',
+                        display: 'flex', alignItems: 'center', gap: '12px',
                       }}
                     >
                       {/* Avatar */}
-                      <div style={{ width: '46px', height: '46px', borderRadius: '13px', flexShrink: 0, background: TUTOR_GRADS[gradIdx], display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '15px', fontWeight: '900', opacity: 0.75 }}>
+                      <div style={{ width: '42px', height: '42px', borderRadius: '12px', flexShrink: 0, background: TUTOR_GRADS[gradIdx], display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '14px', fontWeight: '900' }}>
                         {initials}
                       </div>
                       {/* Info */}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-                          <p style={{ fontWeight: '800', color: 'var(--text)', fontSize: '14px', margin: 0 }}>{req.tutor_name}</p>
-                          <span style={{ background: `${AMBER}18`, color: AMBER, fontSize: '9px', fontWeight: '800', padding: '2px 7px', borderRadius: '9px' }}>PENDING</span>
-                        </div>
-                        <p style={{ color: 'var(--text-faint)', fontSize: '12px', margin: '0 0 6px' }}>
-                          {req.university ?? 'Tutor'} · Awaiting their response
+                        <p style={{ fontWeight: '800', color: 'var(--text)', fontSize: '13px', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</p>
+                        <p style={{ color: 'var(--text-faint)', fontSize: '11px', margin: subjects.length > 0 ? '0 0 6px' : 0 }}>
+                          {req.university ?? 'Tutor'} · awaiting response
                         </p>
                         {subjects.length > 0 && (
-                          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                             {subjects.slice(0, 3).map((s, i) => {
                               const colors = [CORAL, BLUE, PURPLE, GREEN]
                               const c = colors[i % colors.length]
-                              return <span key={s} style={{ fontSize: '10px', fontWeight: '600', padding: '2px 8px', borderRadius: '20px', background: `${c}14`, color: c, border: `1px solid ${c}28` }}>{s}</span>
+                              return <span key={s} style={{ fontSize: '10px', fontWeight: '600', padding: '2px 7px', borderRadius: '20px', background: `${c}12`, color: c, border: `1px solid ${c}25` }}>{s}</span>
                             })}
                           </div>
                         )}
                       </div>
-                      {/* Status icon */}
-                      <span className="material-symbols-outlined" style={{ fontSize: '22px', color: `${AMBER}70`, flexShrink: 0 }}>hourglass_top</span>
+                      {/* Waiting badge */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '18px', color: CORAL, fontVariationSettings: '"FILL" 1' }}>hourglass_top</span>
+                        <span style={{ fontSize: '9px', fontWeight: '800', color: CORAL, letterSpacing: '0.05em' }}>PENDING</span>
+                      </div>
                     </div>
                   )
                 })}

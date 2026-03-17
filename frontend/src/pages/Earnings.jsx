@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { getPayments } from '../api/payments'
 import HubLayout from '../components/layout/HubLayout'
 import { PageTitle } from '../context/PageTitleContext'
-import PageHeader from '../components/features/PageHeader'
 import toast from 'react-hot-toast'
 
 // ── CountUp hook ───────────────────────────────────────────────────────────────
@@ -24,6 +23,8 @@ function useCountUp(target, { duration = 950, enabled = true } = {}) {
   }, [target, enabled])
   return val
 }
+
+const RED = '#e53e3e'
 
 // ── Animated bar chart ────────────────────────────────────────────────────────
 function EarningsGraph({ events, loading }) {
@@ -66,7 +67,7 @@ function EarningsGraph({ events, loading }) {
           <div key={`${m.year}-${m.month}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
             <span style={{
               fontSize: '9px', fontWeight: curr ? 700 : 400,
-              color: curr ? '#34d399' : 'rgba(255,255,255,0.35)',
+              color: curr ? '#e53e3e' : 'rgba(255,255,255,0.35)',
               height: '12px', display: 'flex', alignItems: 'center',
               opacity: m.total > 0 ? 1 : 0,
             }}>£{m.total.toFixed(0)}</span>
@@ -74,15 +75,15 @@ function EarningsGraph({ events, loading }) {
               <div style={{
                 position: 'absolute', bottom: 0, left: 0, right: 0,
                 height: mounted ? `${(barH / CHART_H) * 100}%` : '0%',
-                background: curr ? 'linear-gradient(to bottom, #34d399, rgba(52,211,153,0.5))' : 'rgba(52,211,153,0.3)',
+                background: curr ? 'linear-gradient(to bottom, #e53e3e, rgba(229,62,62,0.5))' : 'rgba(229,62,62,0.3)',
                 borderRadius: '6px',
                 transition: `height 0.65s cubic-bezier(0.34,1.56,0.64,1) ${i * 0.07}s`,
-                boxShadow: curr ? '0 0 14px rgba(52,211,153,0.4)' : 'none',
+                boxShadow: curr ? '0 0 14px rgba(229,62,62,0.4)' : 'none',
               }} />
             </div>
-            <span style={{ fontSize: '10px', fontWeight: curr ? 700 : 400, color: curr ? '#34d399' : 'rgba(255,255,255,0.35)' }}>{m.label}</span>
+            <span style={{ fontSize: '10px', fontWeight: curr ? 700 : 400, color: curr ? '#e53e3e' : 'rgba(255,255,255,0.35)' }}>{m.label}</span>
             {curr
-              ? <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#34d399' }} />
+              ? <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#e53e3e' }} />
               : <div style={{ width: '4px', height: '4px' }} />
             }
           </div>
@@ -108,7 +109,7 @@ function DonutChart({ paidAmt, pendingAmt, confirmedAmt, mounted }) {
   const GAP = 3
 
   const segments = [
-    { length: Math.max(paidAmt > 0 ? paidLen - GAP : 0, 0), offset: 0,                  color: '#34d399', delay: '0.1s' },
+    { length: Math.max(paidAmt > 0 ? paidLen - GAP : 0, 0), offset: 0,                  color: '#e53e3e', delay: '0.1s' },
     { length: Math.max(pendingAmt > 0 ? pendLen - GAP : 0, 0), offset: -paidLen,         color: '#fbbf24', delay: '0.3s' },
     { length: Math.max(confirmedAmt > 0 ? confLen - GAP : 0, 0), offset: -(paidLen + pendLen), color: '#60a5fa', delay: '0.5s' },
   ]
@@ -128,7 +129,7 @@ function DonutChart({ paidAmt, pendingAmt, confirmedAmt, mounted }) {
         ))}
       </svg>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ fontSize: '20px', fontWeight: '900', color: '#34d399', letterSpacing: '-0.03em', lineHeight: 1, margin: 0 }}>
+        <p style={{ fontSize: '20px', fontWeight: '900', color: '#e53e3e', letterSpacing: '-0.03em', lineHeight: 1, margin: 0 }}>
           £{paidAmt.toFixed(0)}
         </p>
         <p style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '3px', margin: '3px 0 0' }}>earned</p>
@@ -139,7 +140,7 @@ function DonutChart({ paidAmt, pendingAmt, confirmedAmt, mounted }) {
 
 // ── Status badge ───────────────────────────────────────────────────────────────
 const STATUS_CFG = {
-  paid:      { bg: 'rgba(52,211,153,0.12)',  text: '#34d399', border: 'rgba(52,211,153,0.25)'  },
+  paid:      { bg: 'rgba(229,62,62,0.12)',  text: '#e53e3e', border: 'rgba(229,62,62,0.25)'  },
   confirmed: { bg: 'rgba(96,165,250,0.12)',  text: '#60a5fa', border: 'rgba(96,165,250,0.25)'  },
   pending:   { bg: 'rgba(251,191,36,0.12)',  text: '#fbbf24', border: 'rgba(251,191,36,0.25)'  },
   canceled:  { bg: 'rgba(248,113,113,0.12)', text: '#f87171', border: 'rgba(248,113,113,0.25)' },
@@ -168,18 +169,18 @@ function EarningRow({ ev, index }) {
         display: 'flex', alignItems: 'center', gap: '14px',
         padding: '12px 16px',
         borderBottom: '1px solid var(--border)',
-        background: hovered ? 'rgba(52,211,153,0.04)' : 'transparent',
+        background: hovered ? 'rgba(229,62,62,0.04)' : 'transparent',
         transition: 'background 0.2s',
-        borderLeft: `3px solid ${earned ? '#34d399' : 'rgba(255,255,255,0.08)'}`,
+        borderLeft: `3px solid ${earned ? '#e53e3e' : 'rgba(255,255,255,0.08)'}`,
         animation: `slideIn 0.35s ease ${index * 0.04}s both`,
       }}
     >
       <div style={{
         width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0,
-        background: earned ? 'rgba(52,211,153,0.12)' : 'rgba(255,255,255,0.05)',
+        background: earned ? 'rgba(229,62,62,0.12)' : 'rgba(255,255,255,0.05)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <span className="material-symbols-outlined" style={{ fontSize: '17px', color: earned ? '#34d399' : 'rgba(255,255,255,0.3)' }}>
+        <span className="material-symbols-outlined" style={{ fontSize: '17px', color: earned ? '#e53e3e' : 'rgba(255,255,255,0.3)' }}>
           {earned ? 'payments' : 'hourglass_empty'}
         </span>
       </div>
@@ -195,7 +196,7 @@ function EarningRow({ ev, index }) {
 
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
         {ev.amount && Number(ev.amount) > 0 && (
-          <p style={{ fontWeight: '800', fontSize: '14px', color: earned ? '#34d399' : 'var(--text)', letterSpacing: '-0.02em' }}>
+          <p style={{ fontWeight: '800', fontSize: '14px', color: earned ? '#e53e3e' : 'var(--text)', letterSpacing: '-0.02em' }}>
             £{Number(ev.amount).toFixed(2)}
           </p>
         )}
@@ -248,33 +249,21 @@ export default function Earnings() {
         }
       `}</style>
 
-      <PageHeader
-        icon="payments"
-        iconColor="#34d399"
-        title="Earnings"
-        subtitle="Your tutoring income — every penny goes to you"
-        badge={
-          <span style={{ fontSize: '11px', fontWeight: '700', padding: '3px 10px', borderRadius: '20px', background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.25)' }}>
-            0% fee
-          </span>
-        }
-      />
-
       {/* ── Top row: hero total + 6-month chart ─────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
 
         {/* Hero total card */}
         <div style={{
           borderRadius: '20px', padding: '24px',
-          background: 'linear-gradient(135deg, rgba(52,211,153,0.14) 0%, rgba(52,211,153,0.04) 100%)',
-          border: '1px solid rgba(52,211,153,0.22)',
+          background: 'linear-gradient(135deg, rgba(229,62,62,0.14) 0%, rgba(229,62,62,0.04) 100%)',
+          border: '1px solid rgba(229,62,62,0.22)',
           animation: 'slideIn 0.4s ease 0.05s both',
           position: 'relative', overflow: 'hidden',
         }}>
-          <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '160px', height: '160px', borderRadius: '50%', background: 'rgba(52,211,153,0.08)', filter: 'blur(40px)', pointerEvents: 'none' }} />
-          <p style={{ fontSize: '11px', fontWeight: '700', color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Total Earned</p>
+          <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '160px', height: '160px', borderRadius: '50%', background: 'rgba(229,62,62,0.08)', filter: 'blur(40px)', pointerEvents: 'none' }} />
+          <p style={{ fontSize: '11px', fontWeight: '700', color: '#e53e3e', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Total Earned</p>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '18px' }}>
-            <span style={{ fontSize: '44px', fontWeight: '900', color: '#34d399', lineHeight: 1, letterSpacing: '-0.04em', textShadow: '0 0 28px rgba(52,211,153,0.5)' }}>
+            <span style={{ fontSize: '44px', fontWeight: '900', color: '#e53e3e', lineHeight: 1, letterSpacing: '-0.04em', textShadow: '0 0 28px rgba(229,62,62,0.5)' }}>
               £{totalDisplay.toFixed(2)}
             </span>
             <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>lifetime</span>
@@ -282,7 +271,7 @@ export default function Earnings() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {[
               { label: 'This month',    value: `£${monthDisplay.toFixed(2)}`,   icon: 'calendar_month',  color: '#60a5fa' },
-              { label: 'Sessions paid', value: paid.length,                      icon: 'check_circle',    color: '#34d399' },
+              { label: 'Sessions paid', value: paid.length,                      icon: 'check_circle',    color: '#e53e3e' },
               { label: 'Awaiting',      value: `£${pendingDisplay.toFixed(2)}`,  icon: 'hourglass_empty', color: '#fbbf24' },
             ].map(({ label, value, icon, color }) => (
               <div key={label} style={{
@@ -307,7 +296,7 @@ export default function Earnings() {
               <h2 style={{ fontWeight: '800', fontSize: '14px', color: 'var(--text)', margin: 0 }}>6-Month Overview</h2>
               <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', margin: '2px 0 0' }}>Monthly earnings breakdown</p>
             </div>
-            <span style={{ fontSize: '10px', color: '#34d399', fontWeight: '600', padding: '2px 8px', borderRadius: '20px', background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.15)' }}>
+            <span style={{ fontSize: '10px', color: '#e53e3e', fontWeight: '600', padding: '2px 8px', borderRadius: '20px', background: 'rgba(229,62,62,0.08)', border: '1px solid rgba(229,62,62,0.15)' }}>
               ↑ Last 6 months
             </span>
           </div>
@@ -329,7 +318,7 @@ export default function Earnings() {
           />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {[
-              { color: '#34d399', label: 'Paid',      value: `£${total.toFixed(2)}` },
+              { color: '#e53e3e', label: 'Paid',      value: `£${total.toFixed(2)}` },
               { color: '#60a5fa', label: 'Confirmed', value: `£${confirmedAmt.toFixed(2)}` },
               { color: '#fbbf24', label: 'Pending',   value: `£${pendingAmt.toFixed(2)}` },
             ].map(({ color, label, value }) => (
@@ -344,8 +333,8 @@ export default function Earnings() {
           </div>
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px' }}>
-              <span className="material-symbols-outlined" style={{ color: '#34d399', fontSize: '15px' }}>verified</span>
-              <p style={{ fontWeight: '700', fontSize: '12px', color: '#34d399', margin: 0 }}>0% Platform Fee</p>
+              <span className="material-symbols-outlined" style={{ color: '#e53e3e', fontSize: '15px' }}>verified</span>
+              <p style={{ fontWeight: '700', fontSize: '12px', color: '#e53e3e', margin: 0 }}>0% Platform Fee</p>
             </div>
             <p style={{ color: 'var(--text-faint)', fontSize: '11px', lineHeight: '1.5', margin: 0 }}>
               You keep <strong style={{ color: 'var(--text)' }}>100%</strong> of every payment.
@@ -376,7 +365,7 @@ export default function Earnings() {
           <div className="glass" style={{ overflow: 'hidden', animation: 'slideIn 0.4s ease 0.25s both' }}>
             <div style={{ padding: '13px 16px 11px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '17px', color: '#34d399' }}>history</span>
+                <span className="material-symbols-outlined" style={{ fontSize: '17px', color: '#e53e3e' }}>history</span>
                 <h2 style={{ fontWeight: '700', fontSize: '13px', color: 'var(--text)', margin: 0 }}>Earnings History</h2>
               </div>
               {paid.length > 0 && (

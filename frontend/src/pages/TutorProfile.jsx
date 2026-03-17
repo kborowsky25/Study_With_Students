@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { getTutorProfile, saveTutorProfile } from '../api/tutors'
 import { useAuth } from '../context/AuthContext'
 import HubLayout from '../components/layout/HubLayout'
+import client from '../api/client'
 import toast from 'react-hot-toast'
 
 const CORAL = '#ff725e'
-const GREEN = '#34d399'
+const GREEN = '#e53e3e'
 const BLUE  = '#60a5fa'
+const RED   = '#e53e3e'
 
 const SUBJECTS_LIST = [
   'Maths', 'Further Maths', 'Physics', 'Chemistry', 'Biology',
@@ -36,6 +39,84 @@ function calcCompletion(form) {
   ]
   const filled = fields.filter(f => f && String(f).trim().length > 0).length
   return Math.round((filled / fields.length) * 100)
+}
+
+// ── Avatar upload button ──────────────────────────────────────────────────────
+function AvatarUpload({ avatarUrl, initials, onUploaded }) {
+  const fileRef = useRef()
+  const [uploading, setUploading] = useState(false)
+  const [hovered,   setHovered]   = useState(false)
+
+  async function handleFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const ext = file.name.split('.').pop().toLowerCase()
+    if (!['png','jpg','jpeg','webp'].includes(ext)) { toast.error('PNG, JPG or WEBP only'); return }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Max 5 MB'); return }
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('avatar', file)
+      const { data } = await client.post('/tutor-profile/avatar', fd)
+      onUploaded(data.avatar_url)
+      toast.success('Photo updated!')
+    } catch {
+      toast.error('Upload failed')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const showOverlay = hovered || uploading || !avatarUrl
+
+  return (
+    <div style={{ position: 'relative', flexShrink: 0, width: '92px', height: '92px' }}>
+      {/* Whole circle is the clickable area */}
+      <button
+        type="button"
+        onClick={() => !uploading && fileRef.current?.click()}
+        disabled={uploading}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          width: '92px', height: '92px', borderRadius: '50%', overflow: 'hidden',
+          background: avatarUrl ? 'transparent' : `linear-gradient(135deg, ${RED}, #c53030)`,
+          border: `3px solid ${RED}40`,
+          boxShadow: `0 6px 24px ${RED}30`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '28px', fontWeight: '900', color: 'white',
+          cursor: uploading ? 'not-allowed' : 'pointer',
+          padding: 0, position: 'relative',
+          transition: 'box-shadow 0.2s',
+        }}
+      >
+        {avatarUrl && <img src={avatarUrl} alt="Avatar" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />}
+        {!avatarUrl && <span style={{ position: 'relative', zIndex: 1 }}>{initials}</span>}
+        {/* Hover / upload overlay */}
+        <div style={{
+          position: 'absolute', inset: 0, borderRadius: '50%',
+          background: showOverlay ? (uploading ? 'rgba(0,0,0,0.65)' : 'rgba(0,0,0,0.50)') : 'transparent',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px',
+          transition: 'background 0.2s',
+          zIndex: 2,
+        }}>
+          {showOverlay && (
+            <>
+              <span className="material-symbols-outlined" style={{ fontSize: '20px', color: 'white', fontVariationSettings: '"FILL" 1' }}>
+                {uploading ? 'progress_activity' : 'photo_camera'}
+              </span>
+              {!uploading && (
+                <span style={{ fontSize: '8px', fontWeight: '800', color: 'rgba(255,255,255,0.9)', textAlign: 'center', lineHeight: 1.3, letterSpacing: '0.04em' }}>
+                  {avatarUrl ? <>CHANGE<br/>PHOTO</> : <>ADD<br/>PHOTO</>}
+                </span>
+              )}
+            </>
+          )}
+        </div>
+      </button>
+      <input ref={fileRef} type="file" accept=".png,.jpg,.jpeg,.webp" style={{ display: 'none' }} onChange={handleFile} />
+    </div>
+  )
 }
 
 // ── Completion Ring SVG ───────────────────────────────────────────────────────
@@ -73,7 +154,7 @@ function CompletionRing({ pct, size = 108 }) {
 }
 
 // ── Live Preview Card ─────────────────────────────────────────────────────────
-function PreviewCard({ form, userName }) {
+function PreviewCard({ form, userName, avatarUrl }) {
   const initials = getInitials(userName)
   const selectedSubjects = form.subjects
     ? form.subjects.split(',').map(s => s.trim()).filter(Boolean)
@@ -104,13 +185,16 @@ function PreviewCard({ form, userName }) {
           left: '20px',
           width: '64px', height: '64px',
           borderRadius: '50%',
-          background: `linear-gradient(135deg, ${CORAL}, #ff9a8b)`,
+          background: avatarUrl ? 'transparent' : `linear-gradient(135deg, ${CORAL}, #ff9a8b)`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: '22px', fontWeight: '900', color: 'white',
           border: '3px solid var(--bg-card)',
           boxShadow: `0 6px 20px ${CORAL}35`,
+          overflow: 'hidden',
         }}>
-          {initials}
+          {avatarUrl
+            ? <img src={avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : initials}
         </div>
         {/* "Contact Tutor" preview button */}
         <button style={{
@@ -138,7 +222,7 @@ function PreviewCard({ form, userName }) {
 
         {/* Availability chip */}
         {form.availability && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginBottom: '12px', padding: '4px 10px', borderRadius: '20px', background: 'rgba(52,211,153,0.10)', border: '1px solid rgba(52,211,153,0.22)' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginBottom: '12px', padding: '4px 10px', borderRadius: '20px', background: 'rgba(229,62,62,0.10)', border: '1px solid rgba(229,62,62,0.22)' }}>
             <span className="material-symbols-outlined" style={{ fontSize: '13px', color: GREEN }}>schedule</span>
             <span style={{ color: GREEN, fontSize: '11px', fontWeight: '600' }}>{form.availability}</span>
           </div>
@@ -331,13 +415,15 @@ function TutorPledge({ confirmed, onToggle }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function TutorProfile() {
   const { user, updateUser } = useAuth()
-  const [form,          setForm]          = useState({ age: '', university: '', course: '', about_me: '', subjects: '', availability: '' })
-  const [profileStatus, setProfileStatus] = useState(null)   // 'pending' | 'approved' | 'rejected' | null
-  const [isNewProfile,  setIsNewProfile]  = useState(false)  // true until first successful save
+  const navigate = useNavigate()
+  const [form,          setForm]          = useState({ age: '', university: '', course: '', about_me: '', subjects: '', availability: '', linkedin_url: '' })
+  const [profileStatus, setProfileStatus] = useState(null)
+  const [isNewProfile,  setIsNewProfile]  = useState(false)
   const [pledgeOk,      setPledgeOk]      = useState(false)
   const [loading,       setLoading]       = useState(true)
   const [saving,        setSaving]        = useState(false)
   const [mounted,       setMounted]       = useState(false)
+  const [avatarUrl,     setAvatarUrl]     = useState(null)
 
   useEffect(() => {
     getTutorProfile()
@@ -345,6 +431,7 @@ export default function TutorProfile() {
         if (data.profile) {
           setForm(data.profile)
           setProfileStatus(data.profile.status ?? null)
+          if (data.profile.avatar_url) setAvatarUrl(data.profile.avatar_url)
         } else {
           setIsNewProfile(true)
         }
@@ -383,12 +470,14 @@ export default function TutorProfile() {
     setSaving(true)
     try {
       const { data } = await saveTutorProfile(form)
-      updateUser({ is_tutor: true })
       setProfileStatus(data.status ?? null)
       if (data.is_new) {
         setIsNewProfile(false)
-        toast.success("Profile submitted for review! We'll notify you within 24–48 hours.")
+        updateUser({ is_tutor: true, screening_status: 'none' })
+        toast.success('Profile created! Please complete your background check.')
+        navigate({ to: '/tutor-screening' })
       } else {
+        updateUser({ is_tutor: true })
         toast.success('Profile updated!')
       }
     } catch (err) {
@@ -444,19 +533,15 @@ export default function TutorProfile() {
           <div style={{ position: 'absolute', right: '-60px', top: '-60px', width: '250px', height: '250px', background: `${CORAL}08`, borderRadius: '50%', filter: 'blur(60px)', pointerEvents: 'none' }} />
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '28px', position: 'relative' }}>
-            {/* Large avatar */}
-            <div style={{ position: 'relative', flexShrink: 0 }}>
+            {/* Large avatar with upload + completion ring */}
+            <div style={{ position: 'relative', flexShrink: 0, width: '108px', height: '108px' }}>
               <CompletionRing pct={completion} size={108} />
-              <div style={{
-                position: 'absolute',
-                inset: '8px',
-                borderRadius: '50%',
-                background: `linear-gradient(135deg, ${CORAL}, #ff9a8b)`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '28px', fontWeight: '900', color: 'white',
-                boxShadow: `0 6px 24px ${CORAL}35`,
-              }}>
-                {getInitials(user?.name)}
+              <div style={{ position: 'absolute', inset: '8px', borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <AvatarUpload
+                  avatarUrl={avatarUrl}
+                  initials={getInitials(user?.name)}
+                  onUploaded={url => setAvatarUrl(url + '?t=' + Date.now())}
+                />
               </div>
             </div>
 
@@ -467,7 +552,7 @@ export default function TutorProfile() {
                   {user?.name ?? 'Your Name'}
                 </h1>
                 {completion === 100 && profileStatus === 'approved' && (
-                  <span style={{ padding: '3px 10px', borderRadius: '20px', background: 'rgba(52,211,153,0.14)', border: '1px solid rgba(52,211,153,0.30)', fontSize: '11px', fontWeight: '700', color: GREEN }}>
+                  <span style={{ padding: '3px 10px', borderRadius: '20px', background: 'rgba(229,62,62,0.14)', border: '1px solid rgba(229,62,62,0.30)', fontSize: '11px', fontWeight: '700', color: GREEN }}>
                     ✓ Approved Tutor
                   </span>
                 )}
@@ -497,8 +582,8 @@ export default function TutorProfile() {
                   <div key={label} style={{
                     display: 'flex', alignItems: 'center', gap: '5px',
                     padding: '4px 10px', borderRadius: '20px',
-                    background: done ? 'rgba(52,211,153,0.10)' : 'rgba(255,255,255,0.05)',
-                    border: `1px solid ${done ? 'rgba(52,211,153,0.25)' : 'var(--border)'}`,
+                    background: done ? 'rgba(229,62,62,0.10)' : 'rgba(255,255,255,0.05)',
+                    border: `1px solid ${done ? 'rgba(229,62,62,0.25)' : 'var(--border)'}`,
                   }}>
                     <span className="material-symbols-outlined" style={{ fontSize: '12px', color: done ? GREEN : 'var(--text-faint)' }}>{done ? 'check_circle' : icon}</span>
                     <span style={{ fontSize: '11px', fontWeight: '600', color: done ? GREEN : 'var(--text-faint)' }}>{label}</span>
@@ -564,7 +649,7 @@ export default function TutorProfile() {
 
             {/* Section 2: Availability */}
             <div className={mounted ? 'animate-slide-up delay-150' : ''}>
-              <SectionCard title="Availability" icon="schedule" iconColor={GREEN} iconBg="rgba(52,211,153,0.14)">
+              <SectionCard title="Availability" icon="schedule" iconColor={GREEN} iconBg="rgba(229,62,62,0.14)">
                 <Field label="When are you free to tutor?" hint="Be specific — students plan around your hours">
                   <textarea
                     value={form.availability} onChange={update('availability')}
@@ -685,6 +770,28 @@ export default function TutorProfile() {
               </SectionCard>
             </div>
 
+            {/* Section 5: LinkedIn */}
+            <div className={mounted ? 'animate-slide-up delay-300' : ''}>
+              <SectionCard title="LinkedIn" icon="link" iconColor="#60a5fa" iconBg="rgba(96,165,250,0.14)">
+                <Field label="LinkedIn profile URL (optional)" hint="Visible on your tutor card">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '13px', color: 'var(--text-muted)', flexShrink: 0, fontWeight: '600' }}>linkedin.com/in/</span>
+                    <input
+                      type="text"
+                      value={(form.linkedin_url ?? '').replace(/^https?:\/\/(www\.)?linkedin\.com\/in\//i, '')}
+                      onChange={e => {
+                        const val = e.target.value.trim()
+                        update('linkedin_url')({ target: { value: val ? `https://linkedin.com/in/${val.replace(/^https?:\/\/(www\.)?linkedin\.com\/in\//i, '')}` : '' } })
+                      }}
+                      className="input-field"
+                      placeholder="yourname"
+                      style={{ flex: 1 }}
+                    />
+                  </div>
+                </Field>
+              </SectionCard>
+            </div>
+
             {/* Save button */}
             {(() => {
               const blocked = isNewProfile && !pledgeOk
@@ -732,7 +839,7 @@ export default function TutorProfile() {
                 Updates as you type
               </span>
             </div>
-            <PreviewCard form={form} userName={user?.name} />
+            <PreviewCard form={form} userName={user?.name} avatarUrl={avatarUrl} />
 
             {/* Tips */}
             {completion < 100 && (

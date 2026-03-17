@@ -3,6 +3,7 @@ import { Link, useParams } from '@tanstack/react-router'
 import { getThread, createPost } from '../api/forum'
 import { useAuth } from '../context/AuthContext'
 import HubLayout from '../components/layout/HubLayout'
+import UserBadges from '../components/features/UserBadges'
 import toast from 'react-hot-toast'
 
 const CORAL = '#ff725e'
@@ -168,9 +169,10 @@ export default function ForumThread() {
                   {/* Author */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
                     <UserAvatar name={thread?.author_name} size={32} />
-                    <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                       <span style={{ color: 'var(--text)', fontWeight: '700', fontSize: '13px' }}>{thread?.author_name}</span>
-                      <span style={{ color: 'var(--text-faint)', fontSize: '12px', marginLeft: '8px' }}>
+                      <UserBadges isTutor={!!thread?.is_tutor} isPremium={!!thread?.is_premium} />
+                      <span style={{ color: 'var(--text-faint)', fontSize: '12px' }}>
                         {formatDate(thread?.created_at)}
                       </span>
                     </div>
@@ -337,6 +339,7 @@ export default function ForumThread() {
                             }}>
                               {post.author_name}
                             </span>
+                            <UserBadges isTutor={!!post.is_tutor} isPremium={!!post.is_premium} />
                             {isMe && (
                               <span style={{
                                 background: CORAL + '20', color: CORAL,

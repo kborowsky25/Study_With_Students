@@ -3,7 +3,6 @@ import { Link } from '@tanstack/react-router'
 import { getActiveStudents, getTutorRequestsRec, respondTutorRequest } from '../api/tutors'
 import HubLayout from '../components/layout/HubLayout'
 import { PageTitle } from '../context/PageTitleContext'
-import PageHeader from '../components/features/PageHeader'
 import toast from 'react-hot-toast'
 
 const CORAL  = '#ff725e'
@@ -61,14 +60,6 @@ export default function ActiveStudents() {
   return (
     <HubLayout initialMode="tutor">
       <PageTitle title="My Students" icon="group" />
-      <PageHeader
-        icon="group" iconColor={PURPLE}
-        title="My Students"
-        subtitle={
-          loading ? '…'
-          : `${students.length} active${invites.length > 0 ? ` · ${invites.length} pending invite${invites.length !== 1 ? 's' : ''}` : ''}`
-        }
-      />
 
       {loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>

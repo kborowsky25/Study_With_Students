@@ -7,12 +7,23 @@ import { getEvents, updateStatus } from '../api/events'
 import { getConversations } from '../api/messages'
 import { getStudyRooms } from '../api/studyrooms'
 import toast from 'react-hot-toast'
+import SpotlightTour from '../components/features/SpotlightTour'
 
-const CORAL  = '#2dd4bf'   // tutor hub — neon teal
-const GREEN  = '#34d399'
-const AMBER  = '#fbbf24'
-const BLUE   = '#63b3ed'
-const TEAL   = '#2dd4bf'
+const TUTOR_TOUR_STEPS = [
+  { target: null,                            position: 'center', title: 'Welcome to your Tutor Hub! 🎓', body: "You're all set as a tutor. Here's a quick walkthrough of the key tools at your disposal." },
+  { target: '[data-tour="my-students"]',     position: 'right',  title: 'My Students',   body: 'Review and accept student requests here. Once accepted, students appear in your active list.' },
+  { target: '[data-tour="calendar-tutor"]',  position: 'right',  title: 'Calendar',       body: 'Schedule and manage your sessions. Students can book directly and you can confirm or decline.' },
+  { target: '[data-tour="messages-tutor"]',  position: 'right',  title: 'Messages',       body: 'Communicate with your students directly — no middleman involved.' },
+  { target: '[data-tour="study-rooms-tutor"]', position: 'right', title: 'Study Rooms',  body: 'Host group virtual study sessions for multiple students at once.' },
+  { target: '[data-tour="earnings"]',        position: 'right',  title: 'Earnings',       body: 'Track your earnings and session history. Every penny students pay comes directly to you.' },
+  { target: null,                            position: 'center', title: "You're ready to start tutoring! 🚀", body: 'Complete your profile from the sidebar to start appearing in student searches.' },
+]
+
+const WHITE  = 'rgba(255,255,255,0.82)'   // primary accent — prestigious white
+const ORANGE = '#fb923c'                   // positive/confirmed — replaces green
+const AMBER  = '#fbbf24'                   // pending/warning — unchanged
+const SILVER = '#94a3b8'                   // secondary — replaces soft rose
+const TEAL   = 'rgba(255,255,255,0.82)'    // used in graph — same as WHITE
 
 // ── CountUp hook ─────────────────────────────────────────────────────────────
 function useCountUp(target, duration = 750) {
@@ -66,8 +77,8 @@ function EarningsDonut({ thisMonth, goal = 200 }) {
       <svg width="108" height="108" viewBox="0 0 108 108">
         <defs>
           <linearGradient id="earningsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%"   stopColor={GREEN} />
-            <stop offset="100%" stopColor={CORAL} />
+            <stop offset="0%"   stopColor={ORANGE} />
+            <stop offset="100%" stopColor={WHITE} />
           </linearGradient>
         </defs>
         {/* Track */}
@@ -88,7 +99,7 @@ function EarningsDonut({ thisMonth, goal = 200 }) {
         position: 'absolute', inset: 0,
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       }}>
-        <span style={{ fontSize: '14px', fontWeight: '900', color: GREEN, lineHeight: 1 }}>
+        <span style={{ fontSize: '14px', fontWeight: '900', color: ORANGE, lineHeight: 1 }}>
           £{thisMonth.toFixed(0)}
         </span>
         <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.38)', marginTop: '2px' }}>
@@ -110,6 +121,7 @@ export default function HubTutor() {
   const [invites,       setInvites]       = useState([])  // pending student → tutor requests
   const [loading,       setLoading]       = useState(true)
   const [mounted,       setMounted]       = useState(false)
+  const [showTour,      setShowTour]      = useState(false)
 
   useEffect(() => {
     Promise.allSettled([
@@ -121,6 +133,13 @@ export default function HubTutor() {
     ]).finally(() => setLoading(false))
     // Trigger entrance animations on next frame
     requestAnimationFrame(() => setMounted(true))
+
+    // First-time tutor tour
+    const tourKey = `sws_tour_tutor_${user?.id}`
+    if (!localStorage.getItem(tourKey)) {
+      const t = setTimeout(() => setShowTour(true), 800)
+      return () => clearTimeout(t)
+    }
   }, [])
 
   const name     = user?.name?.split(' ')[0] ?? 'Tutor'
@@ -173,8 +192,14 @@ export default function HubTutor() {
     }
   }
 
+  function doneTour() {
+    localStorage.setItem(`sws_tour_tutor_${user?.id}`, 'done')
+    setShowTour(false)
+  }
+
   return (
     <HubLayout initialMode="tutor" noScroll>
+      {showTour && <SpotlightTour steps={TUTOR_TOUR_STEPS} onDone={doneTour} />}
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '14px' }}>
 
         {/* ── Welcome banner ────────────────────────────────────────────── */}
@@ -182,8 +207,8 @@ export default function HubTutor() {
           className={mounted ? 'animate-slide-up' : ''}
           style={{
             flexShrink: 0,
-            background: 'linear-gradient(135deg, rgba(45,212,191,0.10) 0%, rgba(45,212,191,0.03) 55%, rgba(99,179,237,0.06) 100%)',
-            border: '1px solid rgba(45,212,191,0.22)',
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.02) 55%, rgba(255,255,255,0.02) 100%)',
+            border: '1px solid rgba(255,255,255,0.10)',
             borderRadius: '16px',
             padding: '20px 24px',
             display: 'flex',
@@ -194,9 +219,6 @@ export default function HubTutor() {
             overflow: 'hidden',
           }}
         >
-          {/* Background glow blobs */}
-          <div style={{ position: 'absolute', right: '-20px', top: '-40px', width: '180px', height: '180px', background: 'rgba(45,212,191,0.08)', borderRadius: '50%', filter: 'blur(40px)', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', left: '30%', bottom: '-30px', width: '120px', height: '120px', background: `${CORAL}06`, borderRadius: '50%', filter: 'blur(30px)', pointerEvents: 'none' }} />
 
           {/* Left: text + chips */}
           <div style={{ flex: 1, minWidth: 0, zIndex: 1 }}>
@@ -223,8 +245,8 @@ export default function HubTutor() {
               {nextEvent && (
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', gap: '5px',
-                  background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.25)',
-                  borderRadius: '20px', padding: '4px 10px', fontSize: '11px', fontWeight: '600', color: GREEN,
+                  background: 'rgba(251,146,60,0.12)', border: '1px solid rgba(251,146,60,0.25)',
+                  borderRadius: '20px', padding: '4px 10px', fontSize: '11px', fontWeight: '600', color: ORANGE,
                 }}>
                   <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>event</span>
                   Next: {fmt(nextEvent.start_time)}
@@ -233,8 +255,8 @@ export default function HubTutor() {
               {students.length > 0 && (
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', gap: '5px',
-                  background: 'rgba(99,179,237,0.12)', border: '1px solid rgba(99,179,237,0.20)',
-                  borderRadius: '20px', padding: '4px 10px', fontSize: '11px', fontWeight: '600', color: BLUE,
+                  background: 'rgba(148,163,184,0.12)', border: '1px solid rgba(148,163,184,0.20)',
+                  borderRadius: '20px', padding: '4px 10px', fontSize: '11px', fontWeight: '600', color: SILVER,
                 }}>
                   <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>people</span>
                   {students.length} active student{students.length !== 1 ? 's' : ''}
@@ -287,14 +309,14 @@ export default function HubTutor() {
             label="This Month"
             value={loading ? null : `£${thisMonthEarnings.toFixed(2)}`}
             to="/earnings"
-            accent={GREEN}
+            accent={ORANGE}
           />
           <StatCard
             icon="savings"
             label="Total Earned"
             value={loading ? null : `£${totalEarnings.toFixed(2)}`}
             to="/earnings"
-            accent={CORAL}
+            accent={WHITE}
           />
           <StatCard
             icon="hourglass_top"
@@ -309,7 +331,7 @@ export default function HubTutor() {
             label="Active Students"
             value={loading ? null : students.length}
             to="/active-students"
-            accent={BLUE}
+            accent={SILVER}
           />
         </div>
 
@@ -326,10 +348,9 @@ export default function HubTutor() {
             <Panel
               icon="person_add"
               title="Student Invites"
-              subtitle={invites.length > 0 ? `${invites.length} student${invites.length !== 1 ? 's' : ''} want${invites.length === 1 ? 's' : ''} you as tutor` : 'no pending invites'}
               extra={
                 invites.length > 0 ? (
-                  <span style={{ background: CORAL, color: 'white', fontSize: '9px', fontWeight: '800', padding: '2px 7px', borderRadius: '9px' }}>
+                  <span style={{ background: 'rgba(255,255,255,0.88)', color: '#1b263b', fontSize: '9px', fontWeight: '800', padding: '2px 7px', borderRadius: '9px' }}>
                     {invites.length} NEW
                   </span>
                 ) : null
@@ -349,7 +370,6 @@ export default function HubTutor() {
             <Panel
               icon="hourglass_top"
               title="Session Requests"
-              subtitle={pending.length > 0 ? `${pending.length} awaiting your response` : 'no pending requests'}
               extra={
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {pending.length > 0 && (
@@ -357,7 +377,7 @@ export default function HubTutor() {
                       {pending.length} NEW
                     </span>
                   )}
-                  <Link to="/events" style={{ color: CORAL, fontSize: '12px', fontWeight: '600' }}>View all →</Link>
+                  <Link to="/events" style={{ color: 'rgba(255,255,255,0.50)', fontSize: '12px', fontWeight: '600' }}>View all →</Link>
                 </div>
               }
               style={{ flex: 1, minHeight: 0 }}
@@ -377,8 +397,7 @@ export default function HubTutor() {
             <Panel
               icon="people"
               title="Active Students"
-              subtitle={students.length > 0 ? `${students.length} enrolled with you` : 'no students yet'}
-              extra={<Link to="/active-students" style={{ color: CORAL, fontSize: '12px', fontWeight: '600' }}>View all →</Link>}
+              extra={<Link to="/active-students" style={{ color: 'rgba(255,255,255,0.50)', fontSize: '12px', fontWeight: '600' }}>View all →</Link>}
               style={{ flex: 1, minHeight: 0 }}
             >
               {loading ? <SkeletonRows rows={3} /> : students.length === 0 ? (
@@ -391,8 +410,7 @@ export default function HubTutor() {
             <Panel
               icon="check_circle"
               title="Confirmed Sessions"
-              subtitle={confirmed.length > 0 ? `${thisWeekSessions} this week` : 'your teaching schedule'}
-              extra={<Link to="/calendar/tutor" style={{ color: CORAL, fontSize: '12px', fontWeight: '600' }}>Calendar →</Link>}
+              extra={<Link to="/calendar/tutor" style={{ color: 'rgba(255,255,255,0.50)', fontSize: '12px', fontWeight: '600' }}>Calendar →</Link>}
               style={{ flex: 1, minHeight: 0 }}
             >
               {loading ? <SkeletonRows rows={2} /> : confirmed.length === 0 ? (
@@ -408,8 +426,7 @@ export default function HubTutor() {
             <Panel
               icon="bar_chart"
               title="Earnings"
-              subtitle="last 6 months"
-              extra={<Link to="/earnings" style={{ color: CORAL, fontSize: '12px', fontWeight: '600' }}>Details →</Link>}
+              extra={<Link to="/earnings" style={{ color: 'rgba(255,255,255,0.50)', fontSize: '12px', fontWeight: '600' }}>Details →</Link>}
               style={{ flexShrink: 0 }}
             >
               <EarningsGraph
@@ -424,8 +441,7 @@ export default function HubTutor() {
             <Panel
               icon="message"
               title="Messages"
-              subtitle={conversations.length > 0 ? `${conversations.length} conversation${conversations.length !== 1 ? 's' : ''}` : 'no messages yet'}
-              extra={<Link to="/messages" style={{ color: CORAL, fontSize: '12px', fontWeight: '600' }}>Open →</Link>}
+              extra={<Link to="/messages" style={{ color: 'rgba(255,255,255,0.50)', fontSize: '12px', fontWeight: '600' }}>Open →</Link>}
               style={{ flex: 1, minHeight: 0 }}
             >
               {loading ? <SkeletonRows rows={3} /> : conversations.length === 0 ? (
@@ -446,29 +462,22 @@ export default function HubTutor() {
 
 // ── Sub-components ──────────────────────────────────────────────────────────
 
-function Panel({ icon, title, subtitle, extra, children, style }) {
+function Panel({ icon, title, extra, children, style }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', ...style }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexShrink: 0 }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-            {icon && (
-              <div style={{
-                width: '22px', height: '22px', borderRadius: '6px',
-                background: `${CORAL}15`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '13px', color: CORAL }}>{icon}</span>
-              </div>
-            )}
-            <h2 style={{ color: 'var(--text)', fontWeight: '800', fontSize: '13px', letterSpacing: '-0.01em' }}>{title}</h2>
-          </div>
-          {subtitle && (
-            <p style={{ fontSize: '10px', color: 'var(--text-faint)', marginTop: '1px', marginLeft: icon ? '29px' : '0' }}>
-              {subtitle}
-            </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+          {icon && (
+            <div style={{
+              width: '22px', height: '22px', borderRadius: '6px',
+              background: 'rgba(255,255,255,0.09)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>{icon}</span>
+            </div>
           )}
+          <h2 style={{ color: 'var(--text)', fontWeight: '800', fontSize: '13px', letterSpacing: '-0.01em' }}>{title}</h2>
         </div>
         {extra}
       </div>
@@ -492,7 +501,7 @@ function Panel({ icon, title, subtitle, extra, children, style }) {
   )
 }
 
-function StatCard({ icon, label, value, to, accent = CORAL, highlight }) {
+function StatCard({ icon, label, value, to, accent = WHITE, highlight }) {
   const isNum    = typeof value === 'number'
   const animated = useCountUp(isNum ? value : 0, 800)
   const display  = value === null ? null : isNum ? animated : value
@@ -578,8 +587,8 @@ function EarningsGraph({ events, loading, thisMonth, total, thisWeek }) {
         <svg viewBox={`0 0 ${totalW} ${CHART_H + 18}`} width="100%" style={{ overflow: 'visible' }}>
           <defs>
             <linearGradient id="barGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%"   stopColor={TEAL} />
-              <stop offset="100%" stopColor="rgba(45,212,191,0.5)" />
+              <stop offset="0%"   stopColor={ORANGE} />
+              <stop offset="100%" stopColor={WHITE} />
             </linearGradient>
           </defs>
           {months.map((m, i) => {
@@ -592,7 +601,7 @@ function EarningsGraph({ events, loading, thisMonth, total, thisWeek }) {
               <g key={i}>
                 <rect
                   x={x} y={y} width={BAR_W} height={barH} rx={5}
-                  fill={isCur ? 'url(#barGrad)' : 'rgba(45,212,191,0.20)'}
+                  fill={isCur ? 'url(#barGrad)' : 'rgba(255,255,255,0.10)'}
                   style={{
                     transformOrigin: `${x + BAR_W/2}px ${CHART_H}px`,
                     animation: `barGrow 0.65s cubic-bezier(.22,.68,0,1.0) ${delay}ms both`,
@@ -602,7 +611,7 @@ function EarningsGraph({ events, loading, thisMonth, total, thisWeek }) {
                   <text
                     x={x + BAR_W / 2} y={y - 4}
                     textAnchor="middle" fontSize="7" fontWeight="800"
-                    fill={TEAL}
+                    fill="rgba(255,255,255,0.80)"
                   >
                     £{m.total.toFixed(0)}
                   </text>
@@ -624,8 +633,8 @@ function EarningsGraph({ events, loading, thisMonth, total, thisWeek }) {
 
       {/* Summary rows */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        <EarningsRow label="This month"         value={`£${thisMonth.toFixed(2)}`} icon="calendar_month"  color={TEAL} />
-        <EarningsRow label="Total earned"       value={`£${total.toFixed(2)}`}     icon="savings"         color={CORAL} />
+        <EarningsRow label="This month"         value={`£${thisMonth.toFixed(2)}`} icon="calendar_month"  color={WHITE} />
+        <EarningsRow label="Total earned"       value={`£${total.toFixed(2)}`}     icon="savings"         color={ORANGE} />
         <EarningsRow label="Sessions this week" value={String(thisWeek)}           icon="event_available" color={AMBER} />
       </div>
     </div>
@@ -657,8 +666,8 @@ function InviteRow({ invite, onAction }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: '9px', marginBottom: '8px' }}>
         <div style={{
           width: '30px', height: '30px', borderRadius: '8px',
-          background: `${CORAL}1a`, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: CORAL, fontSize: '11px', fontWeight: '800', flexShrink: 0,
+          background: 'rgba(255,255,255,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'rgba(255,255,255,0.75)', fontSize: '11px', fontWeight: '800', flexShrink: 0,
         }}>
           {initials}
         </div>
@@ -677,8 +686,8 @@ function InviteRow({ invite, onAction }) {
           disabled={acting}
           style={{
             flex: 1, padding: '5px 0',
-            background: 'rgba(52,211,153,0.14)', color: GREEN,
-            border: `1px solid rgba(52,211,153,0.28)`, borderRadius: '8px',
+            background: 'rgba(251,146,60,0.14)', color: ORANGE,
+            border: `1px solid rgba(251,146,60,0.28)`, borderRadius: '8px',
             fontSize: '10px', fontWeight: '800', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px',
             opacity: acting ? 0.6 : 1,
@@ -743,7 +752,7 @@ function PendingRow({ event, onAction }) {
           disabled={acting}
           style={{
             flex: 1, padding: '5px 0',
-            background: 'rgba(52,211,153,0.14)', color: GREEN,
+            background: 'rgba(52,211,153,0.14)', color: '#34d399',
             border: `1px solid rgba(52,211,153,0.28)`, borderRadius: '8px',
             fontSize: '10px', fontWeight: '800', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px',
@@ -775,8 +784,8 @@ function PendingRow({ event, onAction }) {
 
 function StudentRow({ student }) {
   const initials = student.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-  const colors   = ['rgba(99,179,237,0.20)', 'rgba(167,139,250,0.20)', 'rgba(52,211,153,0.18)', 'rgba(251,191,36,0.20)']
-  const textCols = [BLUE, '#a78bfa', GREEN, AMBER]
+  const colors   = ['rgba(255,255,255,0.12)', 'rgba(167,139,250,0.20)', 'rgba(52,211,153,0.18)', 'rgba(251,191,36,0.20)']
+  const textCols = ['rgba(255,255,255,0.70)', '#a78bfa', '#34d399', AMBER]
   const idx      = (student.id_student ?? 0) % colors.length
   return (
     <Link to="/messages" style={{ textDecoration: 'none' }}>
@@ -813,10 +822,10 @@ function SessionRow({ event }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: '9px', padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
       <div style={{
         width: '30px', height: '30px', borderRadius: '8px',
-        background: 'rgba(52,211,153,0.14)',
+        background: 'rgba(251,146,60,0.14)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
       }}>
-        <span className="material-symbols-outlined" style={{ color: GREEN, fontSize: '15px' }}>check_circle</span>
+        <span className="material-symbols-outlined" style={{ color: ORANGE, fontSize: '15px' }}>check_circle</span>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ color: 'var(--text)', fontSize: '12px', fontWeight: '700', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -846,16 +855,16 @@ function ConvoRow({ convo }) {
       >
         <div style={{
           width: '32px', height: '32px', borderRadius: '9px',
-          background: `${CORAL}20`,
+          background: 'rgba(255,255,255,0.10)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: CORAL, fontSize: '11px', fontWeight: '800', flexShrink: 0,
+          color: 'rgba(255,255,255,0.75)', fontSize: '11px', fontWeight: '800', flexShrink: 0,
           position: 'relative',
         }}>
           {initials}
           <div style={{
             position: 'absolute', bottom: '-1px', right: '-1px',
             width: '9px', height: '9px', borderRadius: '50%',
-            background: GREEN, border: '1.5px solid var(--bg-secondary)',
+            background: ORANGE, border: '1.5px solid var(--bg-secondary)',
           }} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -872,11 +881,14 @@ function ConvoRow({ convo }) {
 
 function EmptyState({ icon, text, action }) {
   return (
-    <div style={{ textAlign: 'center', padding: '20px 0' }}>
-      <span className="material-symbols-outlined" style={{ fontSize: '28px', color: 'var(--text-faint)', display: 'block', marginBottom: '8px' }}>{icon}</span>
-      <p style={{ color: 'var(--text-faint)', fontSize: '12px', marginBottom: action ? '10px' : 0 }}>{text}</p>
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      height: '100%', minHeight: '80px', textAlign: 'center', gap: '6px',
+    }}>
+      <span className="material-symbols-outlined" style={{ fontSize: '28px', color: 'var(--text-faint)' }}>{icon}</span>
+      <p style={{ color: 'var(--text-faint)', fontSize: '12px' }}>{text}</p>
       {action && (
-        <Link to={action.to} style={{ color: CORAL, fontSize: '11px', fontWeight: '700', textDecoration: 'none' }}>
+        <Link to={action.to} style={{ color: 'rgba(255,255,255,0.55)', fontSize: '11px', fontWeight: '700', textDecoration: 'none' }}>
           {action.label} →
         </Link>
       )}

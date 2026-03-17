@@ -7,11 +7,13 @@ import os
 import traceback
 import smtplib
 import random
+import uuid as uuid_lib
 from datetime import timedelta, datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+from werkzeug.utils import secure_filename
 from flask_jwt_extended import (
     JWTManager, create_access_token, jwt_required,
     get_jwt_identity, get_jwt,
@@ -65,6 +67,72 @@ def is_tutor_user(user_id):
     result = cur.fetchone() is not None
     cur.close(); conn.close()
     return result
+
+# ── DB Migrations ─────────────────────────────────────────────────────────────
+
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), 'uploads', 'tutor-proofs')
+
+def _run_migrations():
+    """Auto-apply schema additions. Safe to run multiple times."""
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    conn = get_db(); cur = conn.cursor()
+
+    # Check which columns already exist in tutor_profiles
+    cur.execute("""
+        SELECT COLUMN_NAME FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tutor_profiles'
+    """)
+    existing = {row[0] for row in cur.fetchall()}
+
+    pending = [
+        ("screening_status", "VARCHAR(20) NOT NULL DEFAULT 'none'"),
+        ("uni_email",         "VARCHAR(255) NULL"),
+        ("uni_email_verified","TINYINT(1) NOT NULL DEFAULT 0"),
+        ("proof_doc_path",    "VARCHAR(500) NULL"),
+        ("screening_notes",   "TEXT NULL"),
+        ("avatar_path",       "VARCHAR(500) NULL"),
+    ]
+    for col, defn in pending:
+        if col not in existing:
+            try:
+                cur.execute(f"ALTER TABLE tutor_profiles ADD COLUMN {col} {defn}")
+                print(f'[MIGRATION] Added column tutor_profiles.{col}', flush=True)
+            except Exception as e:
+                print(f'[MIGRATION] Skipped {col}: {e}', flush=True)
+
+    # Fix age column: was accidentally created as DATE, must be INT
+    try:
+        cur.execute("""
+            SELECT DATA_TYPE FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tutor_profiles' AND COLUMN_NAME = 'age'
+        """)
+        row = cur.fetchone()
+        if row and row[0].upper() not in ('INT', 'TINYINT', 'SMALLINT', 'MEDIUMINT', 'BIGINT'):
+            cur.execute("ALTER TABLE tutor_profiles MODIFY COLUMN age INT NULL")
+            print('[MIGRATION] Fixed tutor_profiles.age column type → INT', flush=True)
+    except Exception as e:
+        print(f'[MIGRATION] age column fix skipped: {e}', flush=True)
+
+    # Sync: tutors already approved via the old `status` column → mark screening_status approved too
+    try:
+        cur.execute("""
+            UPDATE tutor_profiles
+            SET screening_status = 'approved'
+            WHERE status = 'approved' AND (screening_status IS NULL OR screening_status = 'none')
+        """)
+        if cur.rowcount:
+            print(f'[MIGRATION] Synced {cur.rowcount} pre-existing approved tutor(s) to screening_status=approved', flush=True)
+    except Exception as e:
+        print(f'[MIGRATION] Sync skipped: {e}', flush=True)
+
+    conn.commit()
+    cur.close(); conn.close()
+
+try:
+    with app.app_context():
+        _run_migrations()
+except Exception as _me:
+    print(f'[MIGRATION ERROR] {_me}', flush=True)
 
 # ── Email verification helpers ────────────────────────────────────────────────
 #
@@ -248,13 +316,32 @@ def login():
         except Exception:
             is_premium = False
 
+        # screening_status for tutor gate
+        screening_status = None
+        if is_tutor:
+            try:
+                cur.execute("SELECT screening_status FROM tutor_profiles WHERE id_user = %s", (user_id,))
+                ss_row = cur.fetchone()
+                screening_status = ss_row[0] if ss_row else 'none'
+            except Exception:
+                screening_status = 'none'
+
+        is_admin = (user_email.lower() == SUPER_ADMIN_EMAIL)
         token = create_access_token(
             identity=str(user_id),
-            additional_claims={'name': name, 'email': user_email, 'is_tutor': is_tutor, 'is_premium': is_premium},
+            additional_claims={
+                'name': name, 'email': user_email, 'is_tutor': is_tutor,
+                'is_premium': is_premium, 'screening_status': screening_status,
+                'is_admin': is_admin,
+            },
         )
         return jsonify({
             'access_token': token,
-            'user': {'id': user_id, 'name': name, 'email': user_email, 'is_tutor': is_tutor, 'is_premium': is_premium},
+            'user': {
+                'id': user_id, 'name': name, 'email': user_email,
+                'is_tutor': is_tutor, 'is_premium': is_premium,
+                'screening_status': screening_status, 'is_admin': is_admin,
+            },
         })
     finally:
         cur.close(); conn.close()
@@ -265,15 +352,69 @@ def login():
 def me():
     claims = get_jwt()
     uid    = current_user_id()
+    # Fetch live screening_status from DB (JWT may be stale after admin approval)
+    screening_status = None
+    is_tutor = claims.get('is_tutor', False)
+    if is_tutor:
+        try:
+            conn = get_db(); cur = conn.cursor()
+            cur.execute("SELECT screening_status FROM tutor_profiles WHERE id_user = %s", (uid,))
+            row = cur.fetchone()
+            screening_status = row[0] if row else 'none'
+            cur.close(); conn.close()
+        except Exception:
+            screening_status = claims.get('screening_status')
+    email = claims.get('email', '')
     return jsonify({
         'user': {
-            'id':         uid,
-            'name':       claims.get('name'),
-            'email':      claims.get('email'),
-            'is_tutor':   claims.get('is_tutor',   False),
-            'is_premium': claims.get('is_premium', False),
+            'id':               uid,
+            'name':             claims.get('name'),
+            'email':            email,
+            'is_tutor':         is_tutor,
+            'is_premium':       claims.get('is_premium', False),
+            'screening_status': screening_status,
+            'is_admin':         email.lower() == SUPER_ADMIN_EMAIL,
         }
     })
+
+# ── Tutor avatar upload ───────────────────────────────────────────────────────
+
+AVATAR_DIR = os.path.join(os.path.dirname(__file__), 'uploads', 'tutor-avatars')
+os.makedirs(AVATAR_DIR, exist_ok=True)
+
+@app.route('/api/tutor-profile/avatar', methods=['POST'])
+@jwt_required()
+def upload_tutor_avatar():
+    uid = current_user_id()
+    if 'avatar' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+    f = request.files['avatar']
+    if not f.filename:
+        return jsonify({'error': 'No file selected'}), 400
+    ext = f.filename.rsplit('.', 1)[-1].lower()
+    if ext not in ('png', 'jpg', 'jpeg', 'webp'):
+        return jsonify({'error': 'Only PNG, JPG, JPEG, WEBP allowed'}), 400
+    if f.content_length and f.content_length > 5 * 1024 * 1024:
+        return jsonify({'error': 'File too large (max 5 MB)'}), 400
+
+    filename = secure_filename(f'avatar_{uid}.{ext}')
+    f.save(os.path.join(AVATAR_DIR, filename))
+
+    conn = get_db(); cur = conn.cursor()
+    try:
+        cur.execute("UPDATE tutor_profiles SET avatar_path = %s WHERE id_user = %s", (filename, uid))
+        conn.commit()
+        return jsonify({'avatar_url': f'/api/uploads/tutor-avatars/{filename}'}), 200
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/uploads/tutor-avatars/<path:filename>', methods=['GET'])
+def serve_tutor_avatar(filename):
+    """Serve tutor avatar images — public."""
+    from flask import send_from_directory
+    return send_from_directory(AVATAR_DIR, filename)
+
 
 # ── Tutors ────────────────────────────────────────────────────────────────────
 
@@ -334,7 +475,9 @@ def get_tutor(tutor_id):
     try:
         cur.execute("""
             SELECT tp.id_tutor, tp.id_user, u.name, tp.age, tp.university,
-                   tp.course, tp.about_me, tp.subjects, tp.availability
+                   tp.course, tp.about_me, tp.subjects, tp.availability,
+                   COALESCE(tp.linkedin_url, '') AS linkedin_url,
+                   tp.avatar_path
             FROM tutor_profiles tp
             JOIN users u ON u.id_user = tp.id_user
             WHERE tp.id_tutor = %s
@@ -342,6 +485,9 @@ def get_tutor(tutor_id):
         tutor = cur.fetchone()
         if not tutor:
             return jsonify({'error': 'Tutor not found'}), 404
+
+        if tutor.get('avatar_path'):
+            tutor['avatar_url'] = f'/api/uploads/tutor-avatars/{tutor["avatar_path"]}'
 
         cur.execute(
             "SELECT liked FROM liked_tutors WHERE id_user = %s AND id_tutor = %s",
@@ -505,6 +651,8 @@ def get_tutor_profile():
     try:
         cur.execute("SELECT * FROM tutor_profiles WHERE id_user = %s", (uid,))
         profile = cur.fetchone()
+        if profile and profile.get('avatar_path'):
+            profile['avatar_url'] = f'/api/uploads/tutor-avatars/{profile["avatar_path"]}'
         return jsonify({'profile': profile})
     finally:
         cur.close(); conn.close()
@@ -521,27 +669,43 @@ def save_tutor_profile():
     about_me     = data.get('about_me', '')
     subjects     = data.get('subjects', '')
     availability = data.get('availability', '')
+    linkedin_url = data.get('linkedin_url', '')
 
     conn = get_db(); cur = conn.cursor()
     try:
+        # Ensure linkedin_url column exists (graceful migration)
+        try:
+            cur.execute("ALTER TABLE tutor_profiles ADD COLUMN linkedin_url VARCHAR(500) NULL")
+            conn.commit()
+        except Exception:
+            conn.rollback()
+
         cur.execute("SELECT id_tutor FROM tutor_profiles WHERE id_user = %s", (uid,))
         exists = cur.fetchone()
         if exists:
-            cur.execute("""
-                UPDATE tutor_profiles
-                SET age=%s, university=%s, course=%s, about_me=%s, subjects=%s, availability=%s
-                WHERE id_user=%s
-            """, (age, university, course, about_me, subjects, availability, uid))
+            try:
+                cur.execute("""
+                    UPDATE tutor_profiles
+                    SET age=%s, university=%s, course=%s, about_me=%s, subjects=%s, availability=%s, linkedin_url=%s
+                    WHERE id_user=%s
+                """, (age, university, course, about_me, subjects, availability, linkedin_url, uid))
+            except Exception:
+                conn.rollback()
+                cur.execute("""
+                    UPDATE tutor_profiles
+                    SET age=%s, university=%s, course=%s, about_me=%s, subjects=%s, availability=%s
+                    WHERE id_user=%s
+                """, (age, university, course, about_me, subjects, availability, uid))
         else:
             # First time creating — set status='pending' for admin review
             try:
                 cur.execute("""
                     INSERT INTO tutor_profiles
-                        (id_user, age, university, course, about_me, subjects, availability, status)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, 'pending')
-                """, (uid, age, university, course, about_me, subjects, availability))
+                        (id_user, age, university, course, about_me, subjects, availability, linkedin_url, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'pending')
+                """, (uid, age, university, course, about_me, subjects, availability, linkedin_url))
             except Exception:
-                # status column may not exist yet — insert without it
+                # status or linkedin_url column may not exist yet — insert without them
                 conn.rollback()
                 cur.execute("""
                     INSERT INTO tutor_profiles (id_user, age, university, course, about_me, subjects, availability)
@@ -1067,7 +1231,7 @@ def get_study_rooms():
         try:
             cur.execute("""
                 SELECT sr.id, sr.subject, sr.description, sr.start_time, sr.end_time,
-                       sr.zoom_link, u.name AS tutor_name
+                       sr.zoom_link, u.name AS tutor_name, tp.id_user AS creator_user_id
                 FROM study_rooms sr
                 JOIN tutor_profiles tp ON tp.id_tutor = sr.tutor_id
                 JOIN users u ON u.id_user = tp.id_user
@@ -1309,6 +1473,88 @@ def search_users():
         )
         users = cur.fetchall()
         return jsonify({'users': users})
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/users/<int:user_id>/profile', methods=['GET'])
+@jwt_required()
+def get_user_profile(user_id):
+    """Public profile for any user: basic info + activity stats + student bio."""
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT u.id_user, u.name, u.email,
+                   u.created_at,
+                   sp.education_level, sp.school_name, sp.study_year, sp.bio
+            FROM users u
+            LEFT JOIN student_profiles sp ON sp.id_user = u.id_user
+            WHERE u.id_user = %s
+        """, (user_id,))
+        user = cur.fetchone()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        # Serialize datetime
+        if user.get('created_at') and hasattr(user['created_at'], 'isoformat'):
+            user['created_at'] = user['created_at'].isoformat()
+
+        # Activity stats
+        stats = {}
+        try:
+            cur.execute("SELECT COUNT(*) AS cnt FROM forum_posts WHERE user_id = %s", (user_id,))
+            stats['forum_posts'] = (cur.fetchone() or {}).get('cnt', 0)
+        except Exception:
+            stats['forum_posts'] = 0
+        try:
+            cur.execute("SELECT COUNT(*) AS cnt FROM events WHERE student_id = %s", (user_id,))
+            stats['sessions'] = (cur.fetchone() or {}).get('cnt', 0)
+        except Exception:
+            stats['sessions'] = 0
+        try:
+            cur.execute("SELECT COUNT(*) AS cnt FROM events WHERE student_id = %s AND status = 'confirmed'", (user_id,))
+            stats['confirmed_sessions'] = (cur.fetchone() or {}).get('cnt', 0)
+        except Exception:
+            stats['confirmed_sessions'] = 0
+
+        user['stats'] = stats
+        user.pop('email', None)   # don't expose email publicly
+        return jsonify({'user': user})
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/users/me/student-bio', methods=['PUT'])
+@jwt_required()
+def update_student_bio():
+    """Let a student update their public bio fields."""
+    uid  = current_user_id()
+    data = request.get_json()
+    allowed = ('education_level', 'school_name', 'study_year', 'bio')
+    conn = get_db(); cur = conn.cursor()
+    try:
+        # Ensure student_profiles row exists
+        cur.execute("SELECT id_student FROM student_profiles WHERE id_user = %s", (uid,))
+        if not cur.fetchone():
+            cur.execute("INSERT INTO student_profiles (id_user) VALUES (%s)", (uid,))
+            conn.commit()
+        # Add columns if they don't exist (graceful migration)
+        for col in ('education_level VARCHAR(100)', 'school_name VARCHAR(200)', 'study_year VARCHAR(50)', 'bio TEXT'):
+            col_name = col.split()[0]
+            try:
+                cur.execute(f"ALTER TABLE student_profiles ADD COLUMN {col}")
+                conn.commit()
+            except Exception:
+                pass  # already exists
+        # Build update
+        fields = {k: v for k, v in data.items() if k in allowed}
+        if not fields:
+            return jsonify({'message': 'nothing to update'}), 200
+        set_clause = ', '.join(f"{k} = %s" for k in fields)
+        cur.execute(f"UPDATE student_profiles SET {set_clause} WHERE id_user = %s",
+                    (*fields.values(), uid))
+        conn.commit()
+        return jsonify({'message': 'updated'})
     finally:
         cur.close(); conn.close()
 
@@ -1647,12 +1893,186 @@ def get_classroom_students(classroom_id):
         cur.close(); conn.close()
 
 
+# ── Tutor screening ───────────────────────────────────────────────────────────
+
+ALLOWED_PROOF_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf'}
+MAX_PROOF_BYTES = 10 * 1024 * 1024  # 10 MB
+
+def _allowed_proof(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_PROOF_EXTENSIONS
+
+@app.route('/api/tutor-screening/send-uni-code', methods=['POST'])
+@jwt_required()
+def screening_send_uni_code():
+    uid  = current_user_id()
+    data = request.get_json(silent=True) or {}
+    uni_email = (data.get('uni_email') or '').strip().lower()
+    if not uni_email:
+        return jsonify({'error': 'University email required'}), 400
+
+    conn = get_db(); cur = conn.cursor()
+    try:
+        # Ensure tutor profile exists
+        cur.execute("SELECT id_tutor FROM tutor_profiles WHERE id_user = %s", (uid,))
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': 'Create your tutor profile first'}), 400
+
+        # Save uni_email to profile
+        cur.execute("UPDATE tutor_profiles SET uni_email = %s WHERE id_user = %s", (uni_email, uid))
+
+        # Generate + store OTP (reuse email_verifications table)
+        code    = ''.join(random.choices('0123456789', k=6))
+        expires = datetime.utcnow() + timedelta(minutes=10)
+        cur.execute("DELETE FROM email_verifications WHERE email = %s", (uni_email,))
+        cur.execute(
+            "INSERT INTO email_verifications (email, code, expires_at) VALUES (%s, %s, %s)",
+            (uni_email, code, expires)
+        )
+        conn.commit()
+    finally:
+        cur.close(); conn.close()
+
+    try:
+        send_verification_email(uni_email, code)
+    except Exception as e:
+        print(f'[WARN] Uni email send failed: {e}', flush=True)
+
+    return jsonify({'message': 'Verification code sent to your university email'}), 200
+
+
+@app.route('/api/tutor-screening/verify-uni-email', methods=['POST'])
+@jwt_required()
+def screening_verify_uni_email():
+    uid  = current_user_id()
+    data = request.get_json(silent=True) or {}
+    uni_email = (data.get('uni_email') or '').strip().lower()
+    code      = (data.get('code')      or '').strip()
+    if not uni_email or not code:
+        return jsonify({'error': 'Email and code required'}), 400
+
+    conn = get_db(); cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT id, expires_at, used
+            FROM email_verifications
+            WHERE email = %s AND code = %s
+            ORDER BY id DESC LIMIT 1
+        """, (uni_email, code))
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': 'Invalid code'}), 400
+        ver_id, expires_at, used = row
+        if used:
+            return jsonify({'error': 'Code already used'}), 400
+        if datetime.utcnow() > expires_at:
+            return jsonify({'error': 'Code expired — please request a new one'}), 400
+
+        cur.execute("UPDATE email_verifications SET used = 1 WHERE id = %s", (ver_id,))
+        cur.execute(
+            "UPDATE tutor_profiles SET uni_email_verified = 1, uni_email = %s WHERE id_user = %s",
+            (uni_email, uid)
+        )
+        conn.commit()
+    finally:
+        cur.close(); conn.close()
+
+    return jsonify({'message': 'University email verified'}), 200
+
+
+@app.route('/api/tutor-screening/upload-proof', methods=['POST'])
+@jwt_required()
+def screening_upload_proof():
+    uid = current_user_id()
+
+    if 'proof' not in request.files:
+        return jsonify({'error': 'No file attached'}), 400
+    f = request.files['proof']
+    if not f.filename:
+        return jsonify({'error': 'No file selected'}), 400
+    if not _allowed_proof(f.filename):
+        return jsonify({'error': 'Only PNG, JPG, and PDF are accepted'}), 400
+
+    # Read & size-check before writing
+    data = f.read()
+    if len(data) > MAX_PROOF_BYTES:
+        return jsonify({'error': 'File exceeds 10 MB limit'}), 400
+
+    # Check uni email was verified
+    conn = get_db(); cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT id_tutor, uni_email_verified FROM tutor_profiles WHERE id_user = %s", (uid,)
+        )
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': 'Tutor profile not found'}), 400
+        id_tutor, verified = row
+        if not verified:
+            return jsonify({'error': 'Please verify your university email first'}), 400
+
+        # Save file
+        ext      = f.filename.rsplit('.', 1)[1].lower()
+        filename = f'{id_tutor}_{int(datetime.utcnow().timestamp())}.{ext}'
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        with open(os.path.join(UPLOAD_DIR, filename), 'wb') as fh:
+            fh.write(data)
+
+        cur.execute(
+            "UPDATE tutor_profiles SET proof_doc_path = %s, screening_status = 'pending' WHERE id_tutor = %s",
+            (filename, id_tutor)
+        )
+        conn.commit()
+    finally:
+        cur.close(); conn.close()
+
+    return jsonify({'message': 'Documents submitted for review'}), 200
+
+
+@app.route('/api/tutor-screening/status', methods=['GET'])
+@jwt_required()
+def screening_status():
+    uid = current_user_id()
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT screening_status, screening_notes, uni_email, uni_email_verified
+            FROM tutor_profiles WHERE id_user = %s
+        """, (uid,))
+        row = cur.fetchone()
+        if not row:
+            return jsonify({'error': 'Tutor profile not found'}), 404
+        return jsonify(row), 200
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/uploads/tutor-proofs/<path:filename>', methods=['GET'])
+def serve_tutor_proof(filename):
+    """Serve uploaded proof documents — admin-only."""
+    if not _check_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    from flask import send_from_directory
+    return send_from_directory(UPLOAD_DIR, filename)
+
+
 # ── Admin — tutor approval ────────────────────────────────────────────────────
 # Protected by X-Admin-Secret header. Set ADMIN_SECRET env var in production.
 
+SUPER_ADMIN_EMAIL = 'kilianborowsky@gmail.com'
+
 def _check_admin():
+    # Accept either X-Admin-Secret header OR a JWT from the super-admin account
     secret = request.headers.get('X-Admin-Secret', '')
-    return secret == os.environ.get('ADMIN_SECRET', 'dev-admin-secret')
+    if secret == os.environ.get('ADMIN_SECRET', 'dev-admin-secret'):
+        return True
+    try:
+        from flask_jwt_extended import verify_jwt_in_request
+        verify_jwt_in_request()
+        claims = get_jwt()
+        return claims.get('email', '').lower() == SUPER_ADMIN_EMAIL
+    except Exception:
+        return False
 
 @app.route('/api/admin/tutors', methods=['GET'])
 def admin_list_tutors():
@@ -1698,6 +2118,351 @@ def admin_reject_tutor(tutor_id):
         return jsonify({'message': f'Tutor {tutor_id} rejected'})
     finally:
         cur.close(); conn.close()
+
+
+# ── Admin — screening queue ────────────────────────────────────────────────────
+
+@app.route('/api/admin/screening-queue', methods=['GET'])
+def admin_screening_queue():
+    if not _check_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT tp.id_tutor, u.name, u.email,
+                   tp.university, tp.course, tp.subjects,
+                   tp.screening_status, tp.screening_notes,
+                   tp.uni_email, tp.uni_email_verified,
+                   tp.proof_doc_path
+            FROM tutor_profiles tp
+            JOIN users u ON u.id_user = tp.id_user
+            ORDER BY tp.id_tutor DESC
+        """)
+        return jsonify({'queue': cur.fetchall()}), 200
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/admin/screening/<int:tutor_id>/approve', methods=['POST'])
+def admin_approve_screening(tutor_id):
+    if not _check_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    conn = get_db(); cur = conn.cursor()
+    try:
+        cur.execute(
+            "UPDATE tutor_profiles SET screening_status = 'approved', screening_notes = NULL WHERE id_tutor = %s",
+            (tutor_id,)
+        )
+        conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({'error': 'Tutor not found'}), 404
+        return jsonify({'message': f'Tutor {tutor_id} approved'}), 200
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/admin/screening/<int:tutor_id>/reject', methods=['POST'])
+def admin_reject_screening(tutor_id):
+    if not _check_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    data  = request.get_json(silent=True) or {}
+    notes = (data.get('notes') or '').strip()
+    conn = get_db(); cur = conn.cursor()
+    try:
+        cur.execute(
+            "UPDATE tutor_profiles SET screening_status = 'rejected', screening_notes = %s WHERE id_tutor = %s",
+            (notes or None, tutor_id)
+        )
+        conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({'error': 'Tutor not found'}), 404
+        return jsonify({'message': f'Tutor {tutor_id} rejected'}), 200
+    finally:
+        cur.close(); conn.close()
+
+
+# ── Admin — platform stats & user management ──────────────────────────────────
+
+@app.route('/api/admin/stats', methods=['GET'])
+def admin_stats():
+    if not _check_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        stats = {}
+
+        cur.execute("SELECT COUNT(*) AS total FROM users")
+        stats['total_users'] = cur.fetchone()['total']
+
+        cur.execute("SELECT COUNT(*) AS total FROM tutor_profiles")
+        stats['total_tutors'] = cur.fetchone()['total']
+
+        cur.execute("SELECT COUNT(*) AS total FROM student_profiles")
+        stats['total_students'] = cur.fetchone()['total']
+
+        cur.execute("SELECT COUNT(*) AS total FROM tutor_profiles WHERE screening_status = 'pending'")
+        stats['pending_screenings'] = cur.fetchone()['total']
+
+        cur.execute("SELECT COUNT(*) AS total FROM tutor_profiles WHERE screening_status = 'approved'")
+        stats['approved_tutors'] = cur.fetchone()['total']
+
+        try:
+            cur.execute("SELECT COUNT(*) AS total FROM events")
+            stats['total_sessions'] = cur.fetchone()['total']
+            cur.execute("SELECT COUNT(*) AS total FROM events WHERE status = 'completed'")
+            stats['completed_sessions'] = cur.fetchone()['total']
+        except Exception:
+            stats['total_sessions'] = 0
+            stats['completed_sessions'] = 0
+
+        try:
+            cur.execute("SELECT COUNT(*) AS total FROM users WHERE is_premium = 1")
+            stats['premium_users'] = cur.fetchone()['total']
+        except Exception:
+            stats['premium_users'] = 0
+
+        try:
+            cur.execute("""
+                SELECT DATE(created_at) AS day, COUNT(*) AS signups
+                FROM users
+                WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                GROUP BY DATE(created_at)
+                ORDER BY day ASC
+            """)
+            signups_rows = cur.fetchall()
+            stats['signups_last_30d'] = [
+                {'day': r['day'].isoformat() if hasattr(r['day'], 'isoformat') else str(r['day']), 'signups': r['signups']}
+                for r in signups_rows
+            ]
+        except Exception:
+            stats['signups_last_30d'] = []
+
+        return jsonify({'stats': stats}), 200
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/admin/users', methods=['GET'])
+def admin_users():
+    if not _check_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT u.id_user, u.name, u.email,
+                   COALESCE(u.is_premium, 0) AS is_premium,
+                   (SELECT COUNT(*) FROM tutor_profiles tp WHERE tp.id_user = u.id_user) AS is_tutor,
+                   (SELECT tp.screening_status FROM tutor_profiles tp WHERE tp.id_user = u.id_user LIMIT 1) AS screening_status
+            FROM users u
+            ORDER BY u.id_user DESC
+            LIMIT 200
+        """)
+        rows = cur.fetchall()
+        for r in rows:
+            r['is_tutor'] = bool(r['is_tutor'])
+            r['is_premium'] = bool(r['is_premium'])
+        return jsonify({'users': rows}), 200
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/admin/recent-events', methods=['GET'])
+def admin_recent_events():
+    if not _check_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT e.id_event, e.title, e.status, e.start_time, e.end_time, e.amount,
+                   s.name AS student_name, s.email AS student_email,
+                   t.name AS tutor_name
+            FROM events e
+            JOIN users s ON s.id_user = e.student_id
+            JOIN users t ON t.id_user = e.tutor_id
+            ORDER BY e.start_time DESC
+            LIMIT 50
+        """)
+        rows = cur.fetchall()
+        for r in rows:
+            for f in ('start_time', 'end_time'):
+                if r.get(f) and hasattr(r[f], 'isoformat'):
+                    r[f] = r[f].isoformat()
+        return jsonify({'events': rows}), 200
+    except Exception as e:
+        return jsonify({'events': [], 'error': str(e)}), 200
+    finally:
+        cur.close(); conn.close()
+
+
+# ── Stripe membership ──────────────────────────────────────────────────────────
+
+@app.route('/api/membership/checkout-session', methods=['POST'])
+@jwt_required()
+def membership_checkout_session():
+    if stripe is None:
+        return jsonify({'error': 'Stripe not installed'}), 503
+    if not stripe.api_key:
+        return jsonify({'error': 'STRIPE_SECRET_KEY not configured'}), 503
+
+    uid    = current_user_id()
+    claims = get_jwt()
+
+    PRICE_ID = os.environ.get('STRIPE_PRICE_ID', '')
+    if not PRICE_ID:
+        return jsonify({'error': 'STRIPE_PRICE_ID not configured'}), 503
+
+    try:
+        session = stripe.checkout.Session.create(
+            ui_mode='embedded',
+            mode='subscription',
+            line_items=[{'price': PRICE_ID, 'quantity': 1}],
+            return_url=f'{os.environ.get("FRONTEND_URL", "http://localhost:5173")}/membership?session_id={{CHECKOUT_SESSION_ID}}',
+            customer_email=claims.get('email'),
+            metadata={'user_id': uid},
+        )
+        return jsonify({'client_secret': session.client_secret}), 200
+    except stripe.error.StripeError as e:
+        return jsonify({'error': str(e.user_message or e)}), 400
+
+
+@app.route('/api/membership/checkout-success', methods=['GET'])
+@jwt_required()
+def checkout_success():
+    if stripe is None or not stripe.api_key:
+        return jsonify({'error': 'Stripe not available'}), 503
+
+    session_id = request.args.get('session_id', '')
+    if not session_id:
+        return jsonify({'error': 'session_id required'}), 400
+
+    try:
+        session = stripe.checkout.Session.retrieve(session_id)
+    except stripe.error.StripeError as e:
+        return jsonify({'error': str(e)}), 400
+
+    if session.payment_status != 'paid':
+        return jsonify({'error': 'Payment not completed'}), 402
+
+    uid = current_user_id()
+    conn = get_db(); cur = conn.cursor()
+    try:
+        cur.execute("UPDATE users SET is_premium = 1 WHERE id_user = %s", (uid,))
+        conn.commit()
+    finally:
+        cur.close(); conn.close()
+
+    return jsonify({'message': 'Membership activated', 'is_premium': True}), 200
+
+
+# ── Study Notes ───────────────────────────────────────────────────────────────
+
+NOTES_UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads', 'study-notes')
+os.makedirs(NOTES_UPLOAD_FOLDER, exist_ok=True)
+ALLOWED_NOTES_EXT = {'pdf', 'doc', 'docx', 'ppt', 'pptx', 'png', 'jpg', 'jpeg', 'txt', 'md'}
+
+
+@app.route('/api/study-notes', methods=['GET'])
+@jwt_required()
+def get_study_notes():
+    uid = current_user_id()
+    subject = request.args.get('subject', '').strip()
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        q = """
+            SELECT sn.id, sn.title, sn.subject, sn.description, sn.file_name,
+                   sn.file_type, sn.is_public, sn.created_at, sn.user_id,
+                   u.name AS author_name,
+                   (tp.id_tutor IS NOT NULL) AS is_tutor
+            FROM study_notes sn
+            JOIN users u ON u.id_user = sn.user_id
+            LEFT JOIN tutor_profiles tp ON tp.id_user = sn.user_id
+            WHERE (sn.is_public = 1 OR sn.user_id = %s)
+        """
+        params = [uid]
+        if subject:
+            q += " AND sn.subject = %s"
+            params.append(subject)
+        q += " ORDER BY sn.created_at DESC LIMIT 100"
+        cur.execute(q, params)
+        notes = cur.fetchall()
+        for n in notes:
+            if n.get('created_at') and hasattr(n['created_at'], 'isoformat'):
+                n['created_at'] = n['created_at'].isoformat()
+            n['is_tutor'] = bool(n.get('is_tutor'))
+            n['is_mine']  = n['user_id'] == uid
+        return jsonify({'notes': notes})
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/study-notes', methods=['POST'])
+@jwt_required()
+def create_study_note():
+    uid = current_user_id()
+    title       = request.form.get('title', '').strip()
+    subject     = request.form.get('subject', '').strip()
+    description = request.form.get('description', '').strip()
+    is_public   = request.form.get('is_public', 'true').lower() != 'false'
+
+    if not title:
+        return jsonify({'error': 'title required'}), 400
+
+    file_path, file_name, file_type = None, None, None
+    if 'file' in request.files:
+        f = request.files['file']
+        ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+        if ext not in ALLOWED_NOTES_EXT:
+            return jsonify({'error': 'File type not allowed'}), 400
+        safe = secure_filename(f.filename)
+        unique_name = f"{uuid_lib.uuid4().hex}_{safe}"
+        f.save(os.path.join(NOTES_UPLOAD_FOLDER, unique_name))
+        file_path = unique_name
+        file_name = f.filename
+        file_type = ext
+
+    conn = get_db(); cur = conn.cursor()
+    try:
+        cur.execute(
+            "INSERT INTO study_notes (user_id, title, subject, description, file_path, file_name, file_type, is_public) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            (uid, title, subject, description, file_path, file_name, file_type, is_public)
+        )
+        conn.commit()
+        return jsonify({'note': {'id': cur.lastrowid}}), 201
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/study-notes/<int:note_id>', methods=['DELETE'])
+@jwt_required()
+def delete_study_note(note_id):
+    uid = current_user_id()
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT user_id, file_path FROM study_notes WHERE id = %s", (note_id,))
+        note = cur.fetchone()
+        if not note:
+            return jsonify({'error': 'Not found'}), 404
+        if note['user_id'] != uid:
+            return jsonify({'error': 'Forbidden'}), 403
+        if note['file_path']:
+            try:
+                os.remove(os.path.join(NOTES_UPLOAD_FOLDER, note['file_path']))
+            except OSError:
+                pass
+        cur2 = conn.cursor()
+        cur2.execute("DELETE FROM study_notes WHERE id = %s", (note_id,))
+        conn.commit()
+        cur2.close()
+        return jsonify({'message': 'Deleted'})
+    finally:
+        cur.close(); conn.close()
+
+
+@app.route('/api/uploads/study-notes/<path:filename>', methods=['GET'])
+@jwt_required()
+def serve_study_note_file(filename):
+    return send_from_directory(NOTES_UPLOAD_FOLDER, filename)
 
 
 # ── Run ───────────────────────────────────────────────────────────────────────

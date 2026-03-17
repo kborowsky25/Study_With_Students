@@ -1,43 +1,129 @@
 import { Link } from '@tanstack/react-router'
 
+const CORAL = '#ff725e'
+
 export default function Footer() {
   return (
-    <footer className="bg-navy-600 border-t border-white/5 text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          <div className="col-span-2 md:col-span-1">
-            <p className="text-xl font-black mb-3">
-              Study<span className="text-coral-400">WithStudents</span>
-            </p>
-            <p className="text-white/50 text-sm leading-relaxed">
-              Peer tutoring with 0% commission. Learn from students who've been there.
-            </p>
-          </div>
+    <footer style={{
+      background: '#141d2e',
+      borderTop: '1px solid rgba(255,255,255,0.05)',
+      color: 'white',
+      fontFamily: '"Noto Sans JP", sans-serif',
+    }}>
+      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '56px 32px 32px' }}>
+
+        {/* Top row */}
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '40px', marginBottom: '48px' }}>
+
+          {/* Brand */}
           <div>
-            <p className="font-semibold mb-3 text-white/80">Platform</p>
-            <ul className="space-y-2 text-sm text-white/50">
-              <li><Link to="/how-it-works" className="hover:text-coral-400 transition-colors">How It Works</Link></li>
-              <li><Link to="/find-tutors"  className="hover:text-coral-400 transition-colors">Find Tutors</Link></li>
-              <li><Link to="/become-tutor" className="hover:text-coral-400 transition-colors">Become a Tutor</Link></li>
+            <p style={{ fontSize: '20px', fontWeight: 900, marginBottom: '10px' }}>
+              Study<span style={{ color: CORAL }}>WithStudents</span>
+            </p>
+            <p style={{ color: 'rgba(255,255,255,0.38)', fontSize: '13px', lineHeight: 1.7, maxWidth: '260px', marginBottom: '18px' }}>
+              Peer tutoring with 0% commission. University students helping university students — and funding education charities.
+            </p>
+            {/* Stats micro-strip */}
+            <div style={{ display: 'flex', gap: '18px' }}>
+              {[
+                { val: '0%',  label: 'Commission' },
+                { val: '50%', label: 'To charity'  },
+              ].map(({ val, label }) => (
+                <div key={label}>
+                  <p style={{ fontSize: '16px', fontWeight: 900, color: CORAL, lineHeight: 1 }}>{val}</p>
+                  <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.28)', marginTop: '2px' }}>{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Platform */}
+          <div>
+            <p style={{ fontWeight: 700, fontSize: '13px', color: 'rgba(255,255,255,0.70)', marginBottom: '14px', letterSpacing: '0.04em' }}>Platform</p>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {[
+                { label: 'Find Tutors',    to: '/find-tutors'  },
+                { label: 'Become a Tutor', to: '/become-tutor' },
+                { label: 'How It Works',   to: '/how-it-works' },
+                { label: 'Pricing',        to: '/how-it-works' },
+              ].map(({ label, to }) => (
+                <li key={label}>
+                  <Link
+                    to={to}
+                    style={{ color: 'rgba(255,255,255,0.40)', fontSize: '13px', textDecoration: 'none', transition: 'color 0.2s ease' }}
+                    onMouseEnter={e => { e.currentTarget.style.color = CORAL }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.40)' }}
+                  >{label}</Link>
+                </li>
+              ))}
             </ul>
           </div>
+
+          {/* Company */}
           <div>
-            <p className="font-semibold mb-3 text-white/80">Company</p>
-            <ul className="space-y-2 text-sm text-white/50">
-              <li><Link to="/about" className="hover:text-coral-400 transition-colors">About Us</Link></li>
+            <p style={{ fontWeight: 700, fontSize: '13px', color: 'rgba(255,255,255,0.70)', marginBottom: '14px', letterSpacing: '0.04em' }}>Company</p>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {[
+                { label: 'About Us',        to: '/about'       },
+                { label: 'Our Mission',     to: '/about'       },
+                { label: 'Charity Impact',  to: '/about'       },
+              ].map(({ label, to }) => (
+                <li key={label}>
+                  <Link
+                    to={to}
+                    style={{ color: 'rgba(255,255,255,0.40)', fontSize: '13px', textDecoration: 'none', transition: 'color 0.2s ease' }}
+                    onMouseEnter={e => { e.currentTarget.style.color = CORAL }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.40)' }}
+                  >{label}</Link>
+                </li>
+              ))}
             </ul>
           </div>
+
+          {/* Account */}
           <div>
-            <p className="font-semibold mb-3 text-white/80">Account</p>
-            <ul className="space-y-2 text-sm text-white/50">
-              <li><Link to="/login"  className="hover:text-coral-400 transition-colors">Log In</Link></li>
-              <li><Link to="/signup" className="hover:text-coral-400 transition-colors">Sign Up</Link></li>
+            <p style={{ fontWeight: 700, fontSize: '13px', color: 'rgba(255,255,255,0.70)', marginBottom: '14px', letterSpacing: '0.04em' }}>Account</p>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {[
+                { label: 'Sign Up Free', to: '/signup'    },
+                { label: 'Log In',       to: '/login'     },
+                { label: 'My Hub',       to: '/hub'       },
+                { label: 'My Profile',   to: '/hub'       },
+              ].map(({ label, to }) => (
+                <li key={label}>
+                  <Link
+                    to={to}
+                    style={{ color: 'rgba(255,255,255,0.40)', fontSize: '13px', textDecoration: 'none', transition: 'color 0.2s ease' }}
+                    onMouseEnter={e => { e.currentTarget.style.color = CORAL }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.40)' }}
+                  >{label}</Link>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
-        <div className="mt-10 pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-white/30">
-          <p>© {new Date().getFullYear()} StudyWithStudents. All rights reserved.</p>
-          <p>0% commission · Peer-to-peer · Student-first</p>
+
+        {/* Bottom bar */}
+        <div style={{
+          borderTop: '1px solid rgba(255,255,255,0.05)',
+          paddingTop: '20px',
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          flexWrap: 'wrap',
+        }}>
+          <p style={{ color: 'rgba(255,255,255,0.22)', fontSize: '12px' }}>
+            © {new Date().getFullYear()} StudyWithStudents. All rights reserved.
+          </p>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+            <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em' }}>0% COMMISSION</span>
+            <span style={{ color: 'rgba(255,255,255,0.10)', fontSize: '11px' }}>·</span>
+            <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em' }}>STUDENT-FIRST</span>
+            <span style={{ color: 'rgba(255,255,255,0.10)', fontSize: '11px' }}>·</span>
+            <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em' }}>50% TO CHARITY</span>
+          </div>
         </div>
       </div>
     </footer>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
 import { getCategory } from '../api/forum'
 import HubLayout from '../components/layout/HubLayout'
+import UserBadges from '../components/features/UserBadges'
 import toast from 'react-hot-toast'
 
 const CORAL = '#ff725e'
@@ -228,10 +229,11 @@ export default function ForumCategory() {
                       </div>
                       <span style={{ color: 'var(--text-faint)', fontSize: '12px' }}>
                         Posted by <span style={{ color: 'var(--text-muted)', fontWeight: '600' }}>{thread.author_name}</span>
-                        {thread.created_at && (
-                          <span style={{ marginLeft: '6px' }}>· {formatDate(thread.created_at)}</span>
-                        )}
                       </span>
+                      <UserBadges isTutor={!!thread.is_tutor} isPremium={!!thread.is_premium} />
+                      {thread.created_at && (
+                        <span style={{ color: 'var(--text-faint)', fontSize: '12px', marginLeft: '2px' }}>· {formatDate(thread.created_at)}</span>
+                      )}
                     </div>
 
                     {/* Title */}

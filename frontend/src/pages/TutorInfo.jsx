@@ -378,6 +378,35 @@ export default function TutorInfo() {
             </div>
           )}
 
+          {/* LinkedIn */}
+          {tutor.linkedin_url && (
+            <div style={{
+              background: 'var(--bg-card)', border: '1px solid var(--border)',
+              borderRadius: '18px', padding: '22px', backdropFilter: 'blur(12px)',
+              boxShadow: 'var(--shadow-card)',
+            }}>
+              <SectionHeader icon="link" label="LinkedIn" color={BLUE} />
+              <a
+                href={tutor.linkedin_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '7px',
+                  fontSize: '13px', fontWeight: '700', color: BLUE,
+                  textDecoration: 'none',
+                  background: `${BLUE}10`, border: `1px solid ${BLUE}28`,
+                  padding: '7px 14px', borderRadius: '10px',
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = `${BLUE}1e`}
+                onMouseLeave={e => e.currentTarget.style.background = `${BLUE}10`}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '15px', fontVariationSettings: '"FILL" 1' }}>open_in_new</span>
+                View LinkedIn Profile
+              </a>
+            </div>
+          )}
+
           {/* Availability */}
           {tutor.availability && (
             <div style={{

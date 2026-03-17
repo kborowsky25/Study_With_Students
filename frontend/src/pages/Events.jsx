@@ -3,7 +3,6 @@ import { getEvents } from '../api/events'
 import HubLayout from '../components/layout/HubLayout'
 import { PageTitle } from '../context/PageTitleContext'
 import EventCard from '../components/features/EventCard'
-import PageHeader from '../components/features/PageHeader'
 import toast from 'react-hot-toast'
 
 const FILTERS = ['all', 'pending', 'confirmed', 'canceled', 'paid']
@@ -28,12 +27,6 @@ export default function Events() {
   return (
     <HubLayout>
       <PageTitle title="Events" icon="event" />
-      <PageHeader
-        icon="event"
-        iconColor="#fbbf24"
-        title="Sessions"
-        subtitle={`${loading ? '…' : events.length} total sessions`}
-      />
 
       {/* Filter tabs */}
       <div className="flex gap-2 flex-wrap mb-6">

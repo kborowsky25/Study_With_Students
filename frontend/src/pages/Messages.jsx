@@ -70,13 +70,19 @@ export default function Messages() {
   const [userResults, setUserResults] = useState([])
   const [searching,   setSearching]   = useState(false)
 
+  // Entrance animations
+  const [mounted, setMounted] = useState(false)
+
   const bottomRef    = useRef(null)
   const searchTimer  = useRef(null)
   const composeRef   = useRef(null)
   const inputRef     = useRef(null)
 
   // ── Lifecycle ────────────────────────────────────────────────────────────
-  useEffect(() => { loadConversations() }, [])
+  useEffect(() => {
+    loadConversations()
+    requestAnimationFrame(() => setMounted(true))
+  }, [])
 
   useEffect(() => {
     if (!selected) return
@@ -208,6 +214,24 @@ export default function Messages() {
   return (
     <HubLayout raw>
       <PageTitle title="Messages" icon="message" />
+      <style>{`
+        @keyframes convoIn {
+          from { opacity: 0; transform: translateX(-14px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes bubbleIn {
+          from { opacity: 0; transform: scale(0.88) translateY(8px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
       <div style={{ display: 'flex', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
 
         {/* ── Left panel: conversation list ──────────────────────────── */}
@@ -227,8 +251,11 @@ export default function Messages() {
             padding: '16px',
             borderBottom: '1px solid var(--border)',
             flexShrink: 0,
-            background: 'var(--bg-card)',
+            background: 'linear-gradient(180deg, var(--bg-card) 0%, var(--bg-card) 100%)',
+            position: 'relative',
           }}>
+            {/* Coral accent line */}
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: `linear-gradient(90deg, ${CORAL}, ${CORAL}40, transparent)`, borderRadius: '2px 2px 0 0' }} />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{
@@ -339,7 +366,7 @@ export default function Messages() {
                 )}
               </div>
             ) : (
-              filteredConvos.map(convo => {
+              filteredConvos.map((convo, idx) => {
                 const isActive = selected?.user_id === convo.user_id
                 return (
                   <button
@@ -355,10 +382,19 @@ export default function Messages() {
                       borderLeft: `3px solid ${isActive ? CORAL : 'transparent'}`,
                       cursor: 'pointer',
                       textAlign: 'left',
-                      transition: 'background 0.12s, border-color 0.12s',
+                      transition: 'background 0.12s, border-color 0.12s, transform 0.15s',
+                      animation: mounted ? `convoIn 0.32s cubic-bezier(0.16,1,0.3,1) ${Math.min(idx * 45, 420)}ms both` : 'none',
                     }}
-                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'var(--bg)' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = isActive ? CORAL + '12' : 'transparent' }}
+                    onMouseEnter={e => {
+                      if (!isActive) {
+                        e.currentTarget.style.background = 'var(--bg)'
+                        e.currentTarget.style.transform = 'translateX(3px)'
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = isActive ? CORAL + '12' : 'transparent'
+                      e.currentTarget.style.transform = 'translateX(0)'
+                    }}
                   >
                     <Avatar name={convo.name} size={44} />
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -457,8 +493,10 @@ export default function Messages() {
                 borderBottom: '1px solid var(--border)',
                 background: 'var(--bg-card)',
                 flexShrink: 0,
-                boxShadow: '0 1px 8px rgba(0,0,0,0.10)',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.10)',
+                position: 'relative',
               }}>
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '1px', background: `linear-gradient(90deg, transparent, ${CORAL}30, transparent)` }} />
                 {/* Back button (mobile) */}
                 <button
                   onClick={() => setSelected(null)}
@@ -526,6 +564,8 @@ export default function Messages() {
                         : '4px 18px 18px 4px'
                   }
 
+                  const recentStart = Math.max(0, groupedMessages.length - 12)
+                  const bubbleDelay = i >= recentStart ? (i - recentStart) * 32 : 0
                   return (
                     <div
                       key={i}
@@ -535,6 +575,7 @@ export default function Messages() {
                         alignItems: 'flex-end',
                         gap: '8px',
                         marginBottom: isLast ? '10px' : '2px',
+                        animation: `bubbleIn 0.22s cubic-bezier(0.16,1,0.3,1) ${bubbleDelay}ms both`,
                       }}
                     >
                       {/* Avatar for received messages - only on last in group */}

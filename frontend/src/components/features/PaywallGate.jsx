@@ -12,9 +12,10 @@ import { useAuth } from '../../context/AuthContext'
  * If the user is on the free plan, they see an upgrade prompt instead.
  */
 export default function PaywallGate({ feature = 'This feature', children, bypass = false }) {
-  const { isPremium } = useAuth()
+  const { isPremium, isTutor } = useAuth()
 
-  if (isPremium || bypass) return children
+  // Tutors are verified uni students — all premium features are free for them
+  if (isPremium || isTutor || bypass) return children
 
   return (
     <div style={{

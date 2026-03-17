@@ -13,7 +13,8 @@ import Login         from './pages/Login'
 import Signup        from './pages/Signup'
 import AboutUs       from './pages/AboutUs'
 import HowItWorks    from './pages/HowItWorks'
-import BecomeATutor  from './pages/BecomeATutor'
+import BecomeATutor    from './pages/BecomeATutor'
+import FoundingTutors  from './pages/FoundingTutors'
 
 // Pages — hub
 import Hub           from './pages/Hub'
@@ -45,12 +46,17 @@ import CalendarStudent   from './pages/CalendarStudent'
 import CalendarTutor     from './pages/CalendarTutor'
 
 // Pages — payments & events
-import Payments    from './pages/Payments'
-import Earnings    from './pages/Earnings'
-import Events      from './pages/Events'
-import Classroom   from './pages/Classroom'
-import XP          from './pages/XP'
-import Membership  from './pages/Membership'
+import Payments         from './pages/Payments'
+import Earnings         from './pages/Earnings'
+import Events           from './pages/Events'
+import Classroom        from './pages/Classroom'
+import XP               from './pages/XP'
+import Membership       from './pages/Membership'
+import TutorScreening   from './pages/TutorScreening'
+import AdminScreening   from './pages/AdminScreening'
+import SuperAdmin       from './pages/SuperAdmin'
+import StudyNotes       from './pages/StudyNotes'
+import StudentProfile   from './pages/StudentProfile'
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 const rootRoute = createRootRoute({
@@ -76,13 +82,49 @@ function requireTutor() {
   if (!user.is_tutor) throw redirect({ to: '/hub' })
 }
 
+function requireAdmin() {
+  const token = localStorage.getItem('sws_token')
+  if (!token) throw redirect({ to: '/login' })
+  const raw = localStorage.getItem('sws_user')
+  if (!raw) throw redirect({ to: '/login' })
+  const user = JSON.parse(raw)
+  if (!user.is_admin) throw redirect({ to: '/hub' })
+}
+
+function requireTutorScreened() {
+  requireAuth()
+  const raw = localStorage.getItem('sws_user')
+  if (!raw) throw redirect({ to: '/login' })
+  const user = JSON.parse(raw)
+  if (!user.is_tutor) {
+    // Not a tutor yet — send them to set up their profile first
+    throw redirect({ to: '/tutor-profile' })
+  }
+  if (user.screening_status !== 'approved') {
+    // Profile exists but awaiting review — let them see screening status & finish profile
+    throw redirect({ to: '/tutor-screening' })
+  }
+}
+
+function requirePremium() {
+  requireAuth()
+  const raw = localStorage.getItem('sws_user')
+  if (!raw) throw redirect({ to: '/login' })
+  const user = JSON.parse(raw)
+  // Approved tutors get all features free
+  if (user.is_tutor && user.screening_status === 'approved') return
+  if (user.is_premium) return
+  throw redirect({ to: '/membership' })
+}
+
 // ─── Public routes ────────────────────────────────────────────────────────────
 const indexRoute      = createRoute({ getParentRoute: () => rootRoute, path: '/',            component: Home })
 const loginRoute      = createRoute({ getParentRoute: () => rootRoute, path: '/login',       component: Login })
 const signupRoute     = createRoute({ getParentRoute: () => rootRoute, path: '/signup',      component: Signup })
 const aboutRoute      = createRoute({ getParentRoute: () => rootRoute, path: '/about',       component: AboutUs })
 const howItWorksRoute = createRoute({ getParentRoute: () => rootRoute, path: '/how-it-works',component: HowItWorks })
-const becomeRoute     = createRoute({ getParentRoute: () => rootRoute, path: '/become-tutor',component: BecomeATutor })
+const becomeRoute          = createRoute({ getParentRoute: () => rootRoute, path: '/become-tutor',     component: BecomeATutor })
+const foundingTutorsRoute  = createRoute({ getParentRoute: () => rootRoute, path: '/founding-tutors', component: FoundingTutors })
 
 // ─── Protected routes ─────────────────────────────────────────────────────────
 const hubRoute = createRoute({
@@ -95,7 +137,7 @@ const hubStudentRoute = createRoute({
 })
 const hubTutorRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/hub/tutor',
-  beforeLoad: requireAuth, component: HubTutor,
+  beforeLoad: requireTutorScreened, component: HubTutor,
 })
 const findTutorsRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/find-tutors',
@@ -119,7 +161,7 @@ const likedTutorsRoute = createRoute({
 })
 const activeStudentsRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/active-students',
-  beforeLoad: requireAuth, component: ActiveStudents,
+  beforeLoad: requireTutorScreened, component: ActiveStudents,
 })
 const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/dashboard',
@@ -131,27 +173,27 @@ const messagesRoute = createRoute({
 })
 const forumHomeRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/forum',
-  beforeLoad: requireAuth, component: ForumHome,
+  beforeLoad: requirePremium, component: ForumHome,
 })
 const forumCategoryRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/forum/category/$categoryId',
-  beforeLoad: requireAuth, component: ForumCategory,
+  beforeLoad: requirePremium, component: ForumCategory,
 })
 const forumThreadRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/forum/thread/$threadId',
-  beforeLoad: requireAuth, component: ForumThread,
+  beforeLoad: requirePremium, component: ForumThread,
 })
 const newThreadRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/forum/category/$categoryId/new',
-  beforeLoad: requireAuth, component: NewThread,
+  beforeLoad: requirePremium, component: NewThread,
 })
 const studyRoomsStudentRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/study-rooms/student',
-  beforeLoad: requireAuth, component: StudyRoomsStudent,
+  beforeLoad: requirePremium, component: StudyRoomsStudent,
 })
 const studyRoomsTutorRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/study-rooms/tutor',
-  beforeLoad: requireAuth, component: StudyRoomsTutor,
+  beforeLoad: requireTutorScreened, component: StudyRoomsTutor,
 })
 const calendarStudentRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/calendar/student',
@@ -159,7 +201,7 @@ const calendarStudentRoute = createRoute({
 })
 const calendarTutorRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/calendar/tutor',
-  beforeLoad: requireAuth, component: CalendarTutor,
+  beforeLoad: requireTutorScreened, component: CalendarTutor,
 })
 const paymentsRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/payments',
@@ -167,7 +209,7 @@ const paymentsRoute = createRoute({
 })
 const earningsRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/earnings',
-  beforeLoad: requireAuth, component: Earnings,
+  beforeLoad: requireTutorScreened, component: Earnings,
 })
 const eventsRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/events',
@@ -175,7 +217,7 @@ const eventsRoute = createRoute({
 })
 const classroomRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/classroom',
-  beforeLoad: requireAuth, component: Classroom,
+  beforeLoad: requirePremium, component: Classroom,
 })
 const xpRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/xp',
@@ -185,10 +227,30 @@ const membershipRoute = createRoute({
   getParentRoute: () => rootRoute, path: '/membership',
   beforeLoad: requireAuth, component: Membership,
 })
+const tutorScreeningRoute = createRoute({
+  getParentRoute: () => rootRoute, path: '/tutor-screening',
+  beforeLoad: requireAuth, component: TutorScreening,
+})
+const adminScreeningRoute = createRoute({
+  getParentRoute: () => rootRoute, path: '/admin',
+  component: AdminScreening,
+})
+const superAdminRoute = createRoute({
+  getParentRoute: () => rootRoute, path: '/superadmin',
+  beforeLoad: requireAdmin, component: SuperAdmin,
+})
+const studyNotesRoute = createRoute({
+  getParentRoute: () => rootRoute, path: '/study-notes',
+  beforeLoad: requirePremium, component: StudyNotes,
+})
+const studentProfileRoute = createRoute({
+  getParentRoute: () => rootRoute, path: '/student/$userId',
+  beforeLoad: requireAuth, component: StudentProfile,
+})
 
 // ─── Build router ─────────────────────────────────────────────────────────────
 const routeTree = rootRoute.addChildren([
-  indexRoute, loginRoute, signupRoute, aboutRoute, howItWorksRoute, becomeRoute,
+  indexRoute, loginRoute, signupRoute, aboutRoute, howItWorksRoute, becomeRoute, foundingTutorsRoute,
   hubRoute, hubStudentRoute, hubTutorRoute,
   findTutorsRoute, tutorInfoRoute, tutorProfileRoute, activeTutorsRoute, likedTutorsRoute,
   activeStudentsRoute, dashboardRoute,
@@ -197,6 +259,8 @@ const routeTree = rootRoute.addChildren([
   studyRoomsStudentRoute, studyRoomsTutorRoute,
   calendarStudentRoute, calendarTutorRoute,
   paymentsRoute, earningsRoute, eventsRoute, classroomRoute, xpRoute, membershipRoute,
+  tutorScreeningRoute, adminScreeningRoute, superAdminRoute, studyNotesRoute,
+  studentProfileRoute,
 ])
 
 export const router = createRouter({ routeTree })

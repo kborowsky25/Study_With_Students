@@ -1,230 +1,392 @@
+import { useState, useEffect } from 'react'
 import { Link } from '@tanstack/react-router'
 import Navbar from '../components/layout/Navbar'
 import Footer from '../components/layout/Footer'
 
-// Seamless inline SVG wave — no dead space, `from` colour flows into `to`
-function Wave({ from = '#1b263b', to = '#141d2e', flip = false }) {
-  const d = flip
-    ? 'M0,80 L0,32 C360,0 720,64 1080,32 C1260,14 1380,26 1440,32 L1440,80 Z'
-    : 'M0,0 L0,48 C360,80 720,16 1080,48 C1260,66 1380,55 1440,48 L1440,0 Z'
+const BG     = '#1b263b'
+const CORAL  = '#ff725e'
+const BORDER = 'rgba(255,255,255,0.08)'
+
+function useReveal() {
+  useEffect(() => {
+    const io = new IntersectionObserver(
+      entries => entries.forEach(e => {
+        if (e.isIntersecting) { e.target.classList.add('sws-vis'); io.unobserve(e.target) }
+      }),
+      { threshold: 0.08 }
+    )
+    document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el))
+    return () => io.disconnect()
+  }, [])
+}
+
+const GRID_STYLE = {
+  position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
+  backgroundImage: `
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)
+  `,
+  backgroundSize: '60px 60px',
+}
+
+function Wave({ flip }) {
   return (
-    <div style={{ background: to, lineHeight: 0, overflow: 'hidden', display: 'block' }}>
-      <svg viewBox="0 0 1440 80" preserveAspectRatio="none"
-        style={{ display: 'block', width: '100%', height: '80px' }}>
-        <path d={d} fill={from} />
+    <div aria-hidden="true" style={{ lineHeight: 0, overflow: 'hidden', transform: flip ? 'scaleY(-1)' : 'none' }}>
+      <svg viewBox="0 0 1440 56" preserveAspectRatio="none" style={{ width: '100%', height: '56px', display: 'block' }}>
+        <path d="M0,28 C360,56 1080,0 1440,28 L1440,56 L0,56 Z" fill="rgba(255,255,255,0.018)" />
+        <path d="M0,28 C360,56 1080,0 1440,28" fill="none" stroke={`${CORAL}16`} strokeWidth="1" />
       </svg>
     </div>
   )
 }
 
-const VALUE_CARDS = [
-  {
-    icon: 'payments',
-    title: 'Make Everything You Earn',
-    desc: 'Every penny students pay goes directly to you. 0% platform commission — always.',
-  },
-  {
-    icon: 'tune',
-    title: 'Set Your Own Rates',
-    desc: 'You decide what to charge. Set any hourly rate and update it whenever you like.',
-  },
-  {
-    icon: 'event_available',
-    title: 'Flexible and Reliable',
-    desc: 'Tutor on your schedule. Accept or decline session requests as they suit you.',
-  },
+// ── Earnings calculator ────────────────────────────────────────────────────────
+const SESSIONS = [
+  { n: 2,  weekly: 30,  monthly: 120,  annual: 1440  },
+  { n: 5,  weekly: 75,  monthly: 300,  annual: 3600  },
+  { n: 10, weekly: 150, monthly: 600,  annual: 7200  },
+  { n: 20, weekly: 300, monthly: 1200, annual: 14400 },
 ]
 
+function EarningsCalc() {
+  const [sel, setSel] = useState(1)
+  const row = SESSIONS[sel]
+
+  return (
+    <div>
+      <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.45)', marginBottom: '14px', fontWeight: 600 }}>
+        Sessions per week (at £15/hr avg)
+      </p>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '28px', flexWrap: 'wrap' }}>
+        {SESSIONS.map((s, i) => (
+          <button key={i} onClick={() => setSel(i)} style={{
+            padding: '9px 22px', borderRadius: '9px', cursor: 'pointer',
+            fontWeight: 700, fontSize: '14px', border: 'none',
+            background: sel === i ? CORAL : 'rgba(255,255,255,0.07)',
+            color: sel === i ? 'white' : 'rgba(255,255,255,0.50)',
+            transition: 'all 0.15s',
+            boxShadow: sel === i ? `0 4px 14px ${CORAL}35` : 'none',
+          }}>
+            {s.n}x
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', background: BORDER, borderRadius: '14px', overflow: 'hidden', border: `1px solid ${BORDER}` }}>
+        {[
+          { label: 'Per week',  val: `£${row.weekly}` },
+          { label: 'Per month', val: `£${row.monthly}` },
+          { label: 'Per year',  val: `£${row.annual.toLocaleString()}` },
+        ].map(({ label, val }) => (
+          <div key={label} style={{ background: BG, padding: '24px 16px', textAlign: 'center' }}>
+            <div style={{ fontSize: 'clamp(22px, 3vw, 32px)', fontWeight: 900, color: CORAL, lineHeight: 1, letterSpacing: '-0.03em' }}>{val}</div>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.38)', marginTop: '6px' }}>{label}</div>
+          </div>
+        ))}
+      </div>
+
+      <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.24)', marginTop: '14px', textAlign: 'center' }}>
+        0% goes to us — you keep every pound, every time.
+      </p>
+    </div>
+  )
+}
+
+// ── Steps ──────────────────────────────────────────────────────────────────────
 const STEPS = [
-  {
-    n: '1',
-    heading: 'Create an account\nand log in',
-    icon: 'person_add',
-  },
-  {
-    n: '2',
-    heading: 'Verify your account\nand put your info',
-    icon: 'verified',
-  },
-  {
-    n: '3',
-    heading: 'Start Tutoring\nand start making your nights out easier',
-    icon: 'school',
-  },
+  { n:'01', icon:'person_add',             title:'Sign up free',        desc:'Email only. No card, no waiting list.' },
+  { n:'02', icon:'verified',               title:'Verify your uni',     desc:'Submit proof of enrolment. Takes 1 min.' },
+  { n:'03', icon:'edit_note',              title:'Build your profile',  desc:'Subjects, rate, bio. Takes 5 mins.' },
+  { n:'04', icon:'account_balance_wallet', title:'Connect Stripe',      desc:'Set up payouts once. Done forever.' },
+  { n:'05', icon:'explore',               title:'Go live',              desc:'Profile instantly visible to students.' },
+  { n:'06', icon:'payments',              title:'Get paid 100%',        desc:'Full rate, every session. Always.' },
+]
+
+// ── Perks ──────────────────────────────────────────────────────────────────────
+const PERKS = [
+  { icon: 'schedule',     text: 'Teach when you want' },
+  { icon: 'tune',         text: 'Set your own rate' },
+  { icon: 'groups',       text: 'Host study rooms' },
+  { icon: 'emoji_events', text: 'Earn XP & level up' },
+  { icon: 'star_rate',    text: 'Build reviews & rep' },
+  { icon: 'chat',         text: 'Message before booking' },
 ]
 
 export default function BecomeATutor() {
+  useReveal()
+
   return (
-    <div style={{ minHeight: '100vh', background: '#1b263b', color: 'white', overflowX: 'hidden' }}>
+    <div style={{ background: BG, minHeight: '100vh', color: 'white', fontFamily: 'inherit' }}>
+      <style>{`
+        [data-reveal]{opacity:0;transform:translateY(18px);transition:opacity 0.6s cubic-bezier(0.16,1,0.3,1),transform 0.6s cubic-bezier(0.16,1,0.3,1)}
+        [data-reveal].sws-vis{opacity:1;transform:translateY(0)}
+        [data-reveal][data-d="1"]{transition-delay:.10s}[data-reveal][data-d="2"]{transition-delay:.20s}
+        [data-reveal][data-d="3"]{transition-delay:.30s}[data-reveal][data-d="4"]{transition-delay:.40s}
+      `}</style>
       <Navbar />
 
-      {/* ── Hero: title + steps + space.svg ─────────────────────────── */}
-      <section style={{ padding: '40px 32px 36px', maxWidth: '1200px', margin: '0 auto' }}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '64px',
-            alignItems: 'center',
-          }}
-        >
-          {/* Left: badge + title + 3-step process + CTA */}
-          <div className="animate-slide-up">
-            {/* Badge */}
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: '8px',
-              background: 'rgba(255,114,94,0.10)', border: '1px solid rgba(255,114,94,0.22)',
-              borderRadius: '40px', padding: '6px 16px', marginBottom: '22px',
-            }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#ff725e' }}>school</span>
-              <span style={{ color: '#ff725e', fontSize: '13px', fontWeight: '600' }}>Join 500+ peer tutors</span>
-            </div>
+      {/* ── HERO — 0% COMMISSION ───────────────────────────────────────────── */}
+      <section style={{ position: 'relative', overflow: 'hidden', padding: '96px 24px 88px', textAlign: 'center', borderBottom: `1px solid ${BORDER}` }}>
+        <div aria-hidden style={GRID_STYLE} />
+        <div aria-hidden style={{
+          position: 'absolute', inset: 0,
+          WebkitMaskImage: 'radial-gradient(ellipse 70% 80% at 50% 50%, black 20%, transparent 80%)',
+          maskImage: 'radial-gradient(ellipse 70% 80% at 50% 50%, black 20%, transparent 80%)',
+          ...GRID_STYLE
+        }} />
+        <div aria-hidden style={{
+          position: 'absolute', top: '50%', left: '50%',
+          transform: 'translate(-50%,-50%)',
+          width: '600px', height: '500px',
+          background: `radial-gradient(ellipse, ${CORAL}08 0%, transparent 65%)`,
+          pointerEvents: 'none',
+        }} />
 
-            {/* Title */}
-            <h1 style={{
-              fontSize: 'clamp(32px, 4.5vw, 54px)',
-              fontWeight: 900,
-              lineHeight: 1.1,
-              marginBottom: '44px',
-            }}>
-              Want to become<br />a <span style={{ color: '#ff725e' }}>tutor?</span>
-            </h1>
+        <div style={{ position: 'relative', zIndex: 1, maxWidth: '600px', margin: '0 auto' }}>
+          <p data-reveal style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: CORAL, marginBottom: '24px' }}>
+            Become a tutor
+          </p>
 
-            {/* 3-step process with horizontal connecting line */}
-            <div style={{ position: 'relative' }}>
-              {/* Connecting line */}
-              <div style={{
-                position: 'absolute',
-                top: '20px',
-                left: '20px',
-                right: '20px',
-                height: '2px',
-                background: 'linear-gradient(90deg, #ff725e 0%, rgba(255,114,94,0.25) 100%)',
-                zIndex: 0,
-              }} />
-
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: '10px',
-                position: 'relative',
-                zIndex: 1,
-              }}>
-                {STEPS.map(({ n, heading }) => (
-                  <div
-                    key={n}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      textAlign: 'center',
-                      gap: '12px',
-                    }}
-                  >
-                    {/* Number circle */}
-                    <div style={{
-                      width: '42px', height: '42px', borderRadius: '50%',
-                      background: '#ff725e',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontWeight: 900, fontSize: '18px', color: 'white', flexShrink: 0,
-                      boxShadow: '0 4px 16px rgba(255,114,94,0.45)',
-                    }}>
-                      {n}
-                    </div>
-                    <p style={{
-                      fontSize: '12px',
-                      color: 'rgba(255,255,255,0.60)',
-                      lineHeight: 1.5,
-                      whiteSpace: 'pre-line',
-                    }}>
-                      {heading}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <Link
-              to="/signup"
-              className="btn-primary"
-              style={{ marginTop: '36px', display: 'inline-block', fontSize: '16px', padding: '14px 32px' }}
-            >
-              Become a tutor →
-            </Link>
+          {/* Giant 0% */}
+          <div data-reveal data-d="1" style={{
+            fontSize: 'clamp(96px, 15vw, 160px)',
+            fontWeight: 900,
+            color: CORAL,
+            lineHeight: 1,
+            letterSpacing: '-0.05em',
+            marginBottom: '0',
+          }}>
+            0%
           </div>
 
-          {/* Right: space.svg illustration */}
-          <div
-            className="animate-scale-in delay-200"
-            style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}
-          >
-            <img
-              src="/static/images/becometutor/space.svg"
-              alt="Tutor in space"
-              className="animate-float"
-              style={{ width: '100%', maxWidth: '440px' }}
-            />
+          <h1 data-reveal data-d="2" style={{
+            fontSize: 'clamp(20px, 3vw, 28px)',
+            fontWeight: 800,
+            margin: '8px 0 20px',
+            letterSpacing: '-0.02em',
+            color: 'white',
+          }}>
+            Platform commission
+          </h1>
+
+          <p data-reveal data-d="2" style={{
+            color: 'rgba(255,255,255,0.50)',
+            fontSize: '16px',
+            maxWidth: '440px',
+            margin: '0 auto 32px',
+            lineHeight: 1.7,
+          }}>
+            Your rate is your income. No setup fee, no monthly charge, no per-session cut. Not now, not later.
+          </p>
+
+          {/* Three checks */}
+          <div data-reveal data-d="3" style={{ display: 'flex', gap: '24px', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '40px' }}>
+            {['No setup fee', 'No monthly charge', 'No per-session cut'].map(label => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#22c55e' }}>check_circle</span>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.72)' }}>{label}</span>
+              </div>
+            ))}
+          </div>
+
+          <div data-reveal data-d="4">
+            <Link to="/signup" style={{
+              display: 'inline-block', background: CORAL, color: 'white',
+              padding: '14px 32px', borderRadius: '10px', fontWeight: 700,
+              fontSize: '15px', textDecoration: 'none',
+              boxShadow: `0 4px 20px ${CORAL}38`,
+            }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            >
+              Start tutoring for free
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* ── Wave → Value cards (inline SVG, no dead space) ───────────── */}
-      <Wave from="#1b263b" to="#141d2e" />
+      <Wave />
 
-      {/* ── Value cards ───────────────────────────────────────────────── */}
-      <section style={{ padding: '80px 32px', background: '#141d2e' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '52px' }}>
-            <h2 className="section-title">Why tutor with us?</h2>
-            <p className="section-sub">Everything you need, nothing you don't</p>
+      {/* ── EARNINGS CALCULATOR ────────────────────────────────────────────── */}
+      <section style={{ padding: '88px 24px', position: 'relative', overflow: 'hidden' }}>
+        <div aria-hidden style={{
+          ...GRID_STYLE,
+          WebkitMaskImage: 'radial-gradient(ellipse 100% 100% at 100% 50%, black 0%, transparent 60%)',
+          maskImage: 'radial-gradient(ellipse 100% 100% at 100% 50%, black 0%, transparent 60%)',
+        }} />
+        <div style={{ maxWidth: '860px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center', position: 'relative', zIndex: 1 }}>
+          <div>
+            <p data-reveal style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '14px' }}>What you could earn</p>
+            <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(26px, 3.5vw, 38px)', fontWeight: 900, margin: '0 0 16px', letterSpacing: '-0.03em', lineHeight: 1.1 }}>
+              Real income.<br />Zero cuts.
+            </h2>
+            <p data-reveal data-d="2" style={{ color: 'rgba(255,255,255,0.48)', fontSize: '15px', lineHeight: 1.75, margin: 0 }}>
+              Every pound you charge goes directly to you. Set your own rate, teach on your own schedule, and build a real income around your studies.
+            </p>
+          </div>
+          <div data-reveal data-d="2">
+            <EarningsCalc />
+          </div>
+        </div>
+      </section>
+
+      <Wave flip />
+
+      {/* ── WHAT WE NEED FROM YOU ──────────────────────────────────────────── */}
+      <section style={{ padding: '88px 24px', borderTop: `1px solid ${BORDER}` }}>
+        <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+          <p data-reveal style={{ textAlign: 'center', fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '14px' }}>Before you apply</p>
+          <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(22px, 3vw, 30px)', fontWeight: 800, textAlign: 'center', margin: '0 0 44px', letterSpacing: '-0.02em' }}>
+            What we need from you
+          </h2>
+
+          {/* Single requirement */}
+          <div data-reveal data-d="2" style={{
+            display: 'flex', gap: '18px', alignItems: 'center',
+            padding: '24px 28px',
+            background: `${CORAL}08`,
+            border: `1px solid ${CORAL}25`,
+            borderRadius: '16px',
+            marginBottom: '16px',
+          }}>
+            <div style={{
+              width: '48px', height: '48px', borderRadius: '12px',
+              background: `${CORAL}18`, border: `1px solid ${CORAL}30`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '22px', color: CORAL }}>school</span>
+            </div>
+            <div>
+              <div style={{ fontSize: '15px', fontWeight: 800, marginBottom: '4px' }}>
+                Proof of enrolment at a university
+              </div>
+              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.55 }}>
+                A valid .ac.uk email address or an enrolment letter. We verify every tutor to protect students.
+              </div>
+            </div>
+            <div style={{
+              fontSize: '10px', fontWeight: 800, color: CORAL,
+              background: `${CORAL}15`, border: `1px solid ${CORAL}30`,
+              padding: '4px 10px', borderRadius: '20px',
+              flexShrink: 0,
+            }}>
+              Required
+            </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-            {VALUE_CARDS.map(({ icon, title, desc }, i) => (
+          {/* Not a uni student? */}
+          <div data-reveal data-d="3" style={{
+            padding: '20px 24px',
+            background: 'rgba(255,255,255,0.025)',
+            border: `1px solid ${BORDER}`,
+            borderRadius: '14px',
+          }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'rgba(255,255,255,0.40)', marginTop: '1px', flexShrink: 0 }}>help_outline</span>
+              <div>
+                <p style={{ fontSize: '14px', fontWeight: 700, margin: '0 0 6px', color: 'rgba(255,255,255,0.80)' }}>
+                  Not a university student?
+                </p>
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.7, margin: '0 0 12px' }}>
+                  No worries — Study With Students is primarily built to help university students earn money and combat rising student loan costs. But if you've graduated or studied at a recognised institution,{' '}
+                  <Link to="/contact" style={{ color: CORAL, fontWeight: 700, textDecoration: 'none' }}
+                    onMouseEnter={e => e.currentTarget.style.opacity = '0.75'}
+                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                  >
+                    contact us here
+                  </Link>
+                  {' '}with where you studied and we'll see if we can get you on the platform.
+                </p>
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.28)', fontStyle: 'italic' }}>
+                  We review these case-by-case.
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <Wave />
+
+      {/* ── HOW TO GET STARTED ─────────────────────────────────────────────── */}
+      <section style={{ padding: '88px 24px', position: 'relative', overflow: 'hidden' }}>
+        <div aria-hidden style={{
+          ...GRID_STYLE,
+          WebkitMaskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%)',
+          maskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%)',
+        }} />
+        <div style={{ maxWidth: '860px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+          <p data-reveal style={{ textAlign: 'center', fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '14px' }}>Getting started</p>
+          <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(22px, 3vw, 30px)', fontWeight: 800, textAlign: 'center', margin: '0 0 48px', letterSpacing: '-0.02em' }}>
+            Six steps. Under 10 minutes.
+          </h2>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+            {STEPS.map((step, i) => (
               <div
-                key={title}
-                className={`glass-hover animate-slide-up delay-${(i + 1) * 200}`}
-                style={{ padding: '36px 26px', textAlign: 'center' }}
+                key={step.n}
+                data-reveal
+                data-d={String((i % 3) + 1)}
+                style={{
+                  padding: '22px', background: 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${BORDER}`, borderRadius: '14px',
+                  transition: 'border-color 0.2s, box-shadow 0.2s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = `${CORAL}30`; e.currentTarget.style.boxShadow = `0 6px 24px ${CORAL}08` }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.boxShadow = 'none' }}
               >
-                <div style={{
-                  width: '64px', height: '64px', borderRadius: '22px',
-                  background: 'rgba(255,114,94,0.12)', border: '1px solid rgba(255,114,94,0.22)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  margin: '0 auto 18px',
-                }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '34px', color: '#ff725e' }}>{icon}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: `${CORAL}18`, border: `1px solid ${CORAL}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 900, color: CORAL, flexShrink: 0 }}>{step.n}</div>
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px', color: CORAL }}>{step.icon}</span>
                 </div>
-                <h3 style={{ fontWeight: 700, fontSize: '18px', color: 'white', marginBottom: '10px' }}>{title}</h3>
-                <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: '14px', lineHeight: 1.65 }}>{desc}</p>
+                <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '5px' }}>{step.title}</div>
+                <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.55 }}>{step.desc}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Stats row ─────────────────────────────────────────────────── */}
-      <section style={{ padding: '64px 32px', maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
-          {[['0%', 'Platform fee'], ['100%', 'Goes to tutors'], ['∞', 'Scale possible']].map(([val, label]) => (
-            <div key={label}>
-              <p style={{ fontSize: 'clamp(36px, 5vw, 52px)', fontWeight: 900, color: '#ff725e', lineHeight: 1.1 }}>{val}</p>
-              <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '14px', marginTop: '6px' }}>{label}</p>
-            </div>
-          ))}
+      <Wave flip />
+
+      {/* ── PERKS STRIP ────────────────────────────────────────────────────── */}
+      <section style={{ padding: '64px 24px', borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
+        <div style={{ maxWidth: '860px', margin: '0 auto' }}>
+          <p data-reveal style={{ textAlign: 'center', fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '36px' }}>More than tutoring</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
+            {PERKS.map((p, i) => (
+              <div
+                key={p.text}
+                data-reveal
+                data-d={String((i % 3) + 1)}
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 18px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${BORDER}`, borderRadius: '40px', transition: 'border-color 0.2s, background 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = `${CORAL}35`; e.currentTarget.style.background = `${CORAL}08` }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: '16px', color: CORAL }}>{p.icon}</span>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.70)', whiteSpace: 'nowrap' }}>{p.text}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* ── Final CTA ─────────────────────────────────────────────────── */}
-      <section style={{ padding: '60px 24px 80px', textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
-        <h2 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 900, color: 'white', marginBottom: '14px' }}>
-          Ready to start <span style={{ color: '#ff725e' }}>teaching?</span>
-        </h2>
-        <p style={{ color: 'rgba(255,255,255,0.52)', fontSize: '16px', marginBottom: '28px' }}>
-          Set up your tutor profile in under 5 minutes. No fees, no contracts.
-        </p>
-        <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link to="/signup" className="btn-primary"   style={{ fontSize: '16px', padding: '13px 32px' }}>Create account</Link>
-          <Link to="/login"  className="btn-secondary" style={{ fontSize: '16px', padding: '13px 32px' }}>Already a member?</Link>
+      {/* ── CTA ──────────────────────────────────────────────────────────────── */}
+      <section style={{ padding: '88px 24px 96px' }}>
+        <div data-reveal style={{ maxWidth: '860px', margin: '0 auto', padding: '52px', background: 'rgba(255,255,255,0.02)', border: `1px solid ${BORDER}`, borderRadius: '20px', textAlign: 'center' }}>
+          <h3 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 10px', letterSpacing: '-0.02em' }}>Ready to start?</h3>
+          <p style={{ color: 'rgba(255,255,255,0.42)', fontSize: '14px', margin: '0 0 28px' }}>Free account. No card. Up in minutes.</p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link to="/signup" style={{ background: CORAL, color: 'white', padding: '13px 28px', borderRadius: '10px', fontWeight: 700, fontSize: '14px', textDecoration: 'none', boxShadow: `0 4px 16px ${CORAL}30` }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            >Create your tutor profile</Link>
+            <Link to="/how-it-works" style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, color: 'rgba(255,255,255,0.70)', padding: '13px 28px', borderRadius: '10px', fontWeight: 600, fontSize: '14px', textDecoration: 'none' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.09)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+            >How it works</Link>
+          </div>
         </div>
       </section>
 

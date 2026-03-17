@@ -4,7 +4,6 @@ import { getLikedTutors, likeTutor, requestTutor, getActiveTutors, getTutorReque
 import HubLayout from '../components/layout/HubLayout'
 import { PageTitle } from '../context/PageTitleContext'
 import TutorCard from '../components/features/TutorCard'
-import PageHeader from '../components/features/PageHeader'
 import toast from 'react-hot-toast'
 
 export default function LikedTutors() {
@@ -50,18 +49,6 @@ export default function LikedTutors() {
   return (
     <HubLayout>
       <PageTitle title="Saved Tutors" icon="favorite" />
-      <PageHeader
-        icon="favorite"
-        iconColor="#ff725e"
-        title="Liked Tutors"
-        subtitle={`${loading ? '…' : tutors.length} saved`}
-        right={
-          <Link to="/find-tutors" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>explore</span>
-            Explore more
-          </Link>
-        }
-      />
 
       {loading ? (
         <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
