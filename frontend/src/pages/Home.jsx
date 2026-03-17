@@ -118,64 +118,51 @@ function HeroCanvas({ pillRef, onGlow }) {
       }
     }
 
+    // Navbar height — the dot runs along the bottom edge of the navbar
+    const NAVBAR_Y = 64;
+    let spawnFromLeft = true;
+
     class Dot {
-      constructor() {
+      constructor(fromLeft) {
         this.trail = [];
-        this.waiting = false;
-        this.phase = 'right'; // right → left → down → glow
-        this.x = 0;
-        this.y = GRID; // travel along first grid row (below navbar)
+        this.alive = true;
+        this.fromLeft = fromLeft;
+        this.x = fromLeft ? 0 : canvas.width;
+        this.y = NAVBAR_Y;
       }
-      spawn() {
-        this.trail = [];
-        this.waiting = false;
-        this.phase = 'right';
-        this.x = 0;
-        this.y = GRID;
-      }
-      getTarget() {
-        if (!pillRef.current) return { tx: canvas.width / 2, ty: canvas.height / 2 };
+      getPillX() {
+        if (!pillRef.current) return canvas.width / 2;
         const cr = canvas.getBoundingClientRect();
         const pr = pillRef.current.getBoundingClientRect();
-        return {
-          tx: pr.left - cr.left + pr.width / 2,
-          ty: pr.top - cr.top + pr.height / 2,
-        };
+        return pr.left - cr.left + pr.width / 2;
       }
       update() {
-        if (this.waiting) return;
-        const { tx, ty } = this.getTarget();
-        const pillCol = Math.round(tx / GRID) * GRID;
+        if (!this.alive) return;
+        const pillX = this.getPillX();
 
-        if (this.phase === 'right') {
+        if (this.fromLeft) {
           this.x += SPEED;
-          if (this.x >= canvas.width - GRID) {
-            this.x = canvas.width - GRID;
-            this.phase = 'left';
-          }
-        } else if (this.phase === 'left') {
-          this.x -= SPEED;
-          if (this.x <= pillCol) {
-            this.x = pillCol;
-            this.phase = 'down';
-          }
-        } else if (this.phase === 'down') {
-          const dy = ty - this.y;
-          if (Math.abs(dy) < 6) {
+          if (this.x >= pillX) {
+            this.alive = false;
             onGlow?.();
-            this.waiting = true;
-            setTimeout(() => this.spawn(), 1600);
+            setTimeout(() => { spawnFromLeft = !spawnFromLeft; dot = new Dot(spawnFromLeft); }, 1400);
             return;
           }
-          this.y += Math.sign(dy) * SPEED;
-          // Soft-snap x to pill column while dropping
-          this.x += (pillCol - this.x) * 0.12;
+        } else {
+          this.x -= SPEED;
+          if (this.x <= pillX) {
+            this.alive = false;
+            onGlow?.();
+            setTimeout(() => { spawnFromLeft = !spawnFromLeft; dot = new Dot(spawnFromLeft); }, 1400);
+            return;
+          }
         }
 
         this.trail.push({ x: this.x, y: this.y });
         if (this.trail.length > 28) this.trail.shift();
       }
       draw() {
+        if (!this.alive && this.trail.length === 0) return;
         for (let i = 0; i < this.trail.length; i++) {
           const t = this.trail[i];
           const alpha = (i / this.trail.length) * 0.45;
@@ -184,17 +171,19 @@ function HeroCanvas({ pillRef, onGlow }) {
           ctx.fillStyle = `rgba(255,114,94,${alpha})`;
           ctx.fill();
         }
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
-        ctx.fillStyle = CORAL;
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = CORAL;
-        ctx.fill();
-        ctx.shadowBlur = 0;
+        if (this.alive) {
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+          ctx.fillStyle = CORAL;
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = CORAL;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
       }
     }
 
-    dot = new Dot();
+    dot = new Dot(spawnFromLeft);
 
     const loop = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -453,85 +442,75 @@ function PreviewMessages() {
 
 // ── Feature card with hover-reveal ────────────────────────────────────────────
 function FeatureCard({ icon, title, desc, preview, delay, badge, from }) {
-  const [hovered, setHovered] = useState(false);
-  const hasPreview = Boolean(preview);
+  const isExplorer = badge === "EXPLORER";
+  const borderColor = isExplorer ? `${CORAL}45` : "rgba(255,255,255,0.22)";
+  const hoverBorder = isExplorer ? `${CORAL}70` : "rgba(255,255,255,0.42)";
 
   return (
     <div
       data-reveal
       data-d={delay}
       data-from={from}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        background: hovered ? `${CORAL}07` : "rgba(255,255,255,0.03)",
-        border: `1px solid ${hovered ? CORAL + "30" : BORDER}`,
-        borderRadius: "14px",
-        padding: "22px",
-        transition: "border-color 0.25s, background 0.25s, box-shadow 0.25s",
-        position: "relative",
-        overflow: "hidden",
-        boxShadow: hovered ? `0 8px 28px ${CORAL}10` : "none",
-        minHeight: hasPreview ? "220px" : "auto",
-        cursor: hasPreview ? "pointer" : "default",
-      }}
+      className="flip-card"
+      style={{ perspective: "1000px", minHeight: "190px", cursor: "pointer" }}
     >
-      {badge && (
-        <div
-          style={{
-            position: "absolute", top: "12px", right: "12px",
-            background: badge === "EXPLORER" ? `${CORAL}22` : "rgba(255,255,255,0.10)",
-            color: badge === "EXPLORER" ? CORAL : "rgba(255,255,255,0.55)",
-            fontSize: "9px", fontWeight: "800", padding: "2px 7px", borderRadius: "20px", letterSpacing: "0.06em",
-          }}
+      <style>{`
+        .flip-card:hover .flip-inner { transform: rotateY(180deg); }
+        .flip-inner {
+          position: relative; width: 100%; height: 100%;
+          transform-style: preserve-3d;
+          transition: transform 0.55s cubic-bezier(0.4,0,0.2,1);
+        }
+        .flip-front, .flip-back {
+          position: absolute; inset: 0;
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+          border-radius: 14px;
+          overflow: hidden;
+        }
+        .flip-back { transform: rotateY(180deg); }
+      `}</style>
+      <div className="flip-inner" style={{ height: "190px" }}>
+        {/* Front */}
+        <div className="flip-front" style={{
+          background: isExplorer ? `linear-gradient(135deg, ${CORAL}08, ${CORAL}03)` : "rgba(255,255,255,0.03)",
+          border: `1px solid ${borderColor}`,
+          padding: "18px",
+          display: "flex", flexDirection: "column",
+        }}
+          onMouseEnter={e => e.currentTarget.style.borderColor = hoverBorder}
+          onMouseLeave={e => e.currentTarget.style.borderColor = borderColor}
         >
-          {badge}
+          {badge && (
+            <div style={{
+              alignSelf: "flex-start", marginBottom: "14px",
+              background: isExplorer ? `${CORAL}22` : "rgba(255,255,255,0.08)",
+              color: isExplorer ? CORAL : "rgba(255,255,255,0.55)",
+              fontSize: "9px", fontWeight: "800", padding: "3px 8px", borderRadius: "20px", letterSpacing: "0.06em",
+            }}>
+              {badge}
+            </div>
+          )}
+          <span className="material-symbols-outlined" style={{ fontSize: "24px", color: CORAL, marginBottom: "12px" }}>{icon}</span>
+          <h3 style={{ fontSize: "14px", fontWeight: "700", margin: "0 0 8px", letterSpacing: "-0.01em" }}>{title}</h3>
+          <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.48)", margin: "0 0 auto", lineHeight: 1.6 }}>{desc}</p>
+          <p style={{ fontSize: "10px", color: `${CORAL}65`, marginTop: "12px", fontWeight: 600 }}>Hover to preview →</p>
         </div>
-      )}
-
-      <span
-        className="material-symbols-outlined"
-        style={{
-          fontSize: "22px", color: CORAL, display: "block", marginBottom: "12px",
-          transition: "transform 0.3s", transform: hovered ? "scale(1.12)" : "scale(1)",
-        }}
-      >
-        {icon}
-      </span>
-
-      <h3 style={{ fontSize: "14px", fontWeight: "700", margin: "0 0 7px", letterSpacing: "-0.01em" }}>
-        {title}
-      </h3>
-
-      <div
-        style={{
-          opacity: hovered && hasPreview ? 0 : 1,
-          transform: hovered && hasPreview ? "translateY(6px)" : "translateY(0)",
-          transition: "opacity 0.25s, transform 0.25s",
-        }}
-      >
-        <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.48)", margin: 0, lineHeight: 1.6 }}>{desc}</p>
-        {hasPreview && (
-          <p style={{ fontSize: "10px", color: `${CORAL}70`, marginTop: "10px", fontWeight: 600 }}>Hover to preview →</p>
-        )}
+        {/* Back — full preview */}
+        <div className="flip-back" style={{
+          background: isExplorer ? `linear-gradient(135deg, ${CORAL}12, ${CORAL}05)` : "rgba(255,255,255,0.05)",
+          border: `1px solid ${isExplorer ? CORAL + "50" : "rgba(255,255,255,0.28)"}`,
+          padding: "18px",
+          overflow: "auto",
+        }}>
+          {preview || (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "8px" }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "28px", color: CORAL }}>{icon}</span>
+              <span style={{ fontSize: "13px", fontWeight: 700 }}>{title}</span>
+            </div>
+          )}
+        </div>
       </div>
-
-      {hasPreview && (
-        <div
-          style={{
-            position: "absolute", inset: 0, padding: "22px",
-            opacity: hovered ? 1 : 0,
-            transform: hovered ? "translateY(0)" : "translateY(8px)",
-            transition: "opacity 0.3s, transform 0.3s",
-            pointerEvents: hovered ? "auto" : "none",
-            overflow: "hidden",
-          }}
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: "22px", color: CORAL, display: "block", marginBottom: "12px" }}>{icon}</span>
-          <h3 style={{ fontSize: "14px", fontWeight: "700", margin: "0 0 0", letterSpacing: "-0.01em" }}>{title}</h3>
-          {preview}
-        </div>
-      )}
     </div>
   );
 }
@@ -709,120 +688,123 @@ function PricingSection() {
   );
 }
 
-// ── Why £2 section — orbital UNICEF design ────────────────────────────────────
+/// ── Why £2 section — two-column: bio left, solar system right ───────────────────
 function WhyTwoPounds() {
   return (
-    <section style={{ padding: "100px 24px", borderTop: `1px solid ${BORDER}`, overflow: "hidden" }}>
+    <section style={{ padding: "100px 24px", borderTop: `1px solid ${BORDER}` }}>
       <style>{`
-        @keyframes orbit1 {
-          from { transform: rotate(0deg)   translateX(155px) rotate(0deg); }
-          to   { transform: rotate(360deg) translateX(155px) rotate(-360deg); }
+        @keyframes orbitA {
+          from { transform: rotate(0deg)   translateX(88px) rotate(0deg); }
+          to   { transform: rotate(360deg) translateX(88px) rotate(-360deg); }
         }
-        @keyframes orbit2 {
-          from { transform: rotate(180deg)   translateX(205px) rotate(-180deg); }
-          to   { transform: rotate(540deg)   translateX(205px) rotate(-540deg); }
+        @keyframes orbitB {
+          from { transform: rotate(90deg)  translateX(134px) rotate(-90deg); }
+          to   { transform: rotate(450deg) translateX(134px) rotate(-450deg); }
         }
-        @keyframes unicefPulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(1,152,218,0.3), 0 0 32px rgba(1,152,218,0.12); }
-          50%       { box-shadow: 0 0 0 12px rgba(1,152,218,0), 0 0 48px rgba(1,152,218,0.22); }
+        @keyframes orbitC {
+          from { transform: rotate(220deg) translateX(170px) rotate(-220deg); }
+          to   { transform: rotate(580deg) translateX(170px) rotate(-580deg); }
         }
+        @keyframes solarPulse {
+          0%,100% { box-shadow: 0 0 0 0 ${CORAL}40, 0 0 40px ${CORAL}18; }
+          50%      { box-shadow: 0 0 0 16px ${CORAL}00, 0 0 60px ${CORAL}30; }
+        }
+        @keyframes ringPulse {
+          0%,100% { opacity: 0.35; }
+          50%      { opacity: 0.70; }
+        }
+        .planet-dot { border-radius: 50%; display: flex; align-items: center; justify-content: center; }
       `}</style>
-      <div style={{ maxWidth: "900px", margin: "0 auto" }}>
-        <p data-reveal style={{ textAlign: "center", fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.14em", color: CORAL, marginBottom: "14px" }}>
-          The honest answer
-        </p>
-        <h2 data-reveal data-d="1" style={{ fontSize: "clamp(26px, 3.5vw, 38px)", fontWeight: "800", textAlign: "center", margin: "0 0 16px", letterSpacing: "-0.02em" }}>
-          Why do we charge £2?
-        </h2>
-        <p data-reveal data-d="2" style={{ textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: "16px", margin: "0 auto 64px", lineHeight: 1.7, maxWidth: "540px" }}>
-          We charge £2 for those who believe in our mission and want to be part of this community.
-        </p>
+      <div style={{ maxWidth: "960px", margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "80px", alignItems: "center" }}>
 
-        {/* Orbital system */}
-        <div data-reveal data-d="3" style={{ position: "relative", height: "480px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {/* Left — bio */}
+        <div>
+          <p data-reveal style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.14em", color: CORAL, marginBottom: "14px" }}>
+            The honest answer
+          </p>
+          <h2 data-reveal data-d="1" style={{ fontSize: "clamp(26px, 3.2vw, 36px)", fontWeight: "900", margin: "0 0 20px", letterSpacing: "-0.025em", lineHeight: 1.1 }}>
+            Why do we charge £2?
+          </h2>
+          <p data-reveal data-d="2" style={{ color: "rgba(255,255,255,0.52)", fontSize: "15px", lineHeight: 1.75, margin: "0 0 16px" }}>
+            The £2/month Explorer Plan keeps the platform running — servers, development, maintenance — without ads or selling your data.
+          </p>
+          <p data-reveal data-d="3" style={{ color: "rgba(255,255,255,0.52)", fontSize: "15px", lineHeight: 1.75, margin: "0 0 28px" }}>
+            Half of every subscription goes directly to UNICEF's education programmes. You learn. Kids worldwide get access to learning too.
+          </p>
+          <div data-reveal data-d="3" style={{
+            display: "inline-flex", alignItems: "center", gap: "12px",
+            background: "rgba(1,102,172,0.10)", border: "1px solid rgba(1,152,218,0.28)",
+            borderRadius: "14px", padding: "12px 18px",
+          }}>
+            <span style={{ fontSize: "24px" }}>🌍</span>
+            <div>
+              <div style={{ fontSize: "12px", fontWeight: "800", color: "#0198da", marginBottom: "2px" }}>UNICEF Partner</div>
+              <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.42)" }}>Learning for every child</div>
+            </div>
+          </div>
+        </div>
 
-          {/* Orbit ring 1 */}
-          <div aria-hidden="true" style={{
-            position: "absolute", width: "310px", height: "310px", borderRadius: "50%",
-            border: "1px solid rgba(1,152,218,0.18)",
-            pointerEvents: "none",
-          }} />
-          {/* Orbit ring 2 */}
-          <div aria-hidden="true" style={{
-            position: "absolute", width: "410px", height: "410px", borderRadius: "50%",
-            border: "1px solid rgba(255,255,255,0.06)",
-            pointerEvents: "none",
-          }} />
+        {/* Right — solar system */}
+        <div data-reveal data-d="2" style={{ position: "relative", height: "400px", display: "flex", alignItems: "center", justifyContent: "center" }}>
 
-          {/* Center — UNICEF */}
+          {/* Glowing orbit rings */}
+          {[180, 270, 344].map((size, i) => (
+            <div key={size} aria-hidden style={{
+              position: "absolute", width: `${size}px`, height: `${size}px`,
+              borderRadius: "50%",
+              border: `1px solid ${i === 0 ? `${CORAL}30` : `rgba(255,255,255,${i === 1 ? "0.08" : "0.05"})`}`,
+              animation: `ringPulse ${3.5 + i * 0.8}s ease-in-out infinite`,
+              animationDelay: `${i * 0.6}s`,
+            }} />
+          ))}
+
+          {/* Center star — coral £2 */}
           <div style={{
-            position: "absolute",
-            width: "100px", height: "100px", borderRadius: "50%",
-            background: "rgba(1,102,172,0.22)",
-            border: "2px solid rgba(1,152,218,0.50)",
+            position: "absolute", width: "72px", height: "72px", borderRadius: "50%",
+            background: `radial-gradient(circle at 35% 35%, ${CORAL}cc, ${CORAL}88)`,
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-            gap: "3px", zIndex: 3,
-            animation: "unicefPulse 3.5s ease-in-out infinite",
+            zIndex: 4,
+            animation: "solarPulse 3s ease-in-out infinite",
+            boxShadow: `0 0 0 0 ${CORAL}40, 0 0 40px ${CORAL}22`,
           }}>
-            <span style={{ fontSize: "32px", lineHeight: 1 }}>🌍</span>
-            <span style={{ fontSize: "9px", fontWeight: "800", color: "#0198da", letterSpacing: "0.1em" }}>UNICEF</span>
+            <span style={{ fontSize: "22px", fontWeight: "900", color: "white", letterSpacing: "-0.04em", lineHeight: 1 }}>£2</span>
+            <span style={{ fontSize: "7px", fontWeight: "800", color: "rgba(255,255,255,0.75)", letterSpacing: "0.08em", marginTop: "1px" }}>/MO</span>
           </div>
 
-          {/* Orbiting card 1 — "Keep everything running" — inner orbit */}
-          <div style={{
-            position: "absolute",
-            width: 0, height: 0,
-            animation: "orbit1 14s linear infinite",
-            zIndex: 2,
-          }}>
-            <div style={{
-              transform: "translate(-50%, -50%)",
-              background: "rgba(255,255,255,0.04)",
-              border: `1px solid ${BORDER}`,
-              borderRadius: "14px",
-              padding: "14px 18px",
-              width: "170px",
-              backdropFilter: "blur(8px)",
-              textAlign: "center",
-            }}>
-              <span className="material-symbols-outlined" style={{ fontSize: "20px", color: CORAL, display: "block", marginBottom: "6px" }}>handshake</span>
-              <div style={{ fontSize: "12px", fontWeight: "700", marginBottom: "4px", lineHeight: 1.3 }}>Keep everything running</div>
-              <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.42)", lineHeight: 1.5 }}>Servers, dev, and a platform built without ads.</div>
+          {/* Planet A — 0% commission (inner ring, fast) */}
+          <div style={{ position: "absolute", width: 0, height: 0, animation: "orbitA 9s linear infinite", zIndex: 3 }}>
+            <div className="planet-dot" style={{ width: "18px", height: "18px", background: CORAL, transform: "translate(-50%, -50%)", boxShadow: `0 0 12px ${CORAL}80` }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "10px", color: "white" }}>percent</span>
             </div>
-          </div>
-
-          {/* Orbiting card 2 — "Core tutoring stays free" — outer orbit */}
-          <div style={{
-            position: "absolute",
-            width: 0, height: 0,
-            animation: "orbit2 20s linear infinite",
-            zIndex: 2,
-          }}>
             <div style={{
-              transform: "translate(-50%, -50%)",
-              background: "rgba(255,255,255,0.04)",
-              border: `1px solid ${BORDER}`,
-              borderRadius: "14px",
-              padding: "14px 18px",
-              width: "180px",
-              backdropFilter: "blur(8px)",
-              textAlign: "center",
-            }}>
-              <span className="material-symbols-outlined" style={{ fontSize: "20px", color: CORAL, display: "block", marginBottom: "6px" }}>lock_open</span>
-              <div style={{ fontSize: "12px", fontWeight: "700", marginBottom: "4px", lineHeight: 1.3 }}>Core tutoring stays free</div>
-              <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.42)", lineHeight: 1.5 }}>Finding tutors and booking sessions — always free.</div>
-            </div>
+              position: "absolute", top: "-36px", left: "50%", transform: "translateX(-50%)",
+              background: `${CORAL}18`, border: `1px solid ${CORAL}40`, borderRadius: "8px",
+              padding: "4px 8px", whiteSpace: "nowrap", fontSize: "10px", fontWeight: "700", color: CORAL,
+            }}>0% commission</div>
           </div>
 
-          {/* UNICEF desc below center */}
-          <div style={{
-            position: "absolute", bottom: "24px",
-            textAlign: "center", maxWidth: "360px",
-          }}>
-            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.40)", lineHeight: 1.65, margin: 0 }}>
-              A share of every Explorer subscription funds UNICEF's education programmes globally.{" "}
-              <span style={{ color: "#0198da", fontWeight: 600 }}>Learning for every child.</span>
-            </p>
+          {/* Planet B — UNICEF (mid ring, medium) */}
+          <div style={{ position: "absolute", width: 0, height: 0, animation: "orbitB 15s linear infinite", zIndex: 3 }}>
+            <div className="planet-dot" style={{ width: "22px", height: "22px", background: "rgba(1,102,172,0.70)", border: "1.5px solid rgba(1,152,218,0.70)", transform: "translate(-50%, -50%)", boxShadow: "0 0 14px rgba(1,152,218,0.50)", fontSize: "12px" }}>
+              🌍
+            </div>
+            <div style={{
+              position: "absolute", top: "-36px", left: "50%", transform: "translateX(-50%)",
+              background: "rgba(1,102,172,0.18)", border: "1px solid rgba(1,152,218,0.35)", borderRadius: "8px",
+              padding: "4px 8px", whiteSpace: "nowrap", fontSize: "10px", fontWeight: "700", color: "rgba(1,200,255,0.90)",
+            }}>UNICEF funds</div>
+          </div>
+
+          {/* Planet C — Community (outer ring, slow) */}
+          <div style={{ position: "absolute", width: 0, height: 0, animation: "orbitC 22s linear infinite", zIndex: 3 }}>
+            <div className="planet-dot" style={{ width: "16px", height: "16px", background: "rgba(96,165,250,0.70)", border: "1px solid rgba(96,165,250,0.80)", transform: "translate(-50%, -50%)", boxShadow: "0 0 10px rgba(96,165,250,0.50)" }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "9px", color: "white" }}>groups</span>
+            </div>
+            <div style={{
+              position: "absolute", top: "-36px", left: "50%", transform: "translateX(-50%)",
+              background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.28)", borderRadius: "8px",
+              padding: "4px 8px", whiteSpace: "nowrap", fontSize: "10px", fontWeight: "700", color: "rgba(147,197,253,0.90)",
+            }}>Community</div>
           </div>
         </div>
       </div>
@@ -830,64 +812,66 @@ function WhyTwoPounds() {
   );
 }
 
-// ── UK Universities Marquee with styled badges ────────────────────────────────
+// ── UK Universities — scrollable logo tiles ───────────────────────────────────
 const UK_UNIS = [
-  { name: "Oxford", abbr: "OX" },
-  { name: "Cambridge", abbr: "CAM" },
-  { name: "Imperial", abbr: "IC" },
-  { name: "UCL", abbr: "UCL" },
-  { name: "LSE", abbr: "LSE" },
-  { name: "King's College", abbr: "KCL" },
-  { name: "Edinburgh", abbr: "ED" },
-  { name: "Manchester", abbr: "MCR" },
-  { name: "Bristol", abbr: "UOB" },
-  { name: "Durham", abbr: "DU" },
-  { name: "Warwick", abbr: "WAR" },
-  { name: "Bath", abbr: "BATH" },
-  { name: "St Andrews", abbr: "STA" },
-  { name: "Exeter", abbr: "EXE" },
-  { name: "Sheffield", abbr: "UOS" },
-  { name: "Birmingham", abbr: "UOB" },
-  { name: "Nottingham", abbr: "UON" },
-  { name: "Glasgow", abbr: "GLA" },
-  { name: "Leeds", abbr: "LDS" },
-  { name: "Southampton", abbr: "SOT" },
+  { name: "Oxford",       abbr: "OX",   color: "#002147" },
+  { name: "Cambridge",    abbr: "CAM",  color: "#a3c1ad" },
+  { name: "Imperial",     abbr: "IC",   color: "#003e74" },
+  { name: "UCL",          abbr: "UCL",  color: "#500778" },
+  { name: "LSE",          abbr: "LSE",  color: "#d1054b" },
+  { name: "King's",       abbr: "KCL",  color: "#9d2235" },
+  { name: "Edinburgh",    abbr: "ED",   color: "#041e42" },
+  { name: "Manchester",   abbr: "MCR",  color: "#660099" },
+  { name: "Bristol",      abbr: "UOB",  color: "#be1622" },
+  { name: "Durham",       abbr: "DU",   color: "#7f2f8e" },
+  { name: "Warwick",      abbr: "WAR",  color: "#4b0082" },
+  { name: "Bath",         abbr: "BATH", color: "#005a8e" },
+  { name: "St Andrews",   abbr: "STA",  color: "#003977" },
+  { name: "Exeter",       abbr: "EXE",  color: "#003c3c" },
+  { name: "Sheffield",    abbr: "SHF",  color: "#0a1a2e" },
+  { name: "Birmingham",   abbr: "UOB",  color: "#003c69" },
+  { name: "Nottingham",   abbr: "UON",  color: "#004f71" },
+  { name: "Glasgow",      abbr: "GLA",  color: "#003865" },
+  { name: "Leeds",        abbr: "LDS",  color: "#003087" },
+  { name: "Southampton",  abbr: "SOT",  color: "#005c8a" },
 ];
 
-function UniMarquee() {
-  const doubled = [...UK_UNIS, ...UK_UNIS];
+function UniLogoGrid() {
   return (
-    <div style={{ overflow: "hidden", position: "relative" }}>
-      <style>{`
-        @keyframes marquee { 0% { transform: translateX(0) } 100% { transform: translateX(-50%) } }
-        .marquee-track { display: flex; gap: 0; animation: marquee 42s linear infinite; width: max-content; }
-        .marquee-track:hover { animation-play-state: paused; }
-      `}</style>
-      <div aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "80px", background: `linear-gradient(to right, ${BG}, transparent)`, zIndex: 1, pointerEvents: "none" }} />
-      <div aria-hidden="true" style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "80px", background: `linear-gradient(to left, ${BG}, transparent)`, zIndex: 1, pointerEvents: "none" }} />
-      <div className="marquee-track">
-        {doubled.map((uni, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", padding: "0 20px", flexShrink: 0, gap: "9px" }}>
-            {/* Abbreviation badge */}
-            <div
-              style={{
-                background: i % 2 === 0 ? `${CORAL}18` : "rgba(255,255,255,0.07)",
-                border: `1px solid ${i % 2 === 0 ? CORAL + "30" : "rgba(255,255,255,0.12)"}`,
-                borderRadius: "6px",
-                padding: "3px 7px",
-                fontSize: "10px",
-                fontWeight: "800",
-                color: i % 2 === 0 ? CORAL : "rgba(255,255,255,0.65)",
-                letterSpacing: "0.04em",
-                flexShrink: 0,
-              }}
-            >
-              {uni.abbr}
+    <div style={{
+      overflowX: "auto", WebkitOverflowScrolling: "touch",
+      padding: "0 24px 8px",
+      scrollbarWidth: "none",
+      msOverflowStyle: "none",
+    }}>
+      <style>{`.uni-scroll::-webkit-scrollbar{display:none}`}</style>
+      <div className="uni-scroll" style={{
+        display: "flex", gap: "12px", width: "max-content", padding: "4px 0",
+      }}>
+        {UK_UNIS.map((uni) => (
+          <div key={uni.abbr + uni.name} style={{
+            display: "flex", flexDirection: "column", alignItems: "center", gap: "8px",
+            flexShrink: 0,
+          }}>
+            {/* Logo tile */}
+            <div style={{
+              width: "64px", height: "64px", borderRadius: "16px",
+              background: `linear-gradient(135deg, ${uni.color}dd, ${uni.color}88)`,
+              border: "1px solid rgba(255,255,255,0.12)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: `0 4px 16px ${uni.color}40`,
+            }}>
+              <span style={{
+                fontSize: uni.abbr.length > 3 ? "10px" : "14px",
+                fontWeight: "900", color: "rgba(255,255,255,0.92)",
+                letterSpacing: "0.04em", fontFamily: "serif",
+              }}>
+                {uni.abbr}
+              </span>
             </div>
-            <span style={{ fontSize: "13px", fontWeight: "600", color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: "10px", fontWeight: "600", color: "rgba(255,255,255,0.42)", whiteSpace: "nowrap" }}>
               {uni.name}
             </span>
-            <span aria-hidden="true" style={{ width: "3px", height: "3px", borderRadius: "50%", background: CORAL, marginLeft: "8px", opacity: 0.4, flexShrink: 0 }} />
           </div>
         ))}
       </div>
@@ -1004,25 +988,52 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── STATS STRIP ─────────────────────────────────────────────────────── */}
+      {/* ── STRIPE STRIP — 2-col ─────────────────────────────────────────────── */}
       <div style={{ borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: "0 24px" }}>
-        <div style={{ maxWidth: "860px", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}>
-          {[
-            { stat: "0%", label: "Commission", sub: "Every penny goes directly to your tutor" },
-            { stat: "100%", label: "University Students", sub: "Every tutor verified at a UK university" },
-            { stat: "£0", label: "To get started", sub: "Tutoring and UCAS guidance always free" },
-          ].map((item, i) => (
-            <div
-              key={i}
-              data-reveal
-              data-d={String(i + 1)}
-              style={{ padding: "32px 24px", textAlign: "center", borderRight: i < 2 ? `1px solid ${BORDER}` : "none" }}
-            >
-              <div style={{ fontSize: "clamp(28px, 4vw, 42px)", fontWeight: "900", letterSpacing: "-0.03em", color: CORAL, lineHeight: 1, marginBottom: "6px" }}>{item.stat}</div>
-              <div style={{ fontWeight: "700", fontSize: "14px", marginBottom: "4px" }}>{item.label}</div>
-              <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.38)", lineHeight: 1.4 }}>{item.sub}</div>
+        <div style={{ maxWidth: "900px", margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "60px", padding: "48px 0", alignItems: "center" }}>
+
+          {/* Left — Stripe branding */}
+          <div data-reveal>
+            <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "18px" }}>
+              <div style={{
+                width: "56px", height: "56px", borderRadius: "16px",
+                background: "rgba(99,91,255,0.12)", border: "1px solid rgba(99,91,255,0.22)",
+                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+              }}>
+                <svg width="28" height="28" viewBox="0 0 30 30" fill="none">
+                  <path d="M14.3 12.5c0-.8.7-1.1 1.8-1.1 1.6 0 3.6.5 5.2 1.4V8.4C19.6 7.5 17.8 7 16 7c-4 0-6.6 2-6.6 5.3 0 5.2 7.2 4.4 7.2 6.6 0 .9-.8 1.2-2 1.2-1.7 0-3.9-.7-5.7-1.7v4.5c1.9.8 3.9 1.2 5.7 1.2 4.1 0 6.9-2 6.9-5.4-.1-5.6-7.2-4.6-7.2-6.2z" fill="white" />
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontSize: "22px", fontWeight: "800", letterSpacing: "-0.025em", marginBottom: "2px" }}>Stripe</div>
+                <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.38)" }}>Payment infrastructure</div>
+              </div>
             </div>
-          ))}
+            <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.52)", lineHeight: 1.75, margin: "0 0 16px" }}>
+              All payments are powered by Stripe — the same infrastructure trusted by Amazon, Shopify, and millions of businesses worldwide.
+            </p>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(99,91,255,0.08)", border: "1px solid rgba(99,91,255,0.20)", borderRadius: "8px", padding: "5px 12px" }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "13px", color: "#a5b4fc" }}>verified</span>
+              <span style={{ fontSize: "11px", fontWeight: "700", color: "#a5b4fc" }}>PCI-DSS Level 1 Certified</span>
+            </div>
+          </div>
+
+          {/* Right — How it works */}
+          <div data-reveal data-d="1" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {[
+              { icon: "send_money", label: "100% direct to tutor", sub: "Platform takes zero — every pound you pay goes to your tutor" },
+              { icon: "lock", label: "Bank-level encryption", sub: "End-to-end encrypted via Stripe's secure checkout" },
+              { icon: "bolt", label: "Instant, automatic payouts", sub: "Tutors receive funds directly to their Stripe account" },
+            ].map((item) => (
+              <div key={item.label} style={{ display: "flex", alignItems: "flex-start", gap: "12px", padding: "12px 14px", background: "rgba(255,255,255,0.02)", border: `1px solid ${BORDER}`, borderRadius: "10px" }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "16px", color: CORAL, marginTop: "1px", flexShrink: 0 }}>{item.icon}</span>
+                <div>
+                  <div style={{ fontSize: "13px", fontWeight: "700", marginBottom: "3px" }}>{item.label}</div>
+                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.40)", lineHeight: 1.5 }}>{item.sub}</div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1034,47 +1045,59 @@ export default function Home() {
         >
           Tutors from the UK's top universities
         </p>
-        <UniMarquee />
+        <UniLogoGrid />
       </section>
 
       {/* ── WHAT WE OFFER ───────────────────────────────────────────────────── */}
       <section style={{ padding: "64px 24px", position: "relative", overflow: "hidden" }}>
         <Grid mask="radial-gradient(ellipse 90% 60% at 50% 50%, black 0%, transparent 70%)" opacity={0.02} />
-        <div style={{ maxWidth: "1000px", margin: "0 auto", position: "relative", zIndex: 1 }}>
+        <div style={{ maxWidth: "1080px", margin: "0 auto", position: "relative", zIndex: 1 }}>
           <p data-reveal style={{ textAlign: "center", fontSize: "11px", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", color: CORAL, marginBottom: "10px" }}>
             What we offer
           </p>
           <h2 data-reveal data-d="1" style={{ fontSize: "clamp(22px, 3vw, 30px)", fontWeight: "800", textAlign: "center", margin: "0 0 8px", letterSpacing: "-0.02em" }}>
-            Top tutors, and much more
+            Everything a student needs
           </h2>
-          <p data-reveal data-d="2" style={{ textAlign: "center", color: "rgba(255,255,255,0.42)", fontSize: "14px", margin: "0 0 40px" }}>
-            Built by students, for students. Hover any card to see it in action.
+          <p data-reveal data-d="2" style={{ textAlign: "center", color: "rgba(255,255,255,0.42)", fontSize: "14px", margin: "0 0 36px" }}>
+            Hover any card to see it in action.
           </p>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "14px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" }}>
             <FeatureCard from="left" delay="1" icon="school" title="1-to-1 Tutoring" badge="FREE"
-              desc="Book private sessions with verified university students. No middlemen, no markups — pay your tutor directly."
+              desc="Book private sessions with verified university students. No middlemen, no markups."
               preview={<PreviewTutor />}
             />
             <FeatureCard delay="2" icon="menu_book" title="UCAS Guidance" badge="FREE"
-              desc="Get help with personal statements and applications from students who've been through it themselves."
+              desc="Personal statement help from students who've been through it themselves."
               preview={<PreviewUCAS />}
             />
             <FeatureCard from="right" delay="3" icon="calendar_month" title="Session Calendar" badge="FREE"
               desc="Book, track, and manage all your sessions in one place. Never miss a lesson."
               preview={<PreviewCalendar />}
             />
-            <FeatureCard from="left" delay="1" icon="groups" title="Live Study Rooms" badge="EXPLORER"
-              desc="Drop into open study sessions with peers in your subject. Real-time and far cheaper than solo tutoring."
+            <FeatureCard from="left" delay="1" icon="chat" title="Direct Messages" badge="FREE"
+              desc="Message any tutor before booking. Agree a rate, discuss goals, no surprises."
+              preview={<PreviewMessages />}
+            />
+            <FeatureCard delay="2" icon="groups" title="Live Study Rooms" badge="EXPLORER"
+              desc="Drop into open study sessions with peers in your subject. Real-time peer learning."
               preview={<PreviewRooms />}
             />
-            <FeatureCard delay="2" icon="forum" title="Community Forum" badge="EXPLORER"
+            <FeatureCard from="right" delay="3" icon="forum" title="Community Forum" badge="EXPLORER"
               desc="Ask questions, share insights, and get help from people studying the same subjects."
               preview={<PreviewForum />}
             />
-            <FeatureCard from="right" delay="3" icon="chat" title="Direct Messages" badge="FREE"
-              desc="Message any tutor directly before booking. Discuss goals, agree a rate, and make sure it's the right fit."
-              preview={<PreviewMessages />}
+            <FeatureCard from="left" delay="1" icon="cast_for_education" title="Live Classrooms" badge="EXPLORER"
+              desc="Join group sessions on a topic — fraction of the cost of 1-to-1, taught live."
+              preview={null}
+            />
+            <FeatureCard delay="2" icon="auto_stories" title="Study Notes" badge="EXPLORER"
+              desc="Browse and share student notes, past papers, and revision guides by subject."
+              preview={null}
+            />
+            <FeatureCard from="right" delay="3" icon="emoji_events" title="XP & Badges" badge="EXPLORER"
+              desc="Earn XP for every session, note, and review. Level up and unlock tutor badges."
+              preview={null}
             />
           </div>
         </div>
@@ -1120,62 +1143,6 @@ export default function Home() {
                 <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>arrow_forward</span>
               </Link>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── FOUNDING TUTORS ──────────────────────────────────────────────────── */}
-      <section style={{ padding: "0 24px 60px" }}>
-        <div
-          data-reveal
-          style={{
-            maxWidth: "720px", margin: "0 auto",
-            background: `linear-gradient(135deg, rgba(255,114,94,0.08), rgba(255,114,94,0.03))`,
-            border: `1px solid ${CORAL}25`, borderRadius: "20px", padding: "36px 40px",
-            display: "flex", alignItems: "center", justifyContent: "space-between", gap: "24px", flexWrap: "wrap",
-          }}
-        >
-          <div>
-            <p style={{ fontSize: "11px", fontWeight: "700", letterSpacing: "0.12em", textTransform: "uppercase", color: CORAL, marginBottom: "8px" }}>
-              Founding Tutors
-            </p>
-            <h3 style={{ fontSize: "20px", fontWeight: "800", letterSpacing: "-0.02em", margin: "0 0 8px" }}>
-              Meet the first tutors on the platform
-            </h3>
-            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.48)", margin: 0, lineHeight: 1.6 }}>
-              The brilliant people who believed in this from day one.
-            </p>
-          </div>
-          <Link
-            to="/founding-tutors"
-            style={{ background: CORAL, color: "white", padding: "11px 22px", borderRadius: "10px", fontWeight: "700", fontSize: "13px", textDecoration: "none", flexShrink: 0, transition: "opacity 0.15s", whiteSpace: "nowrap" }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.88")}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-          >
-            Meet them →
-          </Link>
-        </div>
-      </section>
-
-      {/* ── UNICEF ──────────────────────────────────────────────────────────── */}
-      <section style={{ padding: "0 24px 80px" }}>
-        <div
-          data-reveal
-          style={{
-            maxWidth: "720px", margin: "0 auto",
-            background: "rgba(1,102,172,0.05)", border: "1px solid rgba(1,102,172,0.20)",
-            borderRadius: "20px", padding: "32px 40px",
-            display: "flex", alignItems: "center", gap: "24px", flexWrap: "wrap",
-          }}
-        >
-          <div style={{ flexShrink: 0 }}><UnicefBadge /></div>
-          <div style={{ flex: 1, minWidth: "220px" }}>
-            <h3 style={{ fontSize: "17px", fontWeight: "800", letterSpacing: "-0.01em", margin: "0 0 6px" }}>
-              Supporting UNICEF — Learning for Every Child
-            </h3>
-            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.45)", margin: 0, lineHeight: 1.65 }}>
-              A portion of every Explorer Plan subscription funds UNICEF's education programmes, helping children access quality learning worldwide.
-            </p>
           </div>
         </div>
       </section>

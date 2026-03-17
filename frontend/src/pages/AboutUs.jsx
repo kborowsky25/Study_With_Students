@@ -156,7 +156,7 @@ export default function AboutUs() {
       <section style={{ position: 'relative', overflow: 'hidden', minHeight: '420px', borderBottom: `1px solid ${BORDER}` }}>
         <style>{`
           @keyframes diagLineGrow {
-            from { stroke-dashoffset: 1200; }
+            from { stroke-dashoffset: 1600; }
             to   { stroke-dashoffset: 0; }
           }
         `}</style>
@@ -167,7 +167,7 @@ export default function AboutUs() {
         >
           <line x1="0" y1="380" x2="1440" y2="60"
             stroke={`${CORAL}20`} strokeWidth="1"
-            strokeDasharray="1200" strokeDashoffset="1200"
+            strokeDasharray="1600" strokeDashoffset="1600"
             style={{ animation: 'diagLineGrow 1.4s ease 0.3s forwards' }}
           />
         </svg>
@@ -204,128 +204,183 @@ export default function AboutUs() {
         </div>
       </section>
 
-      <Wave />
 
-      {/* ── STATS STRIP ───────────────────────────────────────────────────── */}
-      <div style={{ borderBottom: `1px solid ${BORDER}`, padding: '0 24px' }}>
-        <div style={{ maxWidth: '860px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
-          {[
-            { stat: '0%', label: 'Commission taken', sub: 'Tutors keep every penny' },
-            { stat: '£2', label: 'Explorer plan',    sub: 'The only cost, ever' },
-            { stat: '🌍', label: 'UNICEF partner',   sub: 'Education for every child' },
-          ].map((s, i) => (
-            <div key={i} data-reveal data-d={String(i+1)} style={{ padding: '36px 24px', textAlign: 'center', borderRight: i < 2 ? `1px solid ${BORDER}` : 'none' }}>
-              <div style={{ fontSize: 'clamp(32px, 5vw, 52px)', fontWeight: 900, letterSpacing: '-0.04em', color: CORAL, lineHeight: 1, marginBottom: '8px' }}>{s.stat}</div>
-              <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '4px' }}>{s.label}</div>
-              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.36)' }}>{s.sub}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <Wave flip />
-
-      {/* ── STORY 1: Tutors are getting scammed ───────────────────────────── */}
-      <section style={{ padding: '96px 24px', position: 'relative', overflow: 'hidden' }}>
-        <div aria-hidden style={{ ...GRID_STYLE, WebkitMaskImage: 'radial-gradient(ellipse 100% 100% at 0% 50%, black 0%, transparent 60%)', maskImage: 'radial-gradient(ellipse 100% 100% at 0% 50%, black 0%, transparent 60%)' }} />
-        <div style={{ maxWidth: '960px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center', position: 'relative', zIndex: 1 }}>
-          <div>
-            <p data-reveal style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '16px' }}>The problem</p>
-            <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(24px, 3.2vw, 34px)', fontWeight: 800, margin: '0 0 24px', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-              Tutors are getting scammed by the middleman.
-            </h2>
-            <p data-reveal data-d="2" style={{ color: 'rgba(255,255,255,0.52)', fontSize: '16px', lineHeight: 1.8, margin: '0 0 16px' }}>
-              Tutoring agencies charge students £30/hr — and pocket half. The tutor sees £15. The student pays a premium. Nobody wins except the platform.
-            </p>
-            <p data-reveal data-d="3" style={{ color: 'rgba(255,255,255,0.52)', fontSize: '16px', lineHeight: 1.8, margin: '0 0 24px' }}>
-              We cut the middleman out entirely. Students agree a rate directly with their tutor and pay 100% to them. We take nothing.
-            </p>
-            <div data-reveal data-d="3" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {['0% commission', 'Direct payment', 'Tutor sets the rate'].map(pill => (
-                <span key={pill} style={{ fontSize: '12px', fontWeight: 700, background: `${CORAL}12`, color: CORAL, border: `1px solid ${CORAL}28`, padding: '5px 12px', borderRadius: '20px' }}>{pill}</span>
-              ))}
-            </div>
-          </div>
-          <div data-reveal data-d="2" style={{ display: 'flex', justifyContent: 'center' }}>
-            <AgencyFeeBreakdown />
-          </div>
-        </div>
-      </section>
-
-      <Wave />
-
-      {/* ── STORY 2: Tutoring should be fun ──────────────────────────────── */}
+      {/* ── TWO STORIES — side-by-side problem + vision ───────────────────── */}
       <section style={{ padding: '96px 24px', position: 'relative', overflow: 'hidden', borderTop: `1px solid ${BORDER}` }}>
-        <div aria-hidden style={{ ...GRID_STYLE, WebkitMaskImage: 'radial-gradient(ellipse 100% 100% at 100% 50%, black 0%, transparent 60%)', maskImage: 'radial-gradient(ellipse 100% 100% at 100% 50%, black 0%, transparent 60%)' }} />
-        <div style={{ maxWidth: '960px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center', position: 'relative', zIndex: 1 }}>
-          <div data-reveal data-d="1" style={{ display: 'flex', justifyContent: 'center', order: -1 }}>
-            <FunTutoringMock />
+        <div aria-hidden style={{ ...GRID_STYLE, WebkitMaskImage: 'radial-gradient(ellipse 100% 100% at 50% 50%, black 0%, transparent 70%)', maskImage: 'radial-gradient(ellipse 100% 100% at 50% 50%, black 0%, transparent 70%)' }} />
+        <div style={{ maxWidth: '960px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+
+          {/* Story 1 — The problem */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '72px', alignItems: 'center', marginBottom: '96px' }}>
+            <div>
+              <p data-reveal style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '14px' }}>The problem</p>
+              <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(22px, 3vw, 32px)', fontWeight: 900, margin: '0 0 20px', letterSpacing: '-0.025em', lineHeight: 1.15 }}>
+                Agencies take 50%.<br />Tutors get screwed.
+              </h2>
+              <p data-reveal data-d="2" style={{ color: 'rgba(255,255,255,0.50)', fontSize: '15px', lineHeight: 1.75, margin: '0 0 20px' }}>
+                A £30/hr session at an agency pays the tutor £15. The student pays double what the tutor earns. Nobody wins but the platform.
+              </p>
+              <p data-reveal data-d="3" style={{ color: 'rgba(255,255,255,0.50)', fontSize: '15px', lineHeight: 1.75, margin: '0 0 22px' }}>
+                We cut that out entirely. Students pay 100% to their tutor. We take nothing.
+              </p>
+              <div data-reveal data-d="3" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {['0% commission', 'Direct payment', 'Tutor sets the rate'].map(pill => (
+                  <span key={pill} style={{ fontSize: '11px', fontWeight: 700, background: `${CORAL}12`, color: CORAL, border: `1px solid ${CORAL}28`, padding: '4px 12px', borderRadius: '20px' }}>{pill}</span>
+                ))}
+              </div>
+            </div>
+            <div data-reveal data-d="2" data-from="right" style={{ display: 'flex', justifyContent: 'center' }}>
+              <AgencyFeeBreakdown />
+            </div>
           </div>
-          <div>
-            <p data-reveal style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '16px' }}>The vision</p>
-            <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(24px, 3.2vw, 34px)', fontWeight: 800, margin: '0 0 24px', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-              Tutoring should be fun and interactive.
-            </h2>
-            <p data-reveal data-d="2" style={{ color: 'rgba(255,255,255,0.52)', fontSize: '16px', lineHeight: 1.8, margin: '0 0 16px' }}>
-              We built an XP system that makes learning feel like a game. Students level up by engaging with the platform. Tutors earn badges and boost their visibility by delivering great sessions.
-            </p>
-            <p data-reveal data-d="3" style={{ color: 'rgba(255,255,255,0.52)', fontSize: '16px', lineHeight: 1.8, margin: '0 0 24px' }}>
-              Your dashboard tracks everything — sessions, messages, upcoming bookings, and XP progress — all in one place.
-            </p>
-            <div data-reveal data-d="3" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {['XP levelling', 'Tutor badges', 'Live dashboards', 'Study rooms'].map(pill => (
-                <span key={pill} style={{ fontSize: '12px', fontWeight: 700, background: `${CORAL}12`, color: CORAL, border: `1px solid ${CORAL}28`, padding: '5px 12px', borderRadius: '20px' }}>{pill}</span>
-              ))}
+
+          {/* Divider */}
+          <div style={{ height: '1px', background: `linear-gradient(to right, transparent, ${BORDER}, transparent)`, marginBottom: '96px' }} />
+
+          {/* Story 2 — The vision */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '72px', alignItems: 'center' }}>
+            <div data-reveal data-d="1" data-from="left" style={{ display: 'flex', justifyContent: 'center' }}>
+              <FunTutoringMock />
+            </div>
+            <div>
+              <p data-reveal style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '14px' }}>The vision</p>
+              <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(22px, 3vw, 32px)', fontWeight: 900, margin: '0 0 20px', letterSpacing: '-0.025em', lineHeight: 1.15 }}>
+                Learning should feel like levelling up.
+              </h2>
+              <p data-reveal data-d="2" style={{ color: 'rgba(255,255,255,0.50)', fontSize: '15px', lineHeight: 1.75, margin: '0 0 20px' }}>
+                An XP system where students level up, tutors earn badges, and everyone can see their progress. Not just a booking tool.
+              </p>
+              <div data-reveal data-d="2" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {['XP & levels', 'Tutor badges', 'Live study rooms', 'Community forum'].map(pill => (
+                  <span key={pill} style={{ fontSize: '11px', fontWeight: 700, background: `${CORAL}12`, color: CORAL, border: `1px solid ${CORAL}28`, padding: '4px 12px', borderRadius: '20px' }}>{pill}</span>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <Wave flip />
-
-      {/* ── VALUES GRID ───────────────────────────────────────────────────── */}
-      <section style={{ padding: '96px 24px', position: 'relative', overflow: 'hidden' }}>
+      {/* ── THE SOLUTION ──────────────────────────────────────────────────── */}
+      <section style={{ padding: '96px 24px', position: 'relative', overflow: 'hidden', borderTop: `1px solid ${BORDER}` }}>
         <div aria-hidden style={{ ...GRID_STYLE, WebkitMaskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%)', maskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%)' }} />
         <div style={{ maxWidth: '900px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <p data-reveal style={{ textAlign: 'center', fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '14px' }}>What we stand for</p>
-          <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(22px, 3vw, 32px)', fontWeight: 800, textAlign: 'center', margin: '0 0 48px', letterSpacing: '-0.02em' }}>Six principles behind every decision</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', background: BORDER, borderRadius: '20px', overflow: 'hidden', border: `1px solid ${BORDER}` }}>
-            {VALUES.map((v, i) => (
-              <div key={v.title} data-reveal data-d={String((i % 3) + 1)}
-                style={{ background: BG, padding: '28px 30px', transition: 'background 0.2s' }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.025)'}
-                onMouseLeave={e => e.currentTarget.style.background = BG}
+          <p data-reveal style={{ textAlign: 'center', fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '14px' }}>The solution</p>
+          <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(26px, 4vw, 42px)', fontWeight: 900, textAlign: 'center', margin: '0 0 16px', letterSpacing: '-0.03em', lineHeight: 1.05 }}>
+            Tutoring stays between<br />student and tutor.
+          </h2>
+          <p data-reveal data-d="2" style={{ textAlign: 'center', color: 'rgba(255,255,255,0.50)', fontSize: '16px', margin: '0 auto 56px', lineHeight: 1.7, maxWidth: '520px' }}>
+            We take just £2/month from students who want community features. Half funds the platform — half goes to UNICEF. That's it.
+          </p>
+
+          {/* Money flow diagram */}
+          <div data-reveal data-d="2" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr auto 1fr', gap: '12px', alignItems: 'center', marginBottom: '56px' }}>
+            {/* Student */}
+            <div style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, borderRadius: '16px', padding: '24px 20px', textAlign: 'center' }}>
+              <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '22px', color: 'rgba(255,255,255,0.65)' }}>person</span>
+              </div>
+              <div style={{ fontWeight: 800, fontSize: '14px', marginBottom: '4px' }}>Student</div>
+              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.38)', lineHeight: 1.5 }}>Pays the tutor's rate directly</div>
+            </div>
+
+            {/* Arrow */}
+            <div style={{ textAlign: 'center' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '20px', color: `${CORAL}60` }}>arrow_forward</span>
+              <div style={{ fontSize: '10px', color: CORAL, fontWeight: 700, marginTop: '4px' }}>100%</div>
+            </div>
+
+            {/* Tutor */}
+            <div style={{ background: `${CORAL}08`, border: `1px solid ${CORAL}25`, borderRadius: '16px', padding: '24px 20px', textAlign: 'center' }}>
+              <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: `${CORAL}15`, border: `1px solid ${CORAL}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '22px', color: CORAL }}>school</span>
+              </div>
+              <div style={{ fontWeight: 800, fontSize: '14px', marginBottom: '4px', color: CORAL }}>Tutor</div>
+              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.38)', lineHeight: 1.5 }}>Receives every penny they charge</div>
+            </div>
+
+            {/* Explorer split */}
+            <div style={{ textAlign: 'center' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '20px', color: 'rgba(255,255,255,0.25)' }}>arrow_forward</span>
+              <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', fontWeight: 700, marginTop: '4px' }}>£2/mo</div>
+            </div>
+
+            {/* Platform + UNICEF split */}
+            <div style={{ background: 'rgba(1,102,172,0.06)', border: '1px solid rgba(1,152,218,0.18)', borderRadius: '16px', padding: '24px 20px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', border: `1px solid ${BORDER}` }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700 }}>Platform</span>
+                  <span style={{ fontSize: '13px', fontWeight: 900, color: 'rgba(255,255,255,0.60)' }}>£1</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(1,102,172,0.10)', borderRadius: '8px', border: '1px solid rgba(1,152,218,0.25)' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700 }}>🌍 UNICEF</span>
+                  <span style={{ fontSize: '13px', fontWeight: 900, color: 'rgba(1,200,255,0.85)' }}>£1</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Three pillars */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
+            {[
+              { icon: 'percent', color: CORAL, title: '0% commission', desc: 'Tutoring is always direct — students pay tutors, platform takes nothing from sessions.' },
+              { icon: 'verified', color: '#60a5fa', title: 'UK universities only', desc: 'Every tutor verified via .ac.uk email. You always see where a tutor studies.' },
+              { icon: 'volunteer_activism', color: 'rgba(1,200,255,0.90)', title: 'UNICEF funded', desc: '£1 from every Explorer subscription goes directly to global education programmes.' },
+            ].map((p, i) => (
+              <div key={p.title} data-reveal data-d={String(i + 1)} style={{
+                padding: '24px 22px',
+                background: `${p.color}06`,
+                border: `1px solid ${p.color}20`,
+                borderRadius: '14px',
+                transition: 'border-color 0.2s, box-shadow 0.2s',
+              }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = `${p.color}40`; e.currentTarget.style.boxShadow = `0 8px 24px ${p.color}10` }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = `${p.color}20`; e.currentTarget.style.boxShadow = 'none' }}
               >
-                <span className="material-symbols-outlined" style={{ fontSize: '22px', color: CORAL, display: 'block', marginBottom: '12px' }}>{v.icon}</span>
-                <h3 style={{ fontSize: '14px', fontWeight: 700, margin: '0 0 6px' }}>{v.title}</h3>
-                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.42)', margin: 0, lineHeight: 1.65 }}>{v.desc}</p>
+                <span className="material-symbols-outlined" style={{ fontSize: '22px', color: p.color, display: 'block', marginBottom: '12px' }}>{p.icon}</span>
+                <h3 style={{ fontSize: '14px', fontWeight: 700, margin: '0 0 7px', color: 'white' }}>{p.title}</h3>
+                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', margin: 0, lineHeight: 1.65 }}>{p.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <Wave />
 
       {/* ── UNICEF ────────────────────────────────────────────────────────── */}
-      <section style={{ padding: '0 24px 80px' }}>
-        <div data-reveal style={{ maxWidth: '820px', margin: '0 auto', background: 'rgba(1,102,172,0.07)', border: '1px solid rgba(1,102,172,0.20)', borderRadius: '20px', padding: '36px 44px' }}>
-          <div style={{ display: 'flex', gap: '32px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'rgba(1,102,172,0.18)', border: '1px solid rgba(1,102,172,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <span style={{ fontSize: '28px' }}>🌍</span>
-            </div>
-            <div style={{ flex: 1, minWidth: '240px' }}>
-              <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(1,152,218,0.85)', margin: '0 0 6px' }}>Charity partner</p>
-              <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 6px', letterSpacing: '-0.01em' }}>UNICEF — Learning for Every Child</h3>
-              <p style={{ color: 'rgba(255,255,255,0.48)', fontSize: '13px', lineHeight: 1.7, margin: 0 }}>
-                A portion of every Explorer subscription funds UNICEF's education programmes. Over 190 countries. Over 1 billion children impacted. Education shouldn't be a privilege.
+      <section style={{ padding: '0 24px 80px', borderTop: `1px solid ${BORDER}` }}>
+        <div style={{ maxWidth: '820px', margin: '0 auto', paddingTop: '80px' }}>
+          <p data-reveal style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(1,200,255,0.85)', marginBottom: '14px', textAlign: 'center' }}>Charity partner</p>
+          <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(24px, 3.5vw, 36px)', fontWeight: 900, margin: '0 0 18px', letterSpacing: '-0.025em', textAlign: 'center', lineHeight: 1.1 }}>
+            Half our revenue goes to<br />
+            <span style={{ color: 'rgba(1,200,255,0.90)' }}>UNICEF</span>.
+          </h2>
+          <p data-reveal data-d="2" style={{ textAlign: 'center', color: 'rgba(255,255,255,0.50)', fontSize: '15px', margin: '0 auto 44px', lineHeight: 1.7, maxWidth: '480px' }}>
+            £1 of every Explorer subscription funds UNICEF's global education programmes. Over 190 countries. Education for every child — not just the privileged.
+          </p>
+
+          <div data-reveal data-d="2" style={{ background: 'rgba(1,102,172,0.08)', border: '1.5px solid rgba(1,152,218,0.22)', borderRadius: '20px', padding: '36px 40px', display: 'grid', gridTemplateColumns: '1fr auto', gap: '40px', alignItems: 'center' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '18px' }}>
+                <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: 'rgba(1,102,172,0.20)', border: '1px solid rgba(1,152,218,0.30)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', flexShrink: 0 }}>🌍</div>
+                <div>
+                  <div style={{ fontSize: '16px', fontWeight: 800, letterSpacing: '-0.01em', marginBottom: '2px' }}>UNICEF Education Programme</div>
+                  <div style={{ fontSize: '12px', color: 'rgba(1,200,255,0.75)', fontWeight: 700 }}>Charity partner</div>
+                </div>
+              </div>
+              <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: '13px', lineHeight: 1.75, margin: 0 }}>
+                UNICEF works in over 190 countries to give every child access to quality education. Learning tools, teacher training, safe school environments — all funded by governments, businesses, and people like you.
               </p>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', flexShrink: 0 }}>
-              {[{ n: '190+', l: 'Countries' }, { n: '1B+', l: 'Children' }].map(s => (
-                <div key={s.l} style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '20px', fontWeight: 900, color: 'rgba(1,152,218,0.85)', letterSpacing: '-0.02em' }}>{s.n}</div>
-                  <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', marginTop: '2px' }}>{s.l}</div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', flexShrink: 0, minWidth: '110px' }}>
+              {[
+                { n: '190+', l: 'Countries', c: 'rgba(1,200,255,0.85)' },
+                { n: '1B+',  l: 'Children',  c: 'rgba(1,200,255,0.85)' },
+                { n: '£1',   l: 'Per subscriber / mo', c: CORAL },
+              ].map(s => (
+                <div key={s.l} style={{ textAlign: 'center', padding: '14px', background: 'rgba(1,102,172,0.12)', borderRadius: '12px', border: '1px solid rgba(1,152,218,0.18)' }}>
+                  <div style={{ fontSize: '22px', fontWeight: 900, color: s.c, letterSpacing: '-0.02em', lineHeight: 1 }}>{s.n}</div>
+                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.38)', marginTop: '4px', lineHeight: 1.3 }}>{s.l}</div>
                 </div>
               ))}
             </div>
@@ -333,38 +388,46 @@ export default function AboutUs() {
         </div>
       </section>
 
-      {/* ── FOUNDING TUTORS ───────────────────────────────────────────────── */}
-      <section style={{ padding: '0 24px 96px' }}>
-        <div style={{ maxWidth: '820px', margin: '0 auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '28px', flexWrap: 'wrap', gap: '12px' }}>
-            <div>
-              <p data-reveal style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '6px' }}>The beginning</p>
-              <h2 data-reveal data-d="1" style={{ fontSize: '22px', fontWeight: 800, margin: 0, letterSpacing: '-0.01em' }}>Founding tutors</h2>
-            </div>
-            <Link to="/founding-tutors" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 700, color: CORAL, textDecoration: 'none' }}
-              onMouseEnter={e => e.currentTarget.style.opacity = '0.75'}
-              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-            >
-              Meet them all <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>arrow_forward</span>
-            </Link>
-          </div>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            {FOUNDING_TUTORS.map((t, i) => (
-              <div key={t.name} data-reveal data-d={String((i % 4) + 1)}
-                style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 18px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, borderRadius: '12px', flex: '1 1 160px', transition: 'border-color 0.2s' }}
-                onMouseEnter={e => e.currentTarget.style.borderColor = `${t.color}35`}
-                onMouseLeave={e => e.currentTarget.style.borderColor = BORDER}
-              >
-                <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: `${t.color}18`, border: `1px solid ${t.color}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '13px', color: t.color, flexShrink: 0 }}>{t.initials}</div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '13px' }}>{t.name}</div>
-                  <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.38)', marginTop: '2px' }}>{t.uni}</div>
-                  {t.role === 'Founder' && (
-                    <div style={{ fontSize: '10px', color: CORAL, fontWeight: 700, marginTop: '2px' }}>Founder</div>
-                  )}
-                </div>
+      {/* ── MEET THE FOUNDER ──────────────────────────────────────────────── */}
+      <section style={{ padding: '0 24px 96px', borderTop: `1px solid ${BORDER}` }}>
+        <div style={{ maxWidth: '820px', margin: '0 auto', paddingTop: '80px' }}>
+          <p data-reveal style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '14px', textAlign: 'center' }}>The person behind it</p>
+          <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(24px, 3.5vw, 36px)', fontWeight: 900, margin: '0 0 48px', letterSpacing: '-0.025em', textAlign: 'center' }}>Meet the founder</h2>
+
+          <div data-reveal data-d="2" style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '48px', alignItems: 'start', background: 'rgba(255,255,255,0.02)', border: `1px solid ${BORDER}`, borderRadius: '24px', padding: '44px' }}>
+            {/* Avatar */}
+            <div style={{ flexShrink: 0 }}>
+              <div style={{
+                width: '100px', height: '100px', borderRadius: '50%',
+                background: `linear-gradient(135deg, ${CORAL}40, ${CORAL}18)`,
+                border: `2.5px solid ${CORAL}45`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '28px', fontWeight: 900, color: CORAL, letterSpacing: '-0.02em',
+                boxShadow: `0 0 40px ${CORAL}18`,
+              }}>KB</div>
+              <div style={{ marginTop: '14px', textAlign: 'center' }}>
+                <div style={{ fontSize: '13px', fontWeight: 800 }}>Kiki Boro</div>
+                <div style={{ fontSize: '11px', color: CORAL, fontWeight: 700, marginTop: '3px' }}>Founder & CEO</div>
+                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', marginTop: '2px' }}>UCL · 2024</div>
               </div>
-            ))}
+            </div>
+
+            {/* Quote + detail */}
+            <div>
+              <blockquote style={{ margin: '0 0 20px', padding: '0 0 0 20px', borderLeft: `3px solid ${CORAL}40` }}>
+                <p style={{ fontSize: '16px', color: 'rgba(255,255,255,0.80)', lineHeight: 1.75, margin: 0, fontStyle: 'italic' }}>
+                  "I built Study With Students because I wanted a place where students could genuinely help each other — without agencies taking a cut. University students are brilliant teachers. They deserve to be paid properly, and learners deserve fair prices."
+                </p>
+              </blockquote>
+              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.48)', lineHeight: 1.75, margin: '0 0 24px' }}>
+                I was a student at UCL watching tutoring agencies charge families £50/hr while paying tutors £20. The tutor did the work. The agency did nothing but take the call. That felt wrong — so I built the alternative.
+              </p>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                {['UCL student', 'Built in 2024', 'Zero VC funding', 'Student-first'].map(tag => (
+                  <span key={tag} style={{ fontSize: '11px', fontWeight: 700, background: `${CORAL}10`, color: CORAL, border: `1px solid ${CORAL}28`, padding: '4px 12px', borderRadius: '20px' }}>{tag}</span>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>

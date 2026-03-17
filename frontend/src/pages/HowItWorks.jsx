@@ -711,7 +711,7 @@ export default function HowItWorks() {
       </div>
 
       {/* ── INTERACTIVE DEMO ────────────────────────────────────────────── */}
-      <div style={{ maxWidth: '960px', margin: '0 auto', padding: '72px 24px 80px' }}>
+      <div style={{ maxWidth: '960px', margin: '0 auto', padding: '100px 24px 100px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '48px', alignItems: 'start' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {steps.map((step, i) => (
@@ -757,38 +757,69 @@ export default function HowItWorks() {
         </div>
       </div>
 
-      {/* ── KEY FACTS ───────────────────────────────────────────────────── */}
+      {/* ── EXPLORER PLAN UPGRADE ───────────────────────────────────────── */}
       <div style={{ borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: '0 24px' }}>
-        <div style={{ maxWidth: '860px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
-          {[
-            { icon: 'percent',      stat: '0%',     label: 'Platform fee',      sub: 'You pay your tutor directly' },
-            { icon: 'lock',         stat: 'Stripe',  label: 'Secure payments',   sub: 'Encrypted, trusted worldwide' },
-            { icon: 'emoji_events', stat: 'XP',      label: 'Reputation system', sub: 'Earn recognition as you grow' },
-          ].map((item, i) => (
-            <div key={i} style={{ padding: '28px 20px', textAlign: 'center', borderRight: i < 2 ? `1px solid ${BORDER}` : 'none' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 20, color: CORAL, display: 'block', marginBottom: 8 }}>{item.icon}</span>
-              <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: '-0.03em', color: 'white', marginBottom: 4 }}>{item.stat}</div>
-              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 3 }}>{item.label}</div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.36)' }}>{item.sub}</div>
+        <div style={{ maxWidth: '900px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px', padding: '52px 0', alignItems: 'center' }}>
+          {/* Left — explain */}
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: 12 }}>
+              Explorer Plan · £2/month
+            </p>
+            <h2 style={{ fontSize: 'clamp(20px, 2.8vw, 28px)', fontWeight: 800, margin: '0 0 14px', letterSpacing: '-0.025em', lineHeight: 1.15 }}>
+              Upgrade at any time.<br />Cancel whenever you want.
+            </h2>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.50)', lineHeight: 1.75, margin: '0 0 20px' }}>
+              The core tutoring experience — finding tutors, booking sessions, messaging — is always free. The Explorer Plan unlocks community features like Study Rooms, the Forum, Live Classrooms, and Study Notes.
+            </p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {['No lock-in', 'Cancel anytime', '£2 flat · no surprises'].map(tag => (
+                <span key={tag} style={{ fontSize: 11, fontWeight: 700, background: `${CORAL}10`, color: CORAL, border: `1px solid ${CORAL}28`, padding: '4px 12px', borderRadius: 20 }}>{tag}</span>
+              ))}
             </div>
-          ))}
+          </div>
+          {/* Right — what you unlock */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>Unlocked with Explorer</p>
+            {[
+              { icon: 'groups',            label: 'Live Study Rooms',  sub: 'Drop into open peer sessions' },
+              { icon: 'forum',             label: 'Community Forum',   sub: 'Ask, help, learn with peers' },
+              { icon: 'cast_for_education',label: 'Live Classrooms',   sub: 'Group lessons, fraction of the cost' },
+              { icon: 'auto_stories',      label: 'Study Notes',       sub: 'Share & discover revision notes' },
+            ].map(item => (
+              <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: `${CORAL}06`, border: `1px solid ${CORAL}18`, borderRadius: 10 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 16, color: CORAL, flexShrink: 0 }}>{item.icon}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>{item.label}</div>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.38)', marginTop: 2 }}>{item.sub}</div>
+                </div>
+                <span className="material-symbols-outlined" style={{ fontSize: 14, color: `${CORAL}60` }}>lock_open</span>
+              </div>
+            ))}
+            <Link to="/signup" style={{ display: 'block', textAlign: 'center', marginTop: 4, padding: '12px', borderRadius: 10, background: CORAL, color: 'white', fontWeight: 700, fontSize: 13, textDecoration: 'none', boxShadow: `0 4px 16px ${CORAL}35`, transition: 'opacity 0.15s' }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            >Upgrade to Explorer · £2/month</Link>
+          </div>
         </div>
       </div>
 
       {/* ── XP LEVELLING ────────────────────────────────────────────────── */}
-      <div style={{ maxWidth: '860px', margin: '0 auto', padding: '80px 24px 0' }}>
+      <div style={{ maxWidth: '860px', margin: '0 auto', padding: '120px 24px 0' }}>
         <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: 14, textAlign: 'center' }}>XP System</p>
         <h2 style={{ fontSize: 'clamp(22px, 3vw, 30px)', fontWeight: 800, margin: '0 0 10px', letterSpacing: '-0.02em', textAlign: 'center' }}>
           The more you do, the more you unlock
         </h2>
-        <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.42)', fontSize: 14, margin: '0 0 40px' }}>
-          Drag the bar to see what you unlock as you earn XP.
+        <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.42)', fontSize: 14, margin: '0 0 8px' }}>
+          Every session, note shared, and review earns XP. Tutors climb the rankings. Students unlock perks.
+        </p>
+        <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.28)', fontSize: 12, margin: '0 0 40px' }}>
+          Drag the bar to explore milestones.
         </p>
         <XPBar />
       </div>
 
       {/* ── FAQ ─────────────────────────────────────────────────────────── */}
-      <div style={{ maxWidth: '700px', margin: '0 auto', padding: '80px 24px' }}>
+      <div style={{ maxWidth: '700px', margin: '0 auto', padding: '120px 24px' }}>
         <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: 14 }}>Questions</p>
         <h2 style={{ fontSize: 'clamp(22px, 3vw, 28px)', fontWeight: 800, margin: '0 0 40px', letterSpacing: '-0.02em' }}>Common questions</h2>
         {FAQ.map((item, i) => <FAQItem key={i} item={item} />)}

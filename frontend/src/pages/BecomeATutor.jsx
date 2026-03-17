@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from '@tanstack/react-router'
 import Navbar from '../components/layout/Navbar'
 import Footer from '../components/layout/Footer'
@@ -159,6 +159,170 @@ const MORE_CARDS = [
   },
 ]
 
+// ── Animated steps timeline — cards unveil as orange line draws down ───────────
+function StepsTimeline() {
+  const sectionRef = useRef(null)
+  const lineRef = useRef(null)
+  const [revealedSteps, setRevealedSteps] = useState([])
+  const [lineProgress, setLineProgress] = useState(0)
+  const nodeRefs = useRef([])
+
+  useEffect(() => {
+    const section = sectionRef.current
+    if (!section) return
+
+    const handleScroll = () => {
+      const rect = section.getBoundingClientRect()
+      const sectionTop = rect.top
+      const sectionHeight = rect.height
+      const vh = window.innerHeight
+
+      // Progress 0→1 as section scrolls through viewport
+      const progress = Math.max(0, Math.min(1,
+        (vh - sectionTop) / (sectionHeight + vh * 0.4)
+      ))
+      setLineProgress(progress)
+
+      // Reveal each step card as line passes its node
+      const newRevealed = []
+      nodeRefs.current.forEach((node, i) => {
+        if (!node) return
+        const nodeRect = node.getBoundingClientRect()
+        const nodeMid = nodeRect.top + nodeRect.height / 2
+        if (nodeMid < vh * 0.72) newRevealed.push(i)
+      })
+      setRevealedSteps(newRevealed)
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    handleScroll()
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  return (
+    <section ref={sectionRef} style={{ padding: '88px 24px', position: 'relative', overflow: 'hidden' }}>
+      <style>{`
+        @keyframes stepReveal {
+          from { opacity: 0; transform: translateY(16px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes nodeGlow {
+          from { box-shadow: 0 0 0 5px ${BG}, 0 0 0 6px ${CORAL}00; }
+          to   { box-shadow: 0 0 0 5px ${BG}, 0 0 0 12px ${CORAL}00; }
+        }
+        .step-node-lit {
+          animation: nodeGlow 1.2s ease-out forwards;
+          border-color: ${CORAL} !important;
+          background: ${CORAL}25 !important;
+        }
+      `}</style>
+      <div aria-hidden style={{
+        ...GRID_STYLE,
+        WebkitMaskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%)',
+        maskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%)',
+      }} />
+      <div style={{ maxWidth: '720px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+        <p data-reveal style={{ textAlign: 'center', fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '14px' }}>Getting started</p>
+        <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(22px, 3vw, 30px)', fontWeight: 800, textAlign: 'center', margin: '0 0 56px', letterSpacing: '-0.02em' }}>
+          Six steps. Under 10 minutes.
+        </h2>
+
+        {/* Alternating timeline */}
+        <div style={{ position: 'relative' }}>
+          {/* Static background spine */}
+          <div aria-hidden style={{
+            position: 'absolute', left: '50%', top: '20px', bottom: '20px',
+            width: '1px', transform: 'translateX(-50%)',
+            background: `rgba(255,255,255,0.06)`,
+          }} />
+          {/* Animated coral line that draws down */}
+          <div
+            ref={lineRef}
+            aria-hidden
+            style={{
+              position: 'absolute', left: '50%', top: '20px',
+              width: '2px', transform: 'translateX(-50%)',
+              background: `linear-gradient(to bottom, ${CORAL}, ${CORAL}55)`,
+              height: `calc((100% - 40px) * ${lineProgress})`,
+              transition: 'height 0.1s linear',
+              boxShadow: `0 0 8px ${CORAL}55`,
+              borderRadius: '1px',
+            }}
+          />
+
+          {STEPS.map((step, i) => {
+            const isLeft = i % 2 === 0
+            const isRevealed = revealedSteps.includes(i)
+
+            const card = (
+              <div style={{
+                padding: '22px 24px',
+                background: isRevealed ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.015)',
+                border: `1px solid ${isRevealed ? CORAL + '28' : BORDER}`,
+                borderRadius: '14px',
+                textAlign: isLeft ? 'right' : 'left',
+                transition: 'border-color 0.4s, background 0.4s, box-shadow 0.4s',
+                opacity: isRevealed ? 1 : 0.25,
+                animation: isRevealed ? `stepReveal 0.5s cubic-bezier(0.16,1,0.3,1) both` : 'none',
+                boxShadow: isRevealed ? `0 4px 20px ${CORAL}08` : 'none',
+              }}
+                onMouseEnter={e => { if (isRevealed) { e.currentTarget.style.borderColor = `${CORAL}50`; e.currentTarget.style.boxShadow = `0 8px 28px ${CORAL}14` }}}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = isRevealed ? `${CORAL}28` : BORDER; e.currentTarget.style.boxShadow = isRevealed ? `0 4px 20px ${CORAL}08` : 'none' }}
+              >
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '8px',
+                  flexDirection: isLeft ? 'row-reverse' : 'row',
+                  marginBottom: '8px',
+                }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px', color: isRevealed ? CORAL : 'rgba(255,255,255,0.25)' }}>{step.icon}</span>
+                  <span style={{ fontSize: '10px', fontWeight: 900, color: isRevealed ? `${CORAL}80` : 'rgba(255,255,255,0.18)', letterSpacing: '0.06em' }}>{step.n}</span>
+                </div>
+                <div style={{ fontWeight: 800, fontSize: '14px', marginBottom: '5px', color: isRevealed ? 'white' : 'rgba(255,255,255,0.30)' }}>{step.title}</div>
+                <div style={{ fontSize: '12px', color: isRevealed ? 'rgba(255,255,255,0.48)' : 'rgba(255,255,255,0.18)', lineHeight: 1.65 }}>{step.desc}</div>
+              </div>
+            )
+
+            return (
+              <div key={step.n}
+                style={{ display: 'grid', gridTemplateColumns: '1fr 56px 1fr', alignItems: 'start', gap: '16px', marginBottom: i < 5 ? '20px' : 0 }}
+              >
+                {/* Left slot */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  {isLeft ? card : <div style={{ minHeight: '70px' }} />}
+                </div>
+
+                {/* Node */}
+                <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '12px' }}>
+                  <div
+                    ref={el => nodeRefs.current[i] = el}
+                    className={isRevealed ? 'step-node-lit' : ''}
+                    style={{
+                      width: '38px', height: '38px', borderRadius: '50%',
+                      background: isRevealed ? `${CORAL}22` : `rgba(255,255,255,0.04)`,
+                      border: `2px solid ${isRevealed ? CORAL + '80' : 'rgba(255,255,255,0.12)'}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      position: 'relative', zIndex: 2,
+                      boxShadow: `0 0 0 5px ${BG}`,
+                      transition: 'background 0.4s, border-color 0.4s',
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px', color: isRevealed ? CORAL : 'rgba(255,255,255,0.22)' }}>{step.icon}</span>
+                  </div>
+                </div>
+
+                {/* Right slot */}
+                <div>
+                  {!isLeft ? card : <div style={{ minHeight: '70px' }} />}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export default function BecomeATutor() {
   useReveal()
 
@@ -251,31 +415,6 @@ export default function BecomeATutor() {
 
       <Wave />
 
-      {/* ── EARNINGS CALCULATOR ────────────────────────────────────────────── */}
-      <section style={{ padding: '88px 24px', position: 'relative', overflow: 'hidden' }}>
-        <div aria-hidden style={{
-          ...GRID_STYLE,
-          WebkitMaskImage: 'radial-gradient(ellipse 100% 100% at 100% 50%, black 0%, transparent 60%)',
-          maskImage: 'radial-gradient(ellipse 100% 100% at 100% 50%, black 0%, transparent 60%)',
-        }} />
-        <div style={{ maxWidth: '860px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center', position: 'relative', zIndex: 1 }}>
-          <div>
-            <p data-reveal style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '14px' }}>What you could earn</p>
-            <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(26px, 3.5vw, 38px)', fontWeight: 900, margin: '0 0 16px', letterSpacing: '-0.03em', lineHeight: 1.1 }}>
-              Real income.<br />Zero cuts.
-            </h2>
-            <p data-reveal data-d="2" style={{ color: 'rgba(255,255,255,0.48)', fontSize: '15px', lineHeight: 1.75, margin: 0 }}>
-              Every pound you charge goes directly to you. Set your own rate, teach on your own schedule, and build a real income around your studies.
-            </p>
-          </div>
-          <div data-reveal data-d="2">
-            <EarningsCalc />
-          </div>
-        </div>
-      </section>
-
-      <Wave flip />
-
       {/* ── WHAT WE NEED FROM YOU ──────────────────────────────────────────── */}
       <section style={{ padding: '88px 24px', borderTop: `1px solid ${BORDER}` }}>
         <div style={{ maxWidth: '860px', margin: '0 auto' }}>
@@ -326,91 +465,34 @@ export default function BecomeATutor() {
       <Wave />
 
       {/* ── HOW TO GET STARTED ─────────────────────────────────────────────── */}
+      <StepsTimeline />
+
+      <Wave flip />
+
+      {/* ── EARNINGS CALCULATOR ────────────────────────────────────────────── */}
       <section style={{ padding: '88px 24px', position: 'relative', overflow: 'hidden' }}>
         <div aria-hidden style={{
           ...GRID_STYLE,
-          WebkitMaskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%)',
-          maskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%)',
+          WebkitMaskImage: 'radial-gradient(ellipse 100% 100% at 100% 50%, black 0%, transparent 60%)',
+          maskImage: 'radial-gradient(ellipse 100% 100% at 100% 50%, black 0%, transparent 60%)',
         }} />
-        <div style={{ maxWidth: '720px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <p data-reveal style={{ textAlign: 'center', fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '14px' }}>Getting started</p>
-          <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(22px, 3vw, 30px)', fontWeight: 800, textAlign: 'center', margin: '0 0 56px', letterSpacing: '-0.02em' }}>
-            Six steps. Under 10 minutes.
-          </h2>
-
-          {/* Alternating timeline */}
-          <div style={{ position: 'relative' }}>
-            {/* Vertical spine */}
-            <div aria-hidden style={{
-              position: 'absolute', left: '50%', top: '20px', bottom: '20px',
-              width: '1px', transform: 'translateX(-50%)',
-              background: `linear-gradient(to bottom, transparent, ${CORAL}22 12%, ${CORAL}22 88%, transparent)`,
-            }} />
-
-            {STEPS.map((step, i) => {
-              const isLeft = i % 2 === 0
-              const card = (
-                <div style={{
-                  padding: '22px 24px',
-                  background: 'rgba(255,255,255,0.025)',
-                  border: `1px solid ${BORDER}`,
-                  borderRadius: '14px',
-                  textAlign: isLeft ? 'right' : 'left',
-                  transition: 'border-color 0.2s, box-shadow 0.2s',
-                }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = `${CORAL}30`; e.currentTarget.style.boxShadow = `0 6px 20px ${CORAL}0c` }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.boxShadow = 'none' }}
-                >
-                  <div style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '8px',
-                    flexDirection: isLeft ? 'row-reverse' : 'row',
-                    marginBottom: '8px',
-                  }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: '18px', color: CORAL }}>{step.icon}</span>
-                    <span style={{ fontSize: '10px', fontWeight: 900, color: `${CORAL}60`, letterSpacing: '0.06em' }}>{step.n}</span>
-                  </div>
-                  <div style={{ fontWeight: 800, fontSize: '14px', marginBottom: '5px' }}>{step.title}</div>
-                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.42)', lineHeight: 1.65 }}>{step.desc}</div>
-                </div>
-              )
-
-              return (
-                <div key={step.n}
-                  data-reveal
-                  data-from={isLeft ? 'left' : 'right'}
-                  data-d={String((i % 2) + 1)}
-                  style={{ display: 'grid', gridTemplateColumns: '1fr 56px 1fr', alignItems: 'start', gap: '16px', marginBottom: i < 5 ? '20px' : 0 }}
-                >
-                  {/* Left slot */}
-                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    {isLeft ? card : <div style={{ minHeight: '70px' }} />}
-                  </div>
-
-                  {/* Node */}
-                  <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '12px' }}>
-                    <div style={{
-                      width: '38px', height: '38px', borderRadius: '50%',
-                      background: `${CORAL}12`, border: `2px solid ${CORAL}35`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      position: 'relative', zIndex: 1,
-                      boxShadow: `0 0 0 5px ${BG}`,
-                    }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: '16px', color: CORAL }}>{step.icon}</span>
-                    </div>
-                  </div>
-
-                  {/* Right slot */}
-                  <div>
-                    {!isLeft ? card : <div style={{ minHeight: '70px' }} />}
-                  </div>
-                </div>
-              )
-            })}
+        <div style={{ maxWidth: '860px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px', alignItems: 'center', position: 'relative', zIndex: 1 }}>
+          <div>
+            <p data-reveal style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: '14px' }}>What you could earn</p>
+            <h2 data-reveal data-d="1" style={{ fontSize: 'clamp(26px, 3.5vw, 38px)', fontWeight: 900, margin: '0 0 16px', letterSpacing: '-0.03em', lineHeight: 1.1 }}>
+              Real income.<br />Zero cuts.
+            </h2>
+            <p data-reveal data-d="2" style={{ color: 'rgba(255,255,255,0.48)', fontSize: '15px', lineHeight: 1.75, margin: 0 }}>
+              Every pound you charge goes directly to you. Set your own rate, teach on your own schedule, and build a real income around your studies.
+            </p>
+          </div>
+          <div data-reveal data-d="2">
+            <EarningsCalc />
           </div>
         </div>
       </section>
 
-      <Wave flip />
+      <Wave />
 
       {/* ── MORE THAN TUTORING ─────────────────────────────────────────────── */}
       <section style={{ padding: '88px 24px', borderTop: `1px solid ${BORDER}` }}>
