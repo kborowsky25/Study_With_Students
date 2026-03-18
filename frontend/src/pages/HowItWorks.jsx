@@ -872,43 +872,75 @@ export default function HowItWorks() {
         </div>
       </div>
 
-      {/* ── HOW PAYMENTS WORK — Stripe ──────────────────────────────────────── */}
-      <div style={{ borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: '0 24px' }}>
-        <div style={{ maxWidth: '900px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px', padding: '52px 0', alignItems: 'center' }}>
-          {/* Left — Stripe branding */}
-          <div data-reveal>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '18px' }}>
-              <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'rgba(99,91,255,0.12)', border: '1px solid rgba(99,91,255,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="28" height="28" viewBox="0 0 30 30" fill="none">
-                  <path d="M14.3 12.5c0-.8.7-1.1 1.8-1.1 1.6 0 3.6.5 5.2 1.4V8.4C19.6 7.5 17.8 7 16 7c-4 0-6.6 2-6.6 5.3 0 5.2 7.2 4.4 7.2 6.6 0 .9-.8 1.2-2 1.2-1.7 0-3.9-.7-5.7-1.7v4.5c1.9.8 3.9 1.2 5.7 1.2 4.1 0 6.9-2 6.9-5.4-.1-5.6-7.2-4.6-7.2-6.2z" fill="white" />
+      {/* ── HOW PAYMENTS WORK — escrow flow ─────────────────────────────────── */}
+      <div style={{ borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: '52px 24px' }}>
+        <div style={{ maxWidth: '860px', margin: '0 auto' }}>
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+            <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: 10 }}>How payments work</p>
+            <h2 style={{ fontSize: 'clamp(20px, 2.8vw, 28px)', fontWeight: 800, margin: '0 0 10px', letterSpacing: '-0.025em', lineHeight: 1.15, color: TEXT }}>
+              Pay before. Receive after.
+            </h2>
+            <p style={{ fontSize: 14, color: TEXT_MUT, maxWidth: 500, margin: '0 auto' }}>
+              Funds are held by Stripe until your session is complete — then released instantly to your tutor. 0% platform cut, always.
+            </p>
+          </div>
+
+          {/* 3-step flow */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr auto 1fr', gap: '12px', alignItems: 'center', marginBottom: '32px' }}>
+            {/* Step 1 */}
+            <div style={{ textAlign: 'center', padding: '22px 16px', background: SURF, border: `1px solid ${BORDER}`, borderRadius: 14 }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: `${CORAL}15`, border: `1px solid ${CORAL}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 20, color: CORAL }}>credit_card</span>
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: TEXT, marginBottom: 4 }}>Student pays</div>
+              <div style={{ fontSize: 11, color: TEXT_38, lineHeight: 1.5 }}>Full session fee charged at booking via Stripe</div>
+            </div>
+
+            {/* Arrow 1 */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 20, color: TEXT_35 }}>arrow_forward</span>
+              <span style={{ fontSize: 9, fontWeight: 700, color: TEXT_35, textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>held by</span>
+            </div>
+
+            {/* Step 2 — Stripe hold */}
+            <div style={{ textAlign: 'center', padding: '22px 16px', background: 'rgba(99,91,255,0.06)', border: '1px solid rgba(99,91,255,0.18)', borderRadius: 14 }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(99,91,255,0.12)', border: '1px solid rgba(99,91,255,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                <svg width="20" height="20" viewBox="0 0 30 30" fill="none">
+                  <path d="M14.3 12.5c0-.8.7-1.1 1.8-1.1 1.6 0 3.6.5 5.2 1.4V8.4C19.6 7.5 17.8 7 16 7c-4 0-6.6 2-6.6 5.3 0 5.2 7.2 4.4 7.2 6.6 0 .9-.8 1.2-2 1.2-1.7 0-3.9-.7-5.7-1.7v4.5c1.9.8 3.9 1.2 5.7 1.2 4.1 0 6.9-2 6.9-5.4-.1-5.6-7.2-4.6-7.2-6.2z" fill="#a5b4fc" />
                 </svg>
               </div>
-              <div>
-                <div style={{ fontSize: '22px', fontWeight: '800', letterSpacing: '-0.025em', marginBottom: '2px', color: TEXT }}>Stripe</div>
-                <div style={{ fontSize: '12px', color: TEXT_38 }}>Payment infrastructure</div>
-              </div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: TEXT, marginBottom: 4 }}>Stripe holds funds</div>
+              <div style={{ fontSize: 11, color: TEXT_38, lineHeight: 1.5 }}>Money secured while the session takes place</div>
             </div>
-            <p style={{ fontSize: '14px', color: TEXT_MUT, lineHeight: 1.75, margin: '0 0 16px' }}>
-              All payments are powered by Stripe — the same infrastructure trusted by Amazon, Shopify, and millions of businesses worldwide.
-            </p>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(99,91,255,0.08)', border: '1px solid rgba(99,91,255,0.20)', borderRadius: '8px', padding: '5px 12px' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '13px', color: '#a5b4fc' }}>verified</span>
-              <span style={{ fontSize: '11px', fontWeight: '700', color: '#a5b4fc' }}>PCI-DSS Level 1 Certified</span>
+
+            {/* Arrow 2 */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 20, color: TEXT_35 }}>arrow_forward</span>
+              <span style={{ fontSize: 9, fontWeight: 700, color: TEXT_35, textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>released</span>
+            </div>
+
+            {/* Step 3 */}
+            <div style={{ textAlign: 'center', padding: '22px 16px', background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.18)', borderRadius: 14 }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#22c55e' }}>account_balance_wallet</span>
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: TEXT, marginBottom: 4 }}>Tutor receives 100%</div>
+              <div style={{ fontSize: 11, color: TEXT_38, lineHeight: 1.5 }}>Full amount paid out — 0% taken by us</div>
             </div>
           </div>
-          {/* Right — key points */}
-          <div data-reveal data-d="1" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
+          {/* Trust badges row */}
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             {[
-              { icon: 'send_money', label: '100% direct to tutor',      sub: 'Platform takes zero — every pound you pay goes to your tutor' },
-              { icon: 'lock',       label: 'Bank-level encryption',      sub: "End-to-end encrypted via Stripe's secure checkout" },
-              { icon: 'bolt',       label: 'Instant, automatic payouts', sub: 'Tutors receive funds directly to their Stripe account' },
-            ].map(item => (
-              <div key={item.label} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 14px', background: SURF2, border: `1px solid ${BORDER}`, borderRadius: '10px' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '16px', color: CORAL, marginTop: '1px', flexShrink: 0 }}>{item.icon}</span>
-                <div>
-                  <div style={{ fontSize: '13px', fontWeight: '700', marginBottom: '3px', color: TEXT }}>{item.label}</div>
-                  <div style={{ fontSize: '11px', color: TEXT_FAINT, lineHeight: 1.5 }}>{item.sub}</div>
-                </div>
+              { icon: 'lock', label: 'Bank-level encryption', color: '#a5b4fc' },
+              { icon: 'verified_user', label: 'PCI-DSS Level 1 certified', color: '#a5b4fc' },
+              { icon: 'bolt', label: 'Instant post-session payout', color: CORAL },
+              { icon: 'payments', label: '0% platform fee, always', color: '#22c55e' },
+            ].map(b => (
+              <div key={b.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: SURF, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '6px 14px' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 13, color: b.color }}>{b.icon}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: TEXT_MUT }}>{b.label}</span>
               </div>
             ))}
           </div>
