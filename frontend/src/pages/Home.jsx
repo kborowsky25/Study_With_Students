@@ -2,10 +2,9 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Link } from "@tanstack/react-router";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
+import { useTheme } from "../context/ThemeContext";
 
-const BG = "#1b263b";
 const CORAL = "#ff725e";
-const BORDER = "rgba(255,255,255,0.08)";
 
 // ── Scroll-reveal + parallax ──────────────────────────────────────────────────
 function useScrollEffects() {
@@ -36,7 +35,10 @@ function useScrollEffects() {
 }
 
 // ── Grid background ───────────────────────────────────────────────────────────
-function Grid({ mask, parallax, opacity = 0.028 }) {
+function Grid({ mask, parallax, opacity = 0.028, dark }) {
+  const { dark: ctxDark } = useTheme();
+  const isDark = dark !== undefined ? dark : ctxDark;
+  const rgb = isDark ? "255,255,255" : "27,38,59";
   return (
     <div
       aria-hidden="true"
@@ -46,8 +48,8 @@ function Grid({ mask, parallax, opacity = 0.028 }) {
         zIndex: 0,
         pointerEvents: "none",
         backgroundImage: `
-        linear-gradient(rgba(255,255,255,${opacity}) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,${opacity}) 1px, transparent 1px)
+        linear-gradient(rgba(${rgb},${opacity}) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(${rgb},${opacity}) 1px, transparent 1px)
       `,
         backgroundSize: "56px 56px",
         backgroundPosition: parallax ? `0 calc(var(--sy, 0px) * -0.25)` : "0 0",
@@ -222,11 +224,17 @@ function HeroCanvas({ pillRef, onGlow }) {
 
 // ── Mini product previews ─────────────────────────────────────────────────────
 function PreviewTutor() {
+  const { dark } = useTheme();
+  const CORAL = "#ff725e";
+  const BORDER = dark ? "rgba(255,255,255,0.08)" : "rgba(27,38,59,0.10)";
+  const TEXT_MUT = dark ? "rgba(255,255,255,0.40)" : "rgba(27,38,59,0.45)";
+  const SURFACE = dark ? "rgba(255,255,255,0.04)" : "#ffffff";
+  const SURFACE2 = dark ? "rgba(255,255,255,0.025)" : "rgba(27,38,59,0.03)";
   return (
     <div style={{ marginTop: "16px", borderTop: `1px solid ${BORDER}`, paddingTop: "14px" }}>
       <div
         style={{
-          background: "rgba(255,255,255,0.04)",
+          background: SURFACE,
           border: `1px solid ${BORDER}`,
           borderRadius: "10px",
           padding: "10px 12px",
@@ -247,7 +255,7 @@ function PreviewTutor() {
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: "700", fontSize: "12px" }}>Alex V.</div>
-          <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.40)", marginTop: "1px" }}>
+          <div style={{ fontSize: "10px", color: TEXT_MUT, marginTop: "1px" }}>
             Oxford · Maths · £18/hr
           </div>
           <div style={{ display: "flex", gap: "2px", marginTop: "3px" }}>
@@ -264,7 +272,7 @@ function PreviewTutor() {
       </div>
       <div
         style={{
-          background: "rgba(255,255,255,0.025)", border: `1px solid ${BORDER}`,
+          background: SURFACE2, border: `1px solid ${BORDER}`,
           borderRadius: "10px", padding: "10px 12px", marginTop: "5px",
           display: "flex", alignItems: "center", gap: "10px", opacity: 0.5,
         }}
@@ -274,14 +282,14 @@ function PreviewTutor() {
             width: "32px", height: "32px", borderRadius: "50%",
             background: "rgba(255,114,94,0.12)", display: "flex", alignItems: "center",
             justifyContent: "center", fontWeight: "800", fontSize: "11px",
-            color: "rgba(255,255,255,0.5)", flexShrink: 0,
+            color: dark ? "rgba(255,255,255,0.5)" : "rgba(27,38,59,0.5)", flexShrink: 0,
           }}
         >
           SK
         </div>
         <div>
           <div style={{ fontWeight: "700", fontSize: "12px" }}>Sara K.</div>
-          <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.40)" }}>Imperial · Physics · £22/hr</div>
+          <div style={{ fontSize: "10px", color: TEXT_MUT }}>Imperial · Physics · £22/hr</div>
         </div>
       </div>
     </div>
@@ -289,23 +297,30 @@ function PreviewTutor() {
 }
 
 function PreviewUCAS() {
+  const { dark } = useTheme();
+  const CORAL = "#ff725e";
+  const BORDER = dark ? "rgba(255,255,255,0.08)" : "rgba(27,38,59,0.10)";
+  const SURFACE = dark ? "rgba(255,255,255,0.03)" : "rgba(27,38,59,0.03)";
+  const BADGE_BG = dark ? "rgba(255,255,255,0.07)" : "rgba(27,38,59,0.07)";
+  const statusMut = dark ? "rgba(255,255,255,0.60)" : "rgba(27,38,59,0.55)";
+  const statusDim = dark ? "rgba(255,255,255,0.45)" : "rgba(27,38,59,0.42)";
   return (
     <div style={{ marginTop: "16px", borderTop: `1px solid ${BORDER}`, paddingTop: "14px", display: "flex", flexDirection: "column", gap: "5px" }}>
       {[
         { label: "Personal Statement", status: "Draft", color: CORAL },
-        { label: "UCAS Form Walkthrough", status: "Scheduled", color: "rgba(255,255,255,0.60)" },
-        { label: "University Shortlist", status: "Done", color: "rgba(255,255,255,0.45)" },
+        { label: "UCAS Form Walkthrough", status: "Scheduled", color: statusMut },
+        { label: "University Shortlist", status: "Done", color: statusDim },
       ].map((item) => (
         <div
           key={item.label}
           style={{
-            background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER}`,
+            background: SURFACE, border: `1px solid ${BORDER}`,
             borderRadius: "9px", padding: "8px 11px",
             display: "flex", alignItems: "center", justifyContent: "space-between",
           }}
         >
           <div style={{ fontSize: "11px", fontWeight: "600" }}>{item.label}</div>
-          <span style={{ fontSize: "9px", fontWeight: "800", background: "rgba(255,255,255,0.07)", color: item.color, padding: "2px 7px", borderRadius: "5px" }}>
+          <span style={{ fontSize: "9px", fontWeight: "800", background: BADGE_BG, color: item.color, padding: "2px 7px", borderRadius: "5px" }}>
             {item.status}
           </span>
         </div>
@@ -315,6 +330,12 @@ function PreviewUCAS() {
 }
 
 function PreviewRooms() {
+  const { dark } = useTheme();
+  const CORAL = "#ff725e";
+  const BORDER = dark ? "rgba(255,255,255,0.08)" : "rgba(27,38,59,0.10)";
+  const SURFACE2 = dark ? "rgba(255,255,255,0.025)" : "rgba(27,38,59,0.03)";
+  const TEXT_DIM = dark ? "rgba(255,255,255,0.38)" : "rgba(27,38,59,0.38)";
+  const SOON_CLR = dark ? "rgba(255,255,255,0.35)" : "rgba(27,38,59,0.38)";
   return (
     <div style={{ marginTop: "16px", borderTop: `1px solid ${BORDER}`, paddingTop: "14px", display: "flex", flexDirection: "column", gap: "5px" }}>
       {[
@@ -325,7 +346,7 @@ function PreviewRooms() {
         <div
           key={r.sub}
           style={{
-            background: r.live ? `${CORAL}06` : "rgba(255,255,255,0.025)",
+            background: r.live ? `${CORAL}06` : SURFACE2,
             border: `1px solid ${r.live ? CORAL + "20" : BORDER}`,
             borderRadius: "9px", padding: "8px 11px",
             display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -333,14 +354,14 @@ function PreviewRooms() {
         >
           <div>
             <div style={{ fontSize: "11px", fontWeight: "700" }}>{r.sub}</div>
-            <div style={{ fontSize: "9px", color: "rgba(255,255,255,0.38)", marginTop: "1px" }}>
+            <div style={{ fontSize: "9px", color: TEXT_DIM, marginTop: "1px" }}>
               {r.tutor} · {r.count} students
             </div>
           </div>
           {r.live ? (
             <span style={{ fontSize: "9px", fontWeight: "800", background: "rgba(239,68,68,0.20)", color: "#ef4444", padding: "2px 6px", borderRadius: "4px" }}>LIVE</span>
           ) : (
-            <span style={{ fontSize: "9px", fontWeight: "700", color: "rgba(255,255,255,0.35)" }}>Soon</span>
+            <span style={{ fontSize: "9px", fontWeight: "700", color: SOON_CLR }}>Soon</span>
           )}
         </div>
       ))}
@@ -349,6 +370,11 @@ function PreviewRooms() {
 }
 
 function PreviewForum() {
+  const { dark } = useTheme();
+  const CORAL = "#ff725e";
+  const BORDER = dark ? "rgba(255,255,255,0.08)" : "rgba(27,38,59,0.10)";
+  const SURFACE2 = dark ? "rgba(255,255,255,0.025)" : "rgba(27,38,59,0.03)";
+  const TEXT_DIM = dark ? "rgba(255,255,255,0.35)" : "rgba(27,38,59,0.38)";
   return (
     <div style={{ marginTop: "16px", borderTop: `1px solid ${BORDER}`, paddingTop: "14px", display: "flex", flexDirection: "column", gap: "5px" }}>
       {[
@@ -358,7 +384,7 @@ function PreviewForum() {
         <div
           key={t.q}
           style={{
-            background: t.hot ? `${CORAL}06` : "rgba(255,255,255,0.025)",
+            background: t.hot ? `${CORAL}06` : SURFACE2,
             border: `1px solid ${t.hot ? CORAL + "20" : BORDER}`,
             borderRadius: "9px", padding: "9px 11px",
           }}
@@ -368,7 +394,7 @@ function PreviewForum() {
             {t.hot && (
               <span style={{ fontSize: "9px", background: `${CORAL}20`, color: CORAL, padding: "1px 6px", borderRadius: "4px", fontWeight: "700" }}>🔥 Hot</span>
             )}
-            <span style={{ fontSize: "9px", color: "rgba(255,255,255,0.35)" }}>{t.replies} replies</span>
+            <span style={{ fontSize: "9px", color: TEXT_DIM }}>{t.replies} replies</span>
           </div>
         </div>
       ))}
@@ -377,13 +403,18 @@ function PreviewForum() {
 }
 
 function PreviewCalendar() {
+  const { dark } = useTheme();
+  const CORAL = "#ff725e";
+  const BORDER = dark ? "rgba(255,255,255,0.08)" : "rgba(27,38,59,0.10)";
+  const TEXT_MUT = dark ? "rgba(255,255,255,0.40)" : "rgba(27,38,59,0.42)";
+  const DAY_CLR = dark ? "rgba(255,255,255,0.28)" : "rgba(27,38,59,0.30)";
   const today = new Date().getDate();
   const booked = [today, today + 2, today + 5].filter((d) => d <= 31);
   return (
     <div style={{ marginTop: "16px", borderTop: `1px solid ${BORDER}`, paddingTop: "14px" }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "2px", marginBottom: "8px" }}>
         {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
-          <div key={i} style={{ textAlign: "center", fontSize: "8px", color: "rgba(255,255,255,0.28)", paddingBottom: "2px" }}>{d}</div>
+          <div key={i} style={{ textAlign: "center", fontSize: "8px", color: DAY_CLR, paddingBottom: "2px" }}>{d}</div>
         ))}
         {Array.from({ length: 21 }, (_, i) => {
           const d = i + (today - 6);
@@ -395,7 +426,7 @@ function PreviewCalendar() {
               style={{
                 textAlign: "center", fontSize: "9px", padding: "3px 2px", borderRadius: "4px",
                 background: isToday ? CORAL : isBooked ? `${CORAL}20` : "transparent",
-                color: isToday ? "white" : isBooked ? CORAL : "rgba(255,255,255,0.40)",
+                color: isToday ? "white" : isBooked ? CORAL : TEXT_MUT,
                 fontWeight: isToday || isBooked ? "700" : "400",
               }}
             >
@@ -408,7 +439,7 @@ function PreviewCalendar() {
         <span className="material-symbols-outlined" style={{ fontSize: "12px", color: CORAL }}>event</span>
         <div>
           <div style={{ fontSize: "10px", fontWeight: "700" }}>Maths with Alex</div>
-          <div style={{ fontSize: "9px", color: "rgba(255,255,255,0.40)" }}>Today · 4:00 PM</div>
+          <div style={{ fontSize: "9px", color: TEXT_MUT }}>Today · 4:00 PM</div>
         </div>
       </div>
     </div>
@@ -416,6 +447,11 @@ function PreviewCalendar() {
 }
 
 function PreviewMessages() {
+  const { dark } = useTheme();
+  const CORAL = "#ff725e";
+  const BORDER = dark ? "rgba(255,255,255,0.08)" : "rgba(27,38,59,0.10)";
+  const BUBBLE_BG = dark ? "rgba(255,255,255,0.07)" : "rgba(27,38,59,0.06)";
+  const BUBBLE_CLR = dark ? "rgba(255,255,255,0.78)" : "rgba(27,38,59,0.75)";
   const msgs = [
     { from: "them", text: "Hi! I need help with calculus 📚" },
     { from: "me", text: "Of course! What topics?" },
@@ -427,8 +463,8 @@ function PreviewMessages() {
         <div key={i} style={{ display: "flex", justifyContent: m.from === "me" ? "flex-end" : "flex-start" }}>
           <div
             style={{
-              background: m.from === "me" ? CORAL : "rgba(255,255,255,0.07)",
-              color: m.from === "me" ? "white" : "rgba(255,255,255,0.78)",
+              background: m.from === "me" ? CORAL : BUBBLE_BG,
+              color: m.from === "me" ? "white" : BUBBLE_CLR,
               padding: "6px 10px", borderRadius: 8, fontSize: 11, maxWidth: "80%", lineHeight: 1.4,
             }}
           >
@@ -442,9 +478,17 @@ function PreviewMessages() {
 
 // ── Feature card with hover-reveal ────────────────────────────────────────────
 function FeatureCard({ icon, title, desc, preview, delay, badge, from }) {
+  const { dark } = useTheme();
+  const CORAL = "#ff725e";
   const isExplorer = badge === "EXPLORER";
-  const borderColor = isExplorer ? `${CORAL}45` : "rgba(255,255,255,0.22)";
-  const hoverBorder = isExplorer ? `${CORAL}70` : "rgba(255,255,255,0.42)";
+  const borderColor = isExplorer ? `${CORAL}45` : (dark ? "rgba(255,255,255,0.22)" : "rgba(27,38,59,0.18)");
+  const hoverBorder = isExplorer ? `${CORAL}70` : (dark ? "rgba(255,255,255,0.42)" : "rgba(27,38,59,0.35)");
+  const frontBg = isExplorer ? `linear-gradient(135deg, ${CORAL}08, ${CORAL}03)` : (dark ? "rgba(255,255,255,0.03)" : "#ffffff");
+  const backBg = isExplorer ? `linear-gradient(135deg, ${CORAL}12, ${CORAL}05)` : (dark ? "rgba(255,255,255,0.05)" : "#f8f8fc");
+  const backBorder = isExplorer ? `${CORAL}50` : (dark ? "rgba(255,255,255,0.28)" : "rgba(27,38,59,0.18)");
+  const badgeBg = isExplorer ? `${CORAL}22` : (dark ? "rgba(255,255,255,0.08)" : "rgba(27,38,59,0.07)");
+  const badgeClr = isExplorer ? CORAL : (dark ? "rgba(255,255,255,0.55)" : "rgba(27,38,59,0.52)");
+  const descClr = dark ? "rgba(255,255,255,0.48)" : "rgba(27,38,59,0.52)";
 
   return (
     <div
@@ -473,7 +517,7 @@ function FeatureCard({ icon, title, desc, preview, delay, badge, from }) {
       <div className="flip-inner" style={{ height: "190px" }}>
         {/* Front */}
         <div className="flip-front" style={{
-          background: isExplorer ? `linear-gradient(135deg, ${CORAL}08, ${CORAL}03)` : "rgba(255,255,255,0.03)",
+          background: frontBg,
           border: `1px solid ${borderColor}`,
           padding: "18px",
           display: "flex", flexDirection: "column",
@@ -484,8 +528,8 @@ function FeatureCard({ icon, title, desc, preview, delay, badge, from }) {
           {badge && (
             <div style={{
               alignSelf: "flex-start", marginBottom: "14px",
-              background: isExplorer ? `${CORAL}22` : "rgba(255,255,255,0.08)",
-              color: isExplorer ? CORAL : "rgba(255,255,255,0.55)",
+              background: badgeBg,
+              color: badgeClr,
               fontSize: "9px", fontWeight: "800", padding: "3px 8px", borderRadius: "20px", letterSpacing: "0.06em",
             }}>
               {badge}
@@ -493,13 +537,13 @@ function FeatureCard({ icon, title, desc, preview, delay, badge, from }) {
           )}
           <span className="material-symbols-outlined" style={{ fontSize: "24px", color: CORAL, marginBottom: "12px" }}>{icon}</span>
           <h3 style={{ fontSize: "14px", fontWeight: "700", margin: "0 0 8px", letterSpacing: "-0.01em" }}>{title}</h3>
-          <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.48)", margin: "0 0 auto", lineHeight: 1.6 }}>{desc}</p>
+          <p style={{ fontSize: "12px", color: descClr, margin: "0 0 auto", lineHeight: 1.6 }}>{desc}</p>
           <p style={{ fontSize: "10px", color: `${CORAL}65`, marginTop: "12px", fontWeight: 600 }}>Hover to preview →</p>
         </div>
         {/* Back — full preview */}
         <div className="flip-back" style={{
-          background: isExplorer ? `linear-gradient(135deg, ${CORAL}12, ${CORAL}05)` : "rgba(255,255,255,0.05)",
-          border: `1px solid ${isExplorer ? CORAL + "50" : "rgba(255,255,255,0.28)"}`,
+          background: backBg,
+          border: `1px solid ${backBorder}`,
           padding: "18px",
           overflow: "auto",
         }}>
@@ -517,17 +561,22 @@ function FeatureCard({ icon, title, desc, preview, delay, badge, from }) {
 
 // ── Pricing feature row ───────────────────────────────────────────────────────
 function PricingFeatureRow({ icon, label, desc }) {
+  const { dark } = useTheme();
+  const CORAL = "#ff725e";
+  const BORDER = dark ? "rgba(255,255,255,0.08)" : "rgba(27,38,59,0.10)";
+  const SURFACE = dark ? "rgba(255,255,255,0.02)" : "rgba(27,38,59,0.02)";
+  const TEXT_DIM = dark ? "rgba(255,255,255,0.35)" : "rgba(27,38,59,0.38)";
   return (
     <div
       style={{
         display: "flex", alignItems: "center", gap: "12px", padding: "9px 13px",
-        borderRadius: "9px", background: "rgba(255,255,255,0.02)", border: `1px solid ${BORDER}`,
+        borderRadius: "9px", background: SURFACE, border: `1px solid ${BORDER}`,
       }}
     >
       <span className="material-symbols-outlined" style={{ fontSize: "15px", color: CORAL, flexShrink: 0 }}>{icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: "12px", fontWeight: "700" }}>{label}</div>
-        <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.35)", marginTop: "1px" }}>{desc}</div>
+        <div style={{ fontSize: "10px", color: TEXT_DIM, marginTop: "1px" }}>{desc}</div>
       </div>
     </div>
   );
@@ -549,19 +598,23 @@ const PRO_FEATURES = [
 ];
 
 function StripeBadge() {
+  const { dark } = useTheme();
+  const BORDER = dark ? "rgba(255,255,255,0.08)" : "rgba(27,38,59,0.10)";
+  const BG = dark ? "rgba(255,255,255,0.06)" : "rgba(27,38,59,0.04)";
+  const CLR = dark ? "rgba(255,255,255,0.75)" : "rgba(27,38,59,0.65)";
   return (
     <div
       style={{
         display: "inline-flex", alignItems: "center", gap: "6px",
-        background: "rgba(255,255,255,0.06)", border: `1px solid ${BORDER}`,
+        background: BG, border: `1px solid ${BORDER}`,
         borderRadius: "8px", padding: "5px 10px",
       }}
     >
       <svg width="14" height="14" viewBox="0 0 30 30" fill="none">
-        <rect width="30" height="30" rx="6" fill="rgba(255,255,255,0.15)" />
+        <rect width="30" height="30" rx="6" fill="rgba(99,91,255,0.20)" />
         <path d="M14.3 12.5c0-.8.7-1.1 1.8-1.1 1.6 0 3.6.5 5.2 1.4V8.4C19.6 7.5 17.8 7 16 7c-4 0-6.6 2-6.6 5.3 0 5.2 7.2 4.4 7.2 6.6 0 .9-.8 1.2-2 1.2-1.7 0-3.9-.7-5.7-1.7v4.5c1.9.8 3.9 1.2 5.7 1.2 4.1 0 6.9-2 6.9-5.4-.1-5.6-7.2-4.6-7.2-6.2z" fill="white" />
       </svg>
-      <span style={{ fontSize: "12px", fontWeight: 700, color: "rgba(255,255,255,0.75)", letterSpacing: "-0.01em" }}>Stripe</span>
+      <span style={{ fontSize: "12px", fontWeight: 700, color: CLR, letterSpacing: "-0.01em" }}>Stripe</span>
     </div>
   );
 }
@@ -582,6 +635,18 @@ function UnicefBadge() {
 }
 
 function PricingSection() {
+  const { dark } = useTheme();
+  const CORAL = "#ff725e";
+  const BORDER = dark ? "rgba(255,255,255,0.08)" : "rgba(27,38,59,0.10)";
+  const SURFACE = dark ? "rgba(255,255,255,0.03)" : "#ffffff";
+  const TEXT_MUT = dark ? "rgba(255,255,255,0.55)" : "rgba(27,38,59,0.52)";
+  const TEXT_DIM = dark ? "rgba(255,255,255,0.40)" : "rgba(27,38,59,0.42)";
+  const TEXT_BTN = dark ? "rgba(255,255,255,0.7)" : "rgba(27,38,59,0.70)";
+  const BTN_BG   = dark ? "rgba(255,255,255,0.07)" : "rgba(27,38,59,0.06)";
+  const BTN_HOV  = dark ? "rgba(255,255,255,0.12)" : "rgba(27,38,59,0.10)";
+  const BADGE_BG = dark ? "rgba(255,255,255,0.04)" : "rgba(27,38,59,0.04)";
+  const BADGE_CLR = dark ? "rgba(255,255,255,0.55)" : "rgba(27,38,59,0.52)";
+  const UPGRADE_LBL = dark ? "rgba(255,255,255,0.25)" : "rgba(27,38,59,0.28)";
   return (
     <section style={{ padding: "100px 24px", borderTop: `1px solid ${BORDER}`, position: "relative", overflow: "hidden" }}>
       <style>{`
@@ -598,39 +663,39 @@ function PricingSection() {
         <h2 data-reveal data-d="1" style={{ fontSize: "clamp(26px, 3.5vw, 38px)", fontWeight: "800", textAlign: "center", margin: "0 0 10px", letterSpacing: "-0.02em" }}>
           Everything free. Explorer Plan for £2/mo.
         </h2>
-        <p data-reveal data-d="2" style={{ textAlign: "center", color: "rgba(255,255,255,0.42)", fontSize: "15px", margin: "0 auto 16px", lineHeight: 1.6, maxWidth: "480px" }}>
+        <p data-reveal data-d="2" style={{ textAlign: "center", color: TEXT_DIM, fontSize: "15px", margin: "0 auto 16px", lineHeight: 1.6, maxWidth: "480px" }}>
           Tutoring, UCAS guidance, and booking are always free. The community extras are £2/month.
         </p>
 
         <div data-reveal data-d="2" style={{ display: "flex", justifyContent: "center", gap: "10px", marginBottom: "52px", flexWrap: "wrap" }}>
           <StripeBadge />
-          <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(255,255,255,0.04)", border: `1px solid ${BORDER}`, borderRadius: "8px", padding: "5px 10px" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: BADGE_BG, border: `1px solid ${BORDER}`, borderRadius: "8px", padding: "5px 10px" }}>
             <span className="material-symbols-outlined" style={{ fontSize: "14px", color: CORAL }}>lock</span>
-            <span style={{ fontSize: "12px", fontWeight: 600, color: "rgba(255,255,255,0.55)" }}>Bank-level encryption</span>
+            <span style={{ fontSize: "12px", fontWeight: 600, color: BADGE_CLR }}>Bank-level encryption</span>
           </div>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(255,255,255,0.04)", border: `1px solid ${BORDER}`, borderRadius: "8px", padding: "5px 10px" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: BADGE_BG, border: `1px solid ${BORDER}`, borderRadius: "8px", padding: "5px 10px" }}>
             <span className="material-symbols-outlined" style={{ fontSize: "14px", color: CORAL }}>percent</span>
-            <span style={{ fontSize: "12px", fontWeight: 600, color: "rgba(255,255,255,0.55)" }}>0% to platform</span>
+            <span style={{ fontSize: "12px", fontWeight: 600, color: BADGE_CLR }}>0% to platform</span>
           </div>
         </div>
 
         {/* 1fr auto 1fr grid with upgrade arrow */}
         <div data-reveal data-d="3" style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: "0", alignItems: "center" }}>
           {/* Free card */}
-          <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER}`, borderRadius: "18px", padding: "28px", marginRight: "16px" }}>
+          <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: "18px", padding: "28px", marginRight: "16px" }}>
             <div style={{ marginBottom: "18px" }}>
-              <div style={{ fontSize: "12px", fontWeight: "800", color: "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "5px" }}>Free</div>
+              <div style={{ fontSize: "12px", fontWeight: "800", color: TEXT_MUT, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "5px" }}>Free</div>
               <div style={{ fontSize: "34px", fontWeight: "900", letterSpacing: "-0.04em", marginBottom: "3px" }}>£0</div>
-              <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.40)" }}>No card required — ever</div>
+              <div style={{ fontSize: "11px", color: TEXT_DIM }}>No card required — ever</div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginBottom: "20px" }}>
               {FREE_FEATURES.map((f) => <PricingFeatureRow key={f.label} {...f} />)}
             </div>
             <Link
               to="/signup"
-              style={{ display: "block", textAlign: "center", padding: "11px", borderRadius: "10px", background: "rgba(255,255,255,0.07)", border: `1px solid ${BORDER}`, color: "rgba(255,255,255,0.7)", fontWeight: "700", fontSize: "13px", textDecoration: "none", transition: "background 0.15s" }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.12)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.07)")}
+              style={{ display: "block", textAlign: "center", padding: "11px", borderRadius: "10px", background: BTN_BG, border: `1px solid ${BORDER}`, color: TEXT_BTN, fontWeight: "700", fontSize: "13px", textDecoration: "none", transition: "background 0.15s" }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = BTN_HOV)}
+              onMouseLeave={(e) => (e.currentTarget.style.background = BTN_BG)}
             >
               Get started free
             </Link>
@@ -648,7 +713,7 @@ function PricingSection() {
             >
               <span className="material-symbols-outlined" style={{ fontSize: "20px", color: "white" }}>arrow_forward</span>
             </div>
-            <span style={{ fontSize: "9px", fontWeight: "700", color: "rgba(255,255,255,0.25)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Upgrade</span>
+            <span style={{ fontSize: "9px", fontWeight: "700", color: UPGRADE_LBL, letterSpacing: "0.06em", textTransform: "uppercase" }}>Upgrade</span>
           </div>
 
           {/* Explorer card */}
@@ -666,9 +731,9 @@ function PricingSection() {
               <div style={{ fontSize: "12px", fontWeight: "800", color: CORAL, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "5px" }}>Explorer</div>
               <div style={{ display: "flex", alignItems: "baseline", gap: "4px", marginBottom: "3px" }}>
                 <div style={{ fontSize: "34px", fontWeight: "900", letterSpacing: "-0.04em" }}>£2</div>
-                <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.45)" }}>/month</div>
+                <div style={{ fontSize: "12px", color: TEXT_DIM }}>/month</div>
               </div>
-              <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.40)" }}>Everything in Free, plus:</div>
+              <div style={{ fontSize: "11px", color: TEXT_DIM }}>Everything in Free, plus:</div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginBottom: "20px" }}>
               {PRO_FEATURES.map((f) => <PricingFeatureRow key={f.label} {...f} />)}
@@ -690,6 +755,10 @@ function PricingSection() {
 
 /// ── Why £2 section — two-column: bio left, solar system right ───────────────────
 function WhyTwoPounds() {
+  const { dark } = useTheme();
+  const CORAL = "#ff725e";
+  const BORDER = dark ? "rgba(255,255,255,0.08)" : "rgba(27,38,59,0.10)";
+  const TEXT_MUT = dark ? "rgba(255,255,255,0.52)" : "rgba(27,38,59,0.52)";
   return (
     <section style={{ padding: "100px 24px", borderTop: `1px solid ${BORDER}` }}>
       <style>{`
@@ -725,10 +794,10 @@ function WhyTwoPounds() {
           <h2 data-reveal data-d="1" style={{ fontSize: "clamp(26px, 3.2vw, 36px)", fontWeight: "900", margin: "0 0 20px", letterSpacing: "-0.025em", lineHeight: 1.1 }}>
             Why do we charge £2?
           </h2>
-          <p data-reveal data-d="2" style={{ color: "rgba(255,255,255,0.52)", fontSize: "15px", lineHeight: 1.75, margin: "0 0 16px" }}>
+          <p data-reveal data-d="2" style={{ color: TEXT_MUT, fontSize: "15px", lineHeight: 1.75, margin: "0 0 16px" }}>
             The £2/month Explorer Plan keeps the platform running — servers, development, maintenance — without ads or selling your data.
           </p>
-          <p data-reveal data-d="3" style={{ color: "rgba(255,255,255,0.52)", fontSize: "15px", lineHeight: 1.75, margin: "0 0 28px" }}>
+          <p data-reveal data-d="3" style={{ color: TEXT_MUT, fontSize: "15px", lineHeight: 1.75, margin: "0 0 28px" }}>
             Half of every subscription goes directly to UNICEF's education programmes. You learn. Kids worldwide get access to learning too.
           </p>
           <div data-reveal data-d="3" style={{
@@ -837,6 +906,9 @@ const UK_UNIS = [
 ];
 
 function UniLogoGrid() {
+  const { dark } = useTheme();
+  const TILE_BORDER = dark ? "rgba(255,255,255,0.12)" : "rgba(27,38,59,0.12)";
+  const NAME_CLR = dark ? "rgba(255,255,255,0.42)" : "rgba(27,38,59,0.45)";
   return (
     <div style={{
       overflowX: "auto", WebkitOverflowScrolling: "touch",
@@ -857,7 +929,7 @@ function UniLogoGrid() {
             <div style={{
               width: "64px", height: "64px", borderRadius: "16px",
               background: `linear-gradient(135deg, ${uni.color}dd, ${uni.color}88)`,
-              border: "1px solid rgba(255,255,255,0.12)",
+              border: `1px solid ${TILE_BORDER}`,
               display: "flex", alignItems: "center", justifyContent: "center",
               boxShadow: `0 4px 16px ${uni.color}40`,
             }}>
@@ -869,7 +941,7 @@ function UniLogoGrid() {
                 {uni.abbr}
               </span>
             </div>
-            <span style={{ fontSize: "10px", fontWeight: "600", color: "rgba(255,255,255,0.42)", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: "10px", fontWeight: "600", color: NAME_CLR, whiteSpace: "nowrap" }}>
               {uni.name}
             </span>
           </div>
@@ -884,6 +956,16 @@ export default function Home() {
   useScrollEffects();
   const pillRef = useRef(null);
   const [pillGlowing, setPillGlowing] = useState(false);
+  const { dark } = useTheme();
+  const CORAL = "#ff725e";
+  const BG      = dark ? "#1b263b" : "#f4f6fb";
+  const SURFACE = dark ? "rgba(255,255,255,0.03)" : "#ffffff";
+  const TEXT     = dark ? "white"   : "#1b263b";
+  const TEXT_MUT = dark ? "rgba(255,255,255,0.52)" : "rgba(27,38,59,0.52)";
+  const TEXT_DIM = dark ? "rgba(255,255,255,0.42)" : "rgba(27,38,59,0.42)";
+  const TEXT_DIM2= dark ? "rgba(255,255,255,0.30)" : "rgba(27,38,59,0.32)";
+  const TEXT_UNI = dark ? "rgba(255,255,255,0.35)" : "rgba(27,38,59,0.40)";
+  const BORDER   = dark ? "rgba(255,255,255,0.08)" : "rgba(27,38,59,0.10)";
 
   const onGlow = useCallback(() => {
     setPillGlowing(true);
@@ -891,7 +973,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div style={{ background: BG, minHeight: "100vh", color: "white", fontFamily: "inherit" }}>
+    <div style={{ background: BG, minHeight: "100vh", color: TEXT, fontFamily: "inherit" }}>
       <style>{`
         [data-reveal] {
           opacity: 0;
@@ -960,11 +1042,11 @@ export default function Home() {
           <p
             data-reveal
             data-d="2"
-            style={{ fontSize: "clamp(16px, 2vw, 19px)", color: "rgba(255,255,255,0.52)", maxWidth: "520px", margin: "0 auto 16px", lineHeight: 1.65 }}
+            style={{ fontSize: "clamp(16px, 2vw, 19px)", color: TEXT_MUT, maxWidth: "520px", margin: "0 auto 16px", lineHeight: 1.65 }}
           >
             Stop paying extra fees for nothing. Start tutoring with university students that know what they are talking about.
           </p>
-          <p data-reveal data-d="2" style={{ fontSize: "14px", color: "rgba(255,255,255,0.30)", margin: "0 auto 40px" }}>
+          <p data-reveal data-d="2" style={{ fontSize: "14px", color: TEXT_DIM2, margin: "0 auto 40px" }}>
             Free to join. Tutoring costs nothing to start.
           </p>
           <div data-reveal data-d="3" style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
@@ -978,9 +1060,9 @@ export default function Home() {
             </Link>
             <Link
               to="/find-tutors"
-              style={{ background: "rgba(255,255,255,0.06)", border: `1px solid ${BORDER}`, color: "rgba(255,255,255,0.8)", padding: "14px 30px", borderRadius: "10px", fontWeight: "600", fontSize: "15px", textDecoration: "none", transition: "background 0.15s" }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.10)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+              style={{ background: dark ? "rgba(255,255,255,0.06)" : "rgba(27,38,59,0.05)", border: `1px solid ${BORDER}`, color: dark ? "rgba(255,255,255,0.8)" : "#1b263b", padding: "14px 30px", borderRadius: "10px", fontWeight: "600", fontSize: "15px", textDecoration: "none", transition: "background 0.15s" }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = dark ? "rgba(255,255,255,0.10)" : "rgba(27,38,59,0.09)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = dark ? "rgba(255,255,255,0.06)" : "rgba(27,38,59,0.05)")}
             >
               Browse tutors
             </Link>
@@ -988,52 +1070,23 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── STRIPE STRIP — 2-col ─────────────────────────────────────────────── */}
-      <div style={{ borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, padding: "0 24px" }}>
-        <div style={{ maxWidth: "900px", margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "60px", padding: "48px 0", alignItems: "center" }}>
-
-          {/* Left — Stripe branding */}
-          <div data-reveal>
-            <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "18px" }}>
-              <div style={{
-                width: "56px", height: "56px", borderRadius: "16px",
-                background: "rgba(99,91,255,0.12)", border: "1px solid rgba(99,91,255,0.22)",
-                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-              }}>
-                <svg width="28" height="28" viewBox="0 0 30 30" fill="none">
-                  <path d="M14.3 12.5c0-.8.7-1.1 1.8-1.1 1.6 0 3.6.5 5.2 1.4V8.4C19.6 7.5 17.8 7 16 7c-4 0-6.6 2-6.6 5.3 0 5.2 7.2 4.4 7.2 6.6 0 .9-.8 1.2-2 1.2-1.7 0-3.9-.7-5.7-1.7v4.5c1.9.8 3.9 1.2 5.7 1.2 4.1 0 6.9-2 6.9-5.4-.1-5.6-7.2-4.6-7.2-6.2z" fill="white" />
-                </svg>
-              </div>
-              <div>
-                <div style={{ fontSize: "22px", fontWeight: "800", letterSpacing: "-0.025em", marginBottom: "2px" }}>Stripe</div>
-                <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.38)" }}>Payment infrastructure</div>
-              </div>
+      {/* ── STATS STRIP ──────────────────────────────────────────────────────── */}
+      <div style={{ borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
+        <div style={{ maxWidth: "900px", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}>
+          {[
+            { stat: "0%",   label: "Commission",         sub: "Every penny goes directly to your tutor" },
+            { stat: "100%", label: "University Students", sub: "Every tutor verified at a UK university" },
+            { stat: "£0",   label: "To get started",      sub: "Tutoring and UCAS guidance always free" },
+          ].map((s, i) => (
+            <div key={s.label} data-reveal data-d={String(i + 1)} style={{
+              padding: "40px 24px", textAlign: "center",
+              borderRight: i < 2 ? `1px solid ${BORDER}` : "none",
+            }}>
+              <div style={{ fontSize: "clamp(36px, 5vw, 52px)", fontWeight: 900, color: CORAL, letterSpacing: "-0.04em", lineHeight: 1, marginBottom: "8px" }}>{s.stat}</div>
+              <div style={{ fontSize: "14px", fontWeight: 700, marginBottom: "4px" }}>{s.label}</div>
+              <div style={{ fontSize: "12px", color: TEXT_DIM }}>{s.sub}</div>
             </div>
-            <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.52)", lineHeight: 1.75, margin: "0 0 16px" }}>
-              All payments are powered by Stripe — the same infrastructure trusted by Amazon, Shopify, and millions of businesses worldwide.
-            </p>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(99,91,255,0.08)", border: "1px solid rgba(99,91,255,0.20)", borderRadius: "8px", padding: "5px 12px" }}>
-              <span className="material-symbols-outlined" style={{ fontSize: "13px", color: "#a5b4fc" }}>verified</span>
-              <span style={{ fontSize: "11px", fontWeight: "700", color: "#a5b4fc" }}>PCI-DSS Level 1 Certified</span>
-            </div>
-          </div>
-
-          {/* Right — How it works */}
-          <div data-reveal data-d="1" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {[
-              { icon: "send_money", label: "100% direct to tutor", sub: "Platform takes zero — every pound you pay goes to your tutor" },
-              { icon: "lock", label: "Bank-level encryption", sub: "End-to-end encrypted via Stripe's secure checkout" },
-              { icon: "bolt", label: "Instant, automatic payouts", sub: "Tutors receive funds directly to their Stripe account" },
-            ].map((item) => (
-              <div key={item.label} style={{ display: "flex", alignItems: "flex-start", gap: "12px", padding: "12px 14px", background: "rgba(255,255,255,0.02)", border: `1px solid ${BORDER}`, borderRadius: "10px" }}>
-                <span className="material-symbols-outlined" style={{ fontSize: "16px", color: CORAL, marginTop: "1px", flexShrink: 0 }}>{item.icon}</span>
-                <div>
-                  <div style={{ fontSize: "13px", fontWeight: "700", marginBottom: "3px" }}>{item.label}</div>
-                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.40)", lineHeight: 1.5 }}>{item.sub}</div>
-                </div>
-              </div>
-            ))}
-          </div>
+          ))}
         </div>
       </div>
 
@@ -1041,7 +1094,7 @@ export default function Home() {
       <section style={{ padding: "56px 0", borderBottom: `1px solid ${BORDER}` }}>
         <p
           data-reveal
-          style={{ textAlign: "center", fontSize: "11px", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)", marginBottom: "28px", padding: "0 24px" }}
+          style={{ textAlign: "center", fontSize: "11px", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", color: TEXT_UNI, marginBottom: "28px", padding: "0 24px" }}
         >
           Tutors from the UK's top universities
         </p>
@@ -1058,7 +1111,7 @@ export default function Home() {
           <h2 data-reveal data-d="1" style={{ fontSize: "clamp(22px, 3vw, 30px)", fontWeight: "800", textAlign: "center", margin: "0 0 8px", letterSpacing: "-0.02em" }}>
             Everything a student needs
           </h2>
-          <p data-reveal data-d="2" style={{ textAlign: "center", color: "rgba(255,255,255,0.42)", fontSize: "14px", margin: "0 0 36px" }}>
+          <p data-reveal data-d="2" style={{ textAlign: "center", color: TEXT_DIM, fontSize: "14px", margin: "0 0 36px" }}>
             Hover any card to see it in action.
           </p>
 
@@ -1095,53 +1148,103 @@ export default function Home() {
               desc="Browse and share student notes, past papers, and revision guides by subject."
               preview={null}
             />
-            <FeatureCard from="right" delay="3" icon="emoji_events" title="XP & Badges" badge="EXPLORER"
-              desc="Earn XP for every session, note, and review. Level up and unlock tutor badges."
-              preview={null}
-            />
+            {/* Pricing CTA — bridges to table below */}
+            <a
+              data-reveal
+              data-d="3"
+              data-from="right"
+              href="#pricing"
+              style={{
+                display: "flex", flexDirection: "column", justifyContent: "space-between",
+                minHeight: "190px", textDecoration: "none",
+                background: `linear-gradient(135deg, ${CORAL}12, ${CORAL}05)`,
+                border: `1.5px solid ${CORAL}45`,
+                borderRadius: "14px", padding: "18px", cursor: "pointer",
+              }}
+            >
+              <div>
+                <div style={{ marginBottom: "14px", background: `${CORAL}22`, color: CORAL, fontSize: "9px", fontWeight: "800", padding: "3px 8px", borderRadius: "20px", letterSpacing: "0.06em", display: "inline-block" }}>
+                  EXPLORER PLAN
+                </div>
+                <div style={{ fontSize: "26px", fontWeight: "900", letterSpacing: "-0.04em", color: TEXT, marginBottom: "6px" }}>£2 / mo</div>
+                <p style={{ fontSize: "12px", color: TEXT_MUT, lineHeight: 1.6, margin: 0 }}>
+                  Unlock all Explorer features for less than a coffee a month.
+                </p>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "5px", color: CORAL, fontSize: "12px", fontWeight: 700 }}>
+                <span>See full pricing</span>
+                <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>keyboard_arrow_down</span>
+              </div>
+            </a>
           </div>
         </div>
       </section>
 
       {/* ── PRICING ─────────────────────────────────────────────────────────── */}
+      <div id="pricing" />
       <PricingSection />
 
       {/* ── WHY £2 ──────────────────────────────────────────────────────────── */}
       <WhyTwoPounds />
 
-      {/* ── FOUNDER ─────────────────────────────────────────────────────────── */}
-      <section style={{ padding: "100px 24px", borderTop: `1px solid ${BORDER}` }}>
-        <div style={{ maxWidth: "720px", margin: "0 auto" }}>
-          <p data-reveal style={{ textAlign: "center", fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.14em", color: CORAL, marginBottom: "48px" }}>
-            Who built this
-          </p>
-          <div data-reveal data-d="1" style={{ display: "flex", gap: "40px", alignItems: "center", flexWrap: "wrap", justifyContent: "center" }}>
-            <div style={{ flexShrink: 0 }}>
-              <div
-                style={{
-                  width: "120px", height: "120px", borderRadius: "50%",
-                  background: `linear-gradient(135deg, ${CORAL}40, ${CORAL}15)`,
-                  border: `2px solid ${CORAL}35`, display: "flex", alignItems: "center", justifyContent: "center",
-                }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: "52px", color: CORAL, opacity: 0.7 }}>person</span>
-              </div>
+      {/* ── WHY TUTOR WITH US ────────────────────────────────────────────────── */}
+      <section style={{ padding: "100px 24px", borderTop: `1px solid ${BORDER}`, position: "relative", overflow: "hidden" }}>
+        <Grid mask="radial-gradient(ellipse 80% 80% at 0% 50%, black 0%, transparent 70%)" opacity={0.022} />
+        <div style={{ maxWidth: "900px", margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "72px", alignItems: "center", position: "relative", zIndex: 1 }}>
+          <div>
+            <p data-reveal style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.14em", color: CORAL, marginBottom: "14px" }}>
+              For tutors
+            </p>
+            <h2 data-reveal data-d="1" style={{ fontSize: "clamp(26px, 3.5vw, 38px)", fontWeight: "900", margin: "0 0 20px", letterSpacing: "-0.03em", lineHeight: 1.1 }}>
+              Why tutor with us?
+            </h2>
+            <div data-reveal data-d="2" style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "32px" }}>
+              {[
+                { icon: "percent",   text: "Keep 100% of what you earn",     sub: "Zero commission. Every pound goes to you." },
+                { icon: "schedule",  text: "Teach entirely on your terms",    sub: "Set your rate, choose your subjects, pick your hours." },
+                { icon: "verified",  text: "Join a trusted tutor community",  sub: "Every tutor is a verified UK university student." },
+              ].map(item => (
+                <div key={item.icon} style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+                  <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: `${CORAL}12`, border: `1px solid ${CORAL}25`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: "18px", color: CORAL }}>{item.icon}</span>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "14px", fontWeight: 700, marginBottom: "3px" }}>{item.text}</div>
+                    <div style={{ fontSize: "12px", color: TEXT_MUT }}>{item.sub}</div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div style={{ flex: 1, minWidth: "260px" }}>
-              <h3 style={{ fontSize: "22px", fontWeight: "800", letterSpacing: "-0.02em", margin: "0 0 6px" }}>Kiki Boro</h3>
-              <p style={{ fontSize: "13px", color: CORAL, fontWeight: "700", margin: "0 0 14px" }}>Founder, Study With Students</p>
-              <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.52)", lineHeight: 1.75, margin: "0 0 18px" }}>
-                "I built Study With Students because I wanted a place where students could genuinely help each other — without agencies taking a cut. University students are brilliant teachers. They deserve to be paid properly, and learners deserve fair prices."
-              </p>
+            <div data-reveal data-d="3">
               <Link
-                to="/about"
-                style={{ fontSize: "13px", fontWeight: "700", color: CORAL, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "4px" }}
-                onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
+                to="/become-tutor"
+                style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: CORAL, color: "white", padding: "13px 26px", borderRadius: "10px", fontWeight: "700", fontSize: "14px", textDecoration: "none", boxShadow: `0 4px 18px ${CORAL}35`, transition: "opacity 0.15s" }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.88")}
                 onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
               >
-                Read our story
-                <span className="material-symbols-outlined" style={{ fontSize: "15px" }}>arrow_forward</span>
+                Start tutoring for free
+                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>arrow_forward</span>
               </Link>
+            </div>
+          </div>
+          <div data-reveal data-d="2">
+            <div style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: "20px", padding: "32px 28px" }}>
+              <div style={{ fontSize: "52px", fontWeight: 900, color: CORAL, letterSpacing: "-0.05em", lineHeight: 1, marginBottom: "6px" }}>0%</div>
+              <div style={{ fontSize: "14px", fontWeight: 700, marginBottom: "18px", color: dark ? "rgba(255,255,255,0.80)" : "#1b263b" }}>Commission — always</div>
+              <div style={{ height: "1px", background: BORDER, marginBottom: "20px" }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {[
+                  { label: "Sign up",           detail: "Free" },
+                  { label: "List your profile", detail: "Free" },
+                  { label: "Receive payments",  detail: "100% yours" },
+                  { label: "Platform cut",      detail: "£0 always" },
+                ].map(row => (
+                  <div key={row.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 12px", background: dark ? "rgba(255,255,255,0.025)" : "rgba(27,38,59,0.03)", borderRadius: "8px" }}>
+                    <span style={{ fontSize: "13px", color: TEXT_MUT }}>{row.label}</span>
+                    <span style={{ fontSize: "13px", fontWeight: 700, color: row.detail === "£0 always" || row.detail === "Free" ? "#22c55e" : CORAL }}>{row.detail}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -1154,7 +1257,7 @@ export default function Home() {
           <h2 data-reveal style={{ fontSize: "clamp(28px, 4vw, 42px)", fontWeight: "800", margin: "0 0 16px", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
             Ready to find your tutor?
           </h2>
-          <p data-reveal data-d="1" style={{ color: "rgba(255,255,255,0.42)", fontSize: "16px", margin: "0 0 36px", lineHeight: 1.6 }}>
+          <p data-reveal data-d="1" style={{ color: TEXT_DIM, fontSize: "16px", margin: "0 0 36px", lineHeight: 1.6 }}>
             Join students from top UK universities. Free to join — no card required.
           </p>
           <div data-reveal data-d="2" style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
@@ -1168,9 +1271,9 @@ export default function Home() {
             </Link>
             <Link
               to="/how-it-works"
-              style={{ display: "inline-block", background: "rgba(255,255,255,0.06)", border: `1px solid ${BORDER}`, color: "rgba(255,255,255,0.7)", padding: "14px 32px", borderRadius: "10px", fontWeight: "600", fontSize: "15px", textDecoration: "none", transition: "background 0.15s" }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.10)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+              style={{ display: "inline-block", background: dark ? "rgba(255,255,255,0.06)" : "rgba(27,38,59,0.05)", border: `1px solid ${BORDER}`, color: dark ? "rgba(255,255,255,0.7)" : "#1b263b", padding: "14px 32px", borderRadius: "10px", fontWeight: "600", fontSize: "15px", textDecoration: "none", transition: "background 0.15s" }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = dark ? "rgba(255,255,255,0.10)" : "rgba(27,38,59,0.09)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = dark ? "rgba(255,255,255,0.06)" : "rgba(27,38,59,0.05)")}
             >
               How it works
             </Link>
