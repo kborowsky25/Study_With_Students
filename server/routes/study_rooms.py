@@ -12,6 +12,7 @@ bp = Blueprint('study_rooms', __name__, url_prefix='/api')
 
 # Calendar copies of a room are events titled "Study Room: <subject>".
 CALENDAR_PREFIX = 'Study Room: '
+MAX_SUBJECT_LENGTH, MAX_DESCRIPTION_LENGTH, MAX_LINK_LENGTH = 150, 2000, 500
 
 
 def _parse_dt(value):
@@ -62,18 +63,22 @@ def get_study_rooms():
 def create_study_room():
     uid     = current_user_id()
     data    = request.get_json(silent=True) or {}
-    subject = (data.get('subject') or '').strip()
-    start   = _parse_dt(data.get('start_time'))
-    end     = _parse_dt(data.get('end_time'))
+    subject     = str(data.get('subject') or '').strip()
+    description = str(data.get('description') or '').strip()
+    start       = _parse_dt(data.get('start_time'))
+    end         = _parse_dt(data.get('end_time'))
 
     if not subject:
         return jsonify({'error': 'Give the room a subject'}), 400
+    if len(subject) > MAX_SUBJECT_LENGTH or len(description) > MAX_DESCRIPTION_LENGTH:
+        return jsonify({'error': f'Subjects are limited to {MAX_SUBJECT_LENGTH} characters '
+                                 f'and descriptions to {MAX_DESCRIPTION_LENGTH:,}'}), 400
     if not start or not end or end <= start:
         return jsonify({'error': 'Choose a valid start and end time'}), 400
     if end <= datetime.now():
         return jsonify({'error': 'That time has already passed'}), 400
-    link = (data.get('zoom_link') or '').strip()
-    if link and not re.match(r'https?://\S+$', link, re.IGNORECASE):
+    link = str(data.get('zoom_link') or '').strip()
+    if link and (len(link) > MAX_LINK_LENGTH or not re.match(r'https://[^/\s]+\S*$', link, re.IGNORECASE)):
         return jsonify({'error': 'The meeting link must start with https://'}), 400
 
     conn = get_db(); cur = conn.cursor()
@@ -88,8 +93,7 @@ def create_study_room():
         cur.execute("""
             INSERT INTO study_rooms (tutor_id, subject, description, start_time, end_time, zoom_link)
             VALUES (%s, %s, %s, %s, %s, %s)
-        """, (row[0], subject, (data.get('description') or '').strip() or None,
-              start, end, link or None))
+        """, (row[0], subject, description or None, start, end, link or None))
         conn.commit()
         return jsonify({'room': {'id': cur.lastrowid}}), 201
     finally:

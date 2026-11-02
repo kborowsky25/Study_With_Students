@@ -8,54 +8,8 @@ from ..db import get_db
 
 bp = Blueprint('admin', __name__, url_prefix='/api')
 
-# ── Admin — tutor approval ────────────────────────────────────────────────────
-# Protected by X-Admin-Secret header. Set ADMIN_SECRET env var in production.
-
-
-@bp.route('/admin/tutors', methods=['GET'])
-def admin_list_tutors():
-    if not check_admin():
-        return jsonify({'error': 'Unauthorized'}), 403
-    conn = get_db(); cur = conn.cursor(dictionary=True)
-    try:
-        cur.execute("""
-            SELECT tp.id_tutor, u.name, u.email, tp.university, tp.course,
-                   tp.subjects, tp.status, tp.age
-            FROM tutor_profiles tp
-            JOIN users u ON u.id_user = tp.id_user
-            ORDER BY tp.id_tutor DESC
-        """)
-        return jsonify({'tutors': cur.fetchall()})
-    finally:
-        cur.close(); conn.close()
-
-@bp.route('/admin/tutors/<int:tutor_id>/approve', methods=['POST'])
-def admin_approve_tutor(tutor_id):
-    if not check_admin():
-        return jsonify({'error': 'Unauthorized'}), 403
-    conn = get_db(); cur = conn.cursor()
-    try:
-        cur.execute("UPDATE tutor_profiles SET status = 'approved' WHERE id_tutor = %s", (tutor_id,))
-        conn.commit()
-        if cur.rowcount == 0:
-            return jsonify({'error': 'Tutor not found'}), 404
-        return jsonify({'message': f'Tutor {tutor_id} approved'})
-    finally:
-        cur.close(); conn.close()
-
-@bp.route('/admin/tutors/<int:tutor_id>/reject', methods=['POST'])
-def admin_reject_tutor(tutor_id):
-    if not check_admin():
-        return jsonify({'error': 'Unauthorized'}), 403
-    conn = get_db(); cur = conn.cursor()
-    try:
-        cur.execute("UPDATE tutor_profiles SET status = 'rejected' WHERE id_tutor = %s", (tutor_id,))
-        conn.commit()
-        if cur.rowcount == 0:
-            return jsonify({'error': 'Tutor not found'}), 404
-        return jsonify({'message': f'Tutor {tutor_id} rejected'})
-    finally:
-        cur.close(); conn.close()
+# Every endpoint needs the X-Admin-Secret header or a super-admin JWT (permissions.check_admin).
+# Tutors are approved through the screening queue.
 
 
 # ── Admin — screening queue ────────────────────────────────────────────────────

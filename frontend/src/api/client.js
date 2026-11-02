@@ -24,6 +24,9 @@ client.interceptors.response.use(
       if (!window.location.pathname.startsWith('/login')) window.location.href = '/login'
     } else if (status === 402 && err.response?.data?.code === 'explorer_required') {
       toast('That’s part of the Explorer plan — £5/month', { icon: '🚀', id: 'explorer-required' })
+    } else if (status === 429) {
+      // Rate limited (login, sign-up codes, messages, forum posts) — one toast however many requests hit it
+      toast.error(err.response?.data?.error || 'Too many attempts — please wait a moment and try again', { id: 'rate-limited' })
     }
     return Promise.reject(err)
   },

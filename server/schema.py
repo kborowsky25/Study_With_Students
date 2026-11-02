@@ -34,6 +34,10 @@ COLUMN_MIGRATIONS = [
     ('student_profiles', 'goals',                  "TEXT NULL"),
     ('tutor_profiles',   'levels',                 "VARCHAR(120) NULL"),
     ('forum_categories', 'icon',                   "VARCHAR(50) NULL"),
+    ('users',               'stripe_subscription_status',   "VARCHAR(32) NULL"),
+    ('users',               'premium_period_end',           "DATETIME NULL"),
+    ('users',               'premium_cancel_at_period_end', "TINYINT(1) NOT NULL DEFAULT 0"),
+    ('email_verifications', 'attempts',                     "INT NOT NULL DEFAULT 0"),
 ]
 
 FORUM_CATEGORIES = [

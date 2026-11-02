@@ -3,11 +3,11 @@ import os
 import uuid as uuid_lib
 
 from flask import Blueprint, jsonify, request, send_from_directory
-from werkzeug.utils import secure_filename
 
 from ..config import upload_dir
 from ..permissions import explorer_required
 from ..db import current_user_id, get_db
+from ..services.uploads import UploadError, display_name, read_upload
 
 bp = Blueprint('notes', __name__, url_prefix='/api')
 
@@ -15,6 +15,8 @@ bp = Blueprint('notes', __name__, url_prefix='/api')
 
 NOTES_UPLOAD_FOLDER = upload_dir('study-notes')
 ALLOWED_NOTES_EXT = {'pdf', 'doc', 'docx', 'ppt', 'pptx', 'png', 'jpg', 'jpeg', 'txt', 'md'}
+MAX_NOTE_BYTES = 10 * 1024 * 1024  # 10 MB (Vercel itself caps request bodies at 4.5 MB)
+MAX_TITLE_LENGTH, MAX_SUBJECT_LENGTH, MAX_DESCRIPTION_LENGTH = 255, 100, 5000
 
 
 @bp.route('/study-notes', methods=['GET'])
@@ -64,18 +66,23 @@ def create_study_note():
 
     if not title:
         return jsonify({'error': 'title required'}), 400
+    if (len(title) > MAX_TITLE_LENGTH or len(subject) > MAX_SUBJECT_LENGTH
+            or len(description) > MAX_DESCRIPTION_LENGTH):
+        return jsonify({'error': f'Titles are limited to {MAX_TITLE_LENGTH} characters, subjects to '
+                                 f'{MAX_SUBJECT_LENGTH} and descriptions to {MAX_DESCRIPTION_LENGTH:,}'}), 400
 
     file_path, file_name, file_type = None, None, None
-    if 'file' in request.files:
-        f = request.files['file']
-        ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
-        if ext not in ALLOWED_NOTES_EXT:
-            return jsonify({'error': 'File type not allowed'}), 400
-        safe = secure_filename(f.filename)
-        unique_name = f"{uuid_lib.uuid4().hex}_{safe}"
-        f.save(os.path.join(NOTES_UPLOAD_FOLDER, unique_name))
-        file_path = unique_name
-        file_name = f.filename
+    f = request.files.get('file')
+    if f and f.filename:
+        try:
+            data, ext = read_upload(f, ALLOWED_NOTES_EXT, MAX_NOTE_BYTES)
+        except UploadError as e:
+            return jsonify({'error': str(e)}), 400
+        # Stored under a random name; the original is only offered as the download name
+        file_path = f'{uuid_lib.uuid4().hex}.{ext}'
+        with open(os.path.join(NOTES_UPLOAD_FOLDER, file_path), 'wb') as fh:
+            fh.write(data)
+        file_name = display_name(f.filename)
         file_type = ext
 
     conn = get_db(); cur = conn.cursor()

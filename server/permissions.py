@@ -1,11 +1,17 @@
-"""Access rules: admin checks and the Explorer-plan gate."""
+"""Access rules: admin checks, the Explorer-plan gate and local-only dev shortcuts."""
+import hmac
 from functools import wraps
 
-from flask import jsonify, request
+from flask import current_app, jsonify, request
 from flask_jwt_extended import get_jwt, verify_jwt_in_request
 
-from .config import Config
+from .config import IS_PRODUCTION, ON_VERCEL, Config
 from .db import current_user_id, get_db
+
+
+def dev_shortcuts_allowed():
+    """Verification codes in API responses and demo Explorer activation: a local debug run only."""
+    return current_app.debug and not (IS_PRODUCTION or ON_VERCEL)
 
 
 def is_admin_email(email):
@@ -15,7 +21,7 @@ def is_admin_email(email):
 def check_admin():
     """Admins authenticate with the X-Admin-Secret header or a super-admin JWT."""
     secret = request.headers.get('X-Admin-Secret', '')
-    if Config.ADMIN_SECRET and secret == Config.ADMIN_SECRET:
+    if Config.ADMIN_SECRET and secret and hmac.compare_digest(secret.encode(), Config.ADMIN_SECRET.encode()):
         return True
     try:
         verify_jwt_in_request()

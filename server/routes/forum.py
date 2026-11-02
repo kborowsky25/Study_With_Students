@@ -3,8 +3,12 @@ from flask import Blueprint, jsonify, request
 
 from ..db import current_user_id, get_db
 from ..permissions import explorer_required
+from ..ratelimit import jwt_user, rate_limit
 
 bp = Blueprint('forum', __name__, url_prefix='/api')
+
+MAX_TITLE_LENGTH   = 200
+MAX_CONTENT_LENGTH = 10000  # forum_threads/forum_posts.content is a TEXT column
 
 AUTHOR = """
     u.name AS author_name,
@@ -99,14 +103,17 @@ def forum_category(cat_id):
 
 @bp.route('/forum/categories/<int:cat_id>/threads', methods=['POST'])
 @explorer_required
+@rate_limit(5, per=600, key=jwt_user)
 def create_thread(cat_id):
     data    = request.get_json(silent=True) or {}
-    title   = (data.get('title') or '').strip()
-    content = (data.get('content') or '').strip()
+    title   = str(data.get('title') or '').strip()
+    content = str(data.get('content') or '').strip()
     if not title or not content:
         return jsonify({'error': 'Title and content are required'}), 400
-    if len(title) > 200:
-        return jsonify({'error': 'Titles are limited to 200 characters'}), 400
+    if len(title) > MAX_TITLE_LENGTH:
+        return jsonify({'error': f'Titles are limited to {MAX_TITLE_LENGTH} characters'}), 400
+    if len(content) > MAX_CONTENT_LENGTH:
+        return jsonify({'error': f'Posts are limited to {MAX_CONTENT_LENGTH:,} characters'}), 400
 
     conn = get_db(); cur = conn.cursor()
     try:
@@ -174,10 +181,13 @@ def delete_thread(thread_id):
 
 @bp.route('/forum/threads/<int:thread_id>/posts', methods=['POST'])
 @explorer_required
+@rate_limit(20, per=600, key=jwt_user)
 def create_post(thread_id):
-    content = ((request.get_json(silent=True) or {}).get('content') or '').strip()
+    content = str((request.get_json(silent=True) or {}).get('content') or '').strip()
     if not content:
         return jsonify({'error': 'Reply cannot be empty'}), 400
+    if len(content) > MAX_CONTENT_LENGTH:
+        return jsonify({'error': f'Replies are limited to {MAX_CONTENT_LENGTH:,} characters'}), 400
 
     conn = get_db(); cur = conn.cursor()
     try:

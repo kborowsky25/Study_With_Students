@@ -1,18 +1,23 @@
 """Authentication: email verification, register, login, token refresh."""
-import random
-from datetime import datetime, timedelta
+import hmac
+import secrets
+from functools import cache
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, jsonify, request
 from flask_jwt_extended import create_access_token, jwt_required
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from ..db import current_user_id, get_db
-from ..permissions import is_admin_email, membership_state
+from ..permissions import dev_shortcuts_allowed, is_admin_email, membership_state
+from ..ratelimit import json_field, rate_limit
 from ..services.email import mail_configured, send_verification_email
+from ..services.verification import issue_code, redeem_code
 
 bp = Blueprint('auth', __name__, url_prefix='/api')
 
 HASH_PREFIXES = ('scrypt:', 'pbkdf2:')
+MAX_NAME_LENGTH  = 100
+MAX_EMAIL_LENGTH = 254
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -25,7 +30,17 @@ def verify_password(stored, given):
     """Check a password; accounts created before hashing still hold plaintext."""
     if stored.startswith(HASH_PREFIXES):
         return check_password_hash(stored, given)
-    return stored == given
+    return hmac.compare_digest(stored.encode(), given.encode())
+
+
+@cache
+def _dummy_hash():
+    """Checked for unknown emails, so a failed login takes as long either way (no enumeration)."""
+    return hash_password(secrets.token_hex(16))
+
+
+def _valid_email(email):
+    return 3 <= len(email) <= MAX_EMAIL_LENGTH and '@' in email and not any(c.isspace() for c in email)
 
 
 def build_session(cur, user_id):
@@ -60,10 +75,12 @@ def build_session(cur, user_id):
 # ── Email verification ────────────────────────────────────────────────────────
 
 @bp.route('/auth/send-verification', methods=['POST'])
+@rate_limit(30, per=3600)                          # per IP
+@rate_limit(3, per=600, key=json_field('email'))   # per address — no inbox flooding
 def send_verification():
     data  = request.get_json(silent=True) or {}
-    email = data.get('email', '').strip().lower()
-    if not email or '@' not in email:
+    email = str(data.get('email') or '').strip().lower()
+    if not _valid_email(email):
         return jsonify({'error': 'A valid email is required'}), 400
 
     conn = get_db(); cur = conn.cursor()
@@ -71,14 +88,7 @@ def send_verification():
         cur.execute("SELECT id_user FROM users WHERE email = %s", (email,))
         if cur.fetchone():
             return jsonify({'error': 'Email already registered'}), 409
-
-        code    = ''.join(random.choices('0123456789', k=6))
-        expires = datetime.utcnow() + timedelta(minutes=10)
-        cur.execute("DELETE FROM email_verifications WHERE email = %s", (email,))
-        cur.execute(
-            "INSERT INTO email_verifications (email, code, expires_at) VALUES (%s, %s, %s)",
-            (email, code, expires),
-        )
+        code = issue_code(cur, email)
         conn.commit()
     finally:
         cur.close(); conn.close()
@@ -89,23 +99,28 @@ def send_verification():
         print(f'[WARN] Email send failed: {e}', flush=True)
 
     payload = {'message': 'Verification code sent'}
-    if current_app.debug and not mail_configured():
-        payload['dev_code'] = code  # local development only — no SMTP configured
+    if dev_shortcuts_allowed() and not mail_configured():
+        payload['dev_code'] = code  # local debug runs without SMTP only
     return jsonify(payload), 200
 
 
 # ── Register / login ──────────────────────────────────────────────────────────
 
 @bp.route('/auth/register', methods=['POST'])
+@rate_limit(30, per=3600)  # per IP; guessing codes is capped per code (services/verification.py)
 def register():
     data     = request.get_json(silent=True) or {}
-    name     = data.get('name', '').strip()
-    email    = data.get('email', '').strip().lower()
-    password = data.get('password', '')
-    code     = data.get('verification_code', '').strip()
+    name     = str(data.get('name') or '').strip()
+    email    = str(data.get('email') or '').strip().lower()
+    password = str(data.get('password') or '')
+    code     = str(data.get('verification_code') or '').strip()
 
     if not name or not email or not password:
         return jsonify({'error': 'All fields required'}), 400
+    if len(name) > MAX_NAME_LENGTH:
+        return jsonify({'error': f'Names are limited to {MAX_NAME_LENGTH} characters'}), 400
+    if not _valid_email(email):
+        return jsonify({'error': 'A valid email is required'}), 400
     if len(password) < 8:
         return jsonify({'error': 'Password must be at least 8 characters'}), 400
     if not code:
@@ -113,25 +128,16 @@ def register():
 
     conn = get_db(); cur = conn.cursor()
     try:
-        cur.execute("""
-            SELECT id, expires_at, used FROM email_verifications
-            WHERE email = %s AND code = %s
-            ORDER BY id DESC LIMIT 1
-        """, (email, code))
-        ver = cur.fetchone()
-        if not ver:
-            return jsonify({'error': 'Invalid verification code'}), 400
-        ver_id, expires_at, used = ver
-        if used:
-            return jsonify({'error': 'Verification code already used'}), 400
-        if datetime.utcnow() > expires_at:
-            return jsonify({'error': 'Verification code expired — please request a new one'}), 400
+        error = redeem_code(cur, email, code)
+        if error:
+            conn.commit()  # keep the failed attempt
+            return jsonify({'error': error}), 400
 
         cur.execute("SELECT id_user FROM users WHERE email = %s", (email,))
         if cur.fetchone():
+            conn.rollback()  # leave the code usable
             return jsonify({'error': 'Email already registered'}), 409
 
-        cur.execute("UPDATE email_verifications SET used = 1 WHERE id = %s", (ver_id,))
         cur.execute(
             "INSERT INTO users (name, email, password) VALUES (%s, %s, %s)",
             (name, email, hash_password(password)),
@@ -150,16 +156,21 @@ def register():
 
 
 @bp.route('/auth/login', methods=['POST'])
+@rate_limit(60, per=600)                            # per IP (schools share one)
+@rate_limit(10, per=600, key=json_field('email'))   # per account
 def login():
     data     = request.get_json(silent=True) or {}
-    email    = data.get('email', '').strip().lower()
-    password = data.get('password', '')
+    email    = str(data.get('email') or '').strip().lower()
+    password = str(data.get('password') or '')
 
     conn = get_db(); cur = conn.cursor()
     try:
         cur.execute("SELECT id_user, password FROM users WHERE email = %s", (email,))
         row = cur.fetchone()
-        if not row or not verify_password(row[1], password):
+        if not row:
+            check_password_hash(_dummy_hash(), password)
+            return jsonify({'error': 'Invalid email or password'}), 401
+        if not verify_password(row[1], password):
             return jsonify({'error': 'Invalid email or password'}), 401
 
         user_id, stored = row

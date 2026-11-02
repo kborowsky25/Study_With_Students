@@ -3,4 +3,4 @@ flask-cors>=4.0
 flask-jwt-extended>=4.6
 mysql-connector-python>=8.3
 python-dotenv>=1.0
-stripe>=7.0
+stripe>=16,<17  # code targets stripe-python 16 (objects are not dicts)
