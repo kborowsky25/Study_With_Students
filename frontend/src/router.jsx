@@ -169,7 +169,7 @@ const routeTree = rootRoute.addChildren([
   page('/classroom',                        Classroom,         requireAuth),
 
   // Admin
-  page('/admin',      AdminScreening),
+  page('/admin',      AdminScreening, requireAdmin),
   page('/superadmin', SuperAdmin, requireAdmin),
 ])
 

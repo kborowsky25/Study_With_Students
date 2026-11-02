@@ -1,14 +1,13 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 
 const Ctx = createContext({ title: '', icon: null, setPageTitle: () => {} })
 
 export function PageTitleProvider({ children }) {
   const [info, setInfo] = useState({ title: '', icon: null })
-  return (
-    <Ctx.Provider value={{ ...info, setPageTitle: (title, icon = null) => setInfo({ title, icon }) }}>
-      {children}
-    </Ctx.Provider>
-  )
+  // Stable, so pages can list it as an effect dependency without re-running every render
+  const setPageTitle = useCallback((title, icon = null) => setInfo({ title, icon }), [])
+  const value = useMemo(() => ({ ...info, setPageTitle }), [info, setPageTitle])
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
 export const usePageTitleCtx = () => useContext(Ctx)
@@ -19,6 +18,6 @@ export function PageTitle({ title, icon }) {
   useEffect(() => {
     setPageTitle(title, icon)
     return () => setPageTitle('', null)
-  }, [title, icon])
+  }, [title, icon, setPageTitle])
   return null
 }

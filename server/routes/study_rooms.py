@@ -109,6 +109,11 @@ def save_room_to_calendar(room_id):
         room = cur.fetchone()
         if not room:
             return jsonify({'error': 'Room not found'}), 404
+        # A calendar entry belongs to a student profile (parent-only accounts have none)
+        cur.execute("SELECT id_student FROM student_profiles WHERE id_user = %s", (uid,))
+        sp = cur.fetchone()
+        if not sp:
+            return jsonify({'error': 'Only student accounts can add study rooms to a calendar'}), 403
 
         # Saving twice should not create a second calendar entry
         cur.execute("""
@@ -119,9 +124,7 @@ def save_room_to_calendar(room_id):
         if cur.fetchone():
             return jsonify({'message': 'Already in your calendar', 'already_saved': True})
 
-        cur.execute("SELECT id_student FROM student_profiles WHERE id_user = %s", (uid,))
-        sp = cur.fetchone()
-        student_id = sp['id_student'] if sp else None
+        student_id = sp['id_student']
 
         # Study rooms are free: the calendar copy carries no fee (amount 0),
         # so it never shows up as a session to pay for.

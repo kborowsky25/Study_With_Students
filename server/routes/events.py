@@ -6,6 +6,7 @@ week's id) and one confirmation from the tutor answers them all.
 """
 import secrets
 from datetime import timedelta
+from decimal import ROUND_HALF_UP, Decimal
 
 from flask import Blueprint, Response, jsonify, request
 from flask_jwt_extended import jwt_required
@@ -54,8 +55,14 @@ def is_room_copy(ev):
     return ev.get('kind') == 'room' or str(ev.get('title') or '').startswith('Study Room: ')
 
 
+def money(value):
+    """Pounds rounded half-up to the penny (£11.125 → £11.13), as the booking dialog rounds them;
+    round() would go half-to-even on a binary float (→ £11.12)."""
+    return float(Decimal(str(value)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
+
+
 def booking_fee(amount):
-    return round(float(amount) * BOOKING_FEE_PERCENT / 100, 2)
+    return money(Decimal(str(amount)) * BOOKING_FEE_PERCENT / 100)
 
 EVENT_COLUMNS = """
     e.id_event, e.title, e.description, e.start_time, e.end_time, e.status, e.amount, e.booking_fee, e.fee_waived,
@@ -307,7 +314,7 @@ def create_event():
                               for when, problem in sorted(problems.items())],
             }), 409
 
-        amount = 0 if intro else round(float(tutor['hourly_rate'] or 20) * length.total_seconds() / 3600, 2)
+        amount = 0 if intro else money(Decimal(str(tutor['hourly_rate'] or 20)) * int(length.total_seconds()) / 3600)
         fee    = 0 if intro else booking_fee(amount)
         status = 'confirmed' if by_tutor else 'pending'
         ids = []

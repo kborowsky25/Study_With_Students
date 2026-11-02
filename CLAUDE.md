@@ -54,7 +54,7 @@ Either side can cancel; only the tutor confirms; only verified Stripe checkouts 
 ## Frontend (frontend/src)
 - All API calls go through `api/client.js` (JWT interceptor; a 401 signs the user out and the route
   guards send protected pages to /login, public pages stay), with `errorMessage()` for toasts.
-- `AuthContext.refreshSession()` re-issues the JWT with live claims — call it after plan/role changes.
+- `AuthContext.refreshSession()` re-issues the JWT with live claims — call it after role changes.
 - Navigation lives in `lib/navigation.js` (sidebar, ⌘K palette and `g`+key shortcuts all read it).
 - Hub pages render inside `<HubLayout>` and set the header with `<PageTitle title icon />`.
 - Data: `lib/query.js` (stale-while-revalidate cache, `useQuery`, `invalidate`) with keys in

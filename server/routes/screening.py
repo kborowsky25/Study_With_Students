@@ -1,6 +1,6 @@
 """Tutor screening: university email verification and proof upload."""
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 
 from flask import Blueprint, jsonify, request, send_from_directory
 from flask_jwt_extended import jwt_required
@@ -119,7 +119,7 @@ def screening_upload_proof():
             return jsonify({'error': 'Please verify your university email first'}), 400
 
         # Save file
-        filename = f'{id_tutor}_{int(datetime.utcnow().timestamp())}.{ext}'
+        filename = f'{id_tutor}_{int(datetime.now(UTC).timestamp())}.{ext}'
         with open(os.path.join(upload_dir('tutor-proofs'), filename), 'wb') as fh:
             fh.write(data)
 

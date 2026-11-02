@@ -54,7 +54,7 @@ export default function TutorCard({ tutor, liked = false, onToggleLike, status, 
         <Avatar name={tutor.name || '?'} src={tutor.avatar_url} size={36} />
         <div className="main">
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-            <Link {...profile} className="title" style={{ color: 'inherit', textDecoration: 'none', minWidth: 0 }}>
+            <Link {...profile} className="title tap-link" style={{ color: 'inherit', textDecoration: 'none', minWidth: 0 }}>
               {tutor.name}
             </Link>
             {tutor.verified && <VerifiedPill />}

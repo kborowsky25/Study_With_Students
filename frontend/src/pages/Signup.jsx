@@ -20,7 +20,9 @@ function OTPInput({ value = '', onChange, disabled }) {
 
   // Reflect a code set from outside (e.g. the dev-mode autofill)
   useEffect(() => {
-    if (value !== digits.join('')) setDigits([...value.slice(0, 6).split(''), ...Array(6).fill('')].slice(0, 6))
+    setDigits((current) => (value === current.join('')
+      ? current
+      : [...value.slice(0, 6).split(''), ...Array(6).fill('')].slice(0, 6)))
   }, [value])
 
   function handleChange(idx, raw) {

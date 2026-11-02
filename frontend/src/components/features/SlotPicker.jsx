@@ -21,6 +21,8 @@ export function DateTimeFields({ value, onChange }) {
   useEffect(() => {
     const d = new Date(`${date}T${time}`)
     onChange(Number.isNaN(d.getTime()) ? null : d)
+  // Report when the fields change; parents pass inline callbacks, which would loop
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, time])
 
   return (
@@ -73,6 +75,8 @@ export default function SlotPicker({
   useEffect(() => {
     if (readOnly || custom || !data?.has_availability || !value) return
     if (!data.slots.some((slot) => new Date(slot).getTime() === value.getTime())) onChange(null)
+  // Only when new slots arrive, not on every pick
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data])
 
   const freeEntry = custom || !supported || Boolean(error) || data?.has_availability === false
