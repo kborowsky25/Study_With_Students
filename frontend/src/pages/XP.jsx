@@ -5,14 +5,8 @@ import HubLayout from '../components/layout/HubLayout'
 import { Card, Icon, Pill, SkeletonRows, Stat } from '../components/ui'
 import { getEvents } from '../api/events'
 import { getActiveStudents, getActiveTutors } from '../api/tutors'
-import { isStudyRoomCopy } from '../lib/sessions'
+import { levelFor, THRESHOLDS, TIERS, xpFor, xpSessions } from '../lib/xp'
 import './XP.css'
-
-const TIERS = {
-  student: ['Newcomer', 'Explorer', 'Scholar', 'Achiever', 'Prodigy', 'Elite', 'Legend'],
-  tutor:   ['Guide', 'Mentor', 'Educator', 'Expert', 'Professor', 'Master', 'Grandmaster'],
-}
-const THRESHOLDS = [0, 150, 400, 900, 1800, 3500, 6000]
 
 const article = (word) => (/^[aeiou]/i.test(word) ? 'an' : 'a') // "an Explorer", "a Scholar"
 
@@ -38,23 +32,21 @@ export default function XP() {
 
   useEffect(() => {
     Promise.allSettled([
-      getEvents().then((r) => setEvents((r.data.events ?? []).filter((e) => e.role === mode && !isStudyRoomCopy(e)))),
+      getEvents().then((r) => setEvents(r.data.events ?? [])),
       (mode === 'tutor' ? getActiveStudents() : getActiveTutors())
         .then((r) => setPeople(r.data.tutors ?? r.data.students ?? [])),
     ]).finally(() => setLoading(false))
   }, [mode])
 
-  const live = events.filter((e) => e.status !== 'canceled')
+  // Same rules as the dashboard's level (lib/xp.js)
+  const live = xpSessions(mode, events)
   const done = live.filter((e) => ['confirmed', 'paid'].includes(e.status))
   const paid = live.filter((e) => e.status === 'paid')
-  const xp = mode === 'tutor'
-    ? done.length * 50 + paid.length * 100 + people.length * 30
-    : live.length * 50 + done.length * 100 + people.length * 30
+  const xp = xpFor(mode, events, people.length)
 
   const tiers = TIERS[mode]
-  const level = THRESHOLDS.reduce((acc, t, i) => (xp >= t ? i : acc), 0)
-  const next = THRESHOLDS[level + 1]
-  const pct = next ? ((xp - THRESHOLDS[level]) / (next - THRESHOLDS[level])) * 100 : 100
+  const { index: level, next, progress } = levelFor(mode, xp)
+  const pct = progress * 100
 
   return (
     <HubLayout>
