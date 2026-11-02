@@ -1,0 +1,91 @@
+/* Scheduling: open-time picker, weekly hours editor, session menu. Colours from index.css tokens. */
+
+/* ── Open times: a strip of days, then that day's start times ─────────────── */
+
+.slot-picker { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+.slot-days { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.slot-days::-webkit-scrollbar { display: none; }
+
+.slot-day {
+  flex: 0 0 auto;
+  min-width: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.slot-day small { font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); }
+.slot-day b { font-size: 13px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.slot-day:hover { background: rgb(var(--fg) / 0.06); }
+.slot-day.on { border-color: var(--coral-line); background: var(--coral-soft); }
+.slot-day.on small, .slot-day.on b { color: var(--coral); }
+.slot-day.more { justify-content: center; color: var(--text-muted); font-size: 12.5px; font-weight: 500; }
+
+.slot-times { display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 6px; }
+.slot-time {
+  height: 30px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.slot-time:hover { border-color: var(--coral-line); color: var(--coral); }
+.slot-time.on { background: var(--coral); border-color: var(--coral); color: #fff; font-weight: 600; }
+span.slot-time { display: inline-flex; align-items: center; justify-content: center; cursor: default; color: var(--text-muted); }
+span.slot-time:hover { border-color: var(--border-strong); color: var(--text-muted); }
+
+.slot-note { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 13px; color: var(--text-faint); }
+
+.link-btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.link-btn:hover { color: var(--text); }
+
+/* ── Weekly hours editor ─────────────────────────────────────────────────── */
+
+.hours-row { display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 10px; padding: 10px 16px; border-top: 1px solid var(--border); align-items: start; }
+.hours-row:first-child { border-top: 0; }
+.hours-day { font-size: 13.5px; font-weight: 500; line-height: 30px; }
+.hours-day.off { color: var(--text-faint); }
+.hours-ranges { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.hours-range { display: flex; align-items: center; gap: 6px; }
+.hours-range .input { width: 96px; }
+.hours-range .dash { color: var(--text-faint); }
+.hours-none { font-size: 13px; color: var(--text-faint); line-height: 30px; }
+
+/* ── Small pieces ────────────────────────────────────────────────────────── */
+
+.scope-choice { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.scope-choice label { display: flex; align-items: center; gap: 8px; color: var(--text); cursor: pointer; }
+.scope-choice input { accent-color: var(--coral); margin: 0; }
+
+.session-note { display: flex; align-items: center; gap: 5px; margin-top: 3px; font-size: 12.5px; color: var(--text-muted); min-width: 0; }
+.session-note .material-symbols-outlined { font-size: 15px; color: var(--amber); flex-shrink: 0; }
+.session-note span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.free { color: var(--coral); font-weight: 500; }
+
+@media (max-width: 520px) {
+  .hours-row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .hours-range .input { width: 88px; }
+}
