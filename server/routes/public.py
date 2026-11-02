@@ -26,7 +26,7 @@ MIN_ABOUT_CHARS = 30   # a shorter bio means the profile isn't finished (and mak
 RECENT_REVIEWS  = 5
 
 # Marketing pages listed in the sitemap next to every tutor and subject page
-STATIC_PAGES = ('/', '/how-it-works', '/about', '/become-tutor', '/tutors')
+STATIC_PAGES = ('/', '/tutors', '/how-it-works', '/become-tutor', '/founding-tutors', '/about')
 
 # The only columns public pages ever read
 PUBLIC_COLUMNS = """

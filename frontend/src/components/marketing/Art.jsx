@@ -11,28 +11,19 @@ const ART = {
   forum:       'StudentForum',
   events:      'Events',
   uniGuidance: 'UniGuidance',
+  step1:       'FindTutor',
+  step2:       'Messages',
+  step3:       'Classes',
   studyNotes:  'StudyNotes',
-  step1:       'Profile',
-  step2:       'Students',
-  step3:       'FindTutor',
   becomeTutor: 'BecomeTutor',
 
-  // How it works
+  // How it works, About us, Become a tutor
   findTutor:   'FindTutor',
-  uni:         'UniGuidance',
-  classes:     'Classes',
-  studyRooms:  'GroupStudy',
-  forumBoard:  'StudentForum',
-  stepJoin:    'Rocket',
-  stepMode:    'Students',
-  stepExplore: 'Messages',
-  studentMode: 'StudyNotes',
-  tutorMode:   'Profile',
-
-  // About us, Become a tutor, log in and sign up
   mission:     'Students',
   space:       'BecomeTutor',
   earnings:    'Earnings',
+
+  // Log in and sign up
   login:       'Rocket',
   signup:      'BecomeTutor',
 

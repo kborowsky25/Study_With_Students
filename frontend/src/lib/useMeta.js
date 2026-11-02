@@ -7,8 +7,7 @@
 // These tags are set by JavaScript: Google renders them, but link previews (WhatsApp,
 // iMessage, LinkedIn, X…) don't run scripts and only see index.html.
 import { useEffect } from 'react'
-
-const SITE_NAME = 'Study with Students'
+import { SHARE_IMAGE, SITE_NAME } from './site'
 
 // Set VITE_SITE_URL in production so canonical links always name the main domain.
 export const SITE_URL = (import.meta.env.VITE_SITE_URL || window.location.origin).replace(/\/+$/, '')
@@ -31,7 +30,7 @@ function setTag(tag, keyAttr, key, attr, value) {
   return () => el.remove()
 }
 
-export default function useMeta({ title, description, path, image, type = 'website', jsonLd, noindex = false }) {
+export default function useMeta({ title, description, path, image = SHARE_IMAGE, type = 'website', jsonLd, noindex = false }) {
   // `<` escaped so text from profiles can never close the script tag if the page is ever prerendered
   const ld = jsonLd ? JSON.stringify(jsonLd).replace(/</g, '\\u003c') : ''
 

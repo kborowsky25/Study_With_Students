@@ -9,7 +9,7 @@ import {
   BookingSteps, EmptyBox, Price, PublicPage, SignUpCta, StarRating, TutorAvatar,
   clip, hourlyPrice, listText, subjectLink, tutorLink,
 } from '../components/public'
-import { BOOKING_FEE_PERCENT } from '../components/features/BookSessionModal'
+import { BOOKING_FEE_PERCENT } from '../lib/site'
 import { useAuth } from '../context/AuthContext'
 import { formatMoney } from '../lib/format'
 import { useQuery } from '../lib/query'

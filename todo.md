@@ -86,11 +86,20 @@ Stripe's card fees.
 - [ ] Account suspension for people who get reported (reports cover messages only so far).
 - [ ] Run one real Stripe test-mode checkout: fee line, waived-fee description, a parent paying.
 
-## 6. Search (public tutor and subject pages)
+## 6. Search (getting found on Google)
 
-- [ ] Once live, add the site to Google Search Console (free) and submit
-      `https://www.studywithstudents.co.uk/sitemap.xml`. `frontend/public/robots.txt` names that
-      address; change it if the domain differs.
+The site can't be found until the new code is live: www.studywithstudents.co.uk answers every
+request with an error today (step 2). Everything on our side is ready: each public page has its
+own title, description and canonical address in its HTML, link previews have an image, Google
+gets the organisation and site name, and the sitemap and robots.txt list the public pages.
+
+- [ ] In Vercel, set `VITE_SITE_URL=https://www.studywithstudents.co.uk` (with `FRONTEND_URL`).
+- [ ] Once live, add the site to Google Search Console (free): verify the domain with a DNS TXT
+      record at the registrar, then submit `https://www.studywithstudents.co.uk/sitemap.xml`
+      and request indexing of the homepage. `frontend/public/robots.txt` names that address.
+- [ ] Optional: Bing Webmaster Tools (free) can import the Search Console setup.
+- [ ] When the site has social profiles, add their URLs as `sameAs` to the Organization
+      details in `frontend/index.html`, and link to the site from them.
 - [ ] Keep staging behind Vercel's login (the default), or search engines will index it too.
 - [ ] Optional: link previews (WhatsApp, LinkedIn) only see the generic tags in `index.html`. A small
       Flask route that fills in each tutor page's tags would fix that (no paid service needed).

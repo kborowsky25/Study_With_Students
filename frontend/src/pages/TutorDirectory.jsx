@@ -7,7 +7,7 @@ import { Icon } from '../components/ui'
 import {
   EmptyBox, Pager, PublicPage, SignUpCta, SubjectChips, TutorGrid, Wave, topicName,
 } from '../components/public'
-import { BOOKING_FEE_PERCENT } from '../components/features/BookSessionModal'
+import { BOOKING_FEE_PERCENT, PAGES } from '../lib/site'
 import { useQuery } from '../lib/query'
 import useMeta from '../lib/useMeta'
 
@@ -31,8 +31,7 @@ export default function TutorDirectory() {
 
   // Filtered views repeat the subject pages, so only the plain listing (and its pages) is indexed
   useMeta({
-    title: 'GCSE and A-level tutors from UK universities',
-    description: 'Browse tutors who study at UK universities. Filter by subject, level and university, compare rates and reviews, and book online. Tutors keep 100% of their rate.',
+    ...PAGES['/tutors'],
     path: page > 1 && !filtered ? `/tutors?page=${page}` : '/tutors',
     noindex: filtered,
   })

@@ -22,7 +22,10 @@ Disallow: /student/
 Disallow: /study-rooms/
 Disallow: /messages
 Disallow: /xp
-Disallow: /membership
+Disallow: /progress
+Disallow: /availability
+Disallow: /background-check
+Disallow: /referrals
 Disallow: /forum
 Disallow: /study-notes
 Disallow: /classroom
