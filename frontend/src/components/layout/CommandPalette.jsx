@@ -29,7 +29,6 @@ export default function CommandPalette({ mode, onClose, onSwitchMode }) {
         label: mode === 'tutor' ? 'Switch to student view' : 'Switch to tutor view',
         run: () => onSwitchMode(mode === 'tutor' ? 'student' : 'tutor'),
       },
-      !user?.is_premium && mode === 'student' && { icon: 'rocket_launch', label: 'Upgrade to Explorer — £5/month', run: go('/membership') },
       { icon: 'logout', label: 'Log out', run: () => { logout(); navigate({ to: '/login' }) } },
     ].filter(Boolean).map((a) => ({ group: 'Actions', ...a }))
     return [...pages, ...actions]

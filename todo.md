@@ -24,6 +24,7 @@ Everything here can stay £0 while the project is a hobby.
    | `FRONTEND_URL` | `https://www.studywithstudents.co.uk` | `https://staging.studywithstudents.co.uk` |
    | `SUPER_ADMIN_EMAIL` | your email | your email |
    | `STRIPE_SECRET_KEY`, `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe **test** keys while it's a hobby | Stripe test keys |
+   | `CRON_SECRET` | random string (reminder emails) | a different random string |
 
 4. **Vercel → Settings → Domains** — add `staging.studywithstudents.co.uk`, assign it to
    the Git branch `staging`, then add the CNAME record Vercel shows (name `staging`) in
@@ -56,17 +57,21 @@ Notes:
 
 ## 4. Payments (when going commercial)
 
-- [ ] Register the Stripe webhook URL (`/api/membership/webhook`) and set `STRIPE_WEBHOOK_SECRET`
-      in Vercel, so £5 subscriptions renew automatically.
+Model: tutors keep 100% of their price; families pay a 5% booking fee, which also covers
+Stripe's card fees.
+
+- [ ] Register the Stripe webhook URL for session payments and set `STRIPE_WEBHOOK_SECRET`
+      in Vercel (see SECURITY.md once the security branch is merged).
 - [ ] Build Stripe Connect payouts so session payments reach tutors (not built yet).
-- [ ] Decide who covers Stripe's card fees on sessions (student, tutor or platform) given 0% commission.
 - [ ] Switch to Stripe live keys and Vercel Pro (Hobby is for non-commercial use only).
 
 ## 5. Before real users
 
 - [ ] Uploaded files (avatars, study notes, tutor proofs) don't persist on Vercel — move them
       to object storage (e.g. Vercel Blob or S3).
-- [ ] Set up a free transactional email service for sign-up codes (`MAIL_*` variables).
+- [ ] Set up a free transactional email service for sign-up codes and reminders (`MAIL_*` variables).
+- [ ] Review `docs/SAFEGUARDING.md` (draft, not legal advice) and decide how tutors without an
+      enhanced DBS check can get one (umbrella body).
 
 ## 6. Housekeeping
 
