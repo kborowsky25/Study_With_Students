@@ -35,6 +35,17 @@ COLUMN_MIGRATIONS = [
     ('student_profiles', 'goals',                  "TEXT NULL"),
     ('tutor_profiles',   'levels',                 "VARCHAR(120) NULL"),
     ('forum_categories', 'icon',                   "VARCHAR(50) NULL"),
+    # Scheduling: booking notice, intro calls, weekly series, reschedules, cancellation policy
+    ('tutor_profiles',   'booking_notice_hours',   "SMALLINT NOT NULL DEFAULT 12"),
+    ('events',           'kind',                   "VARCHAR(16) NOT NULL DEFAULT 'session'"),
+    ('events',           'series_id',              "INT NULL"),
+    ('events',           'proposed_start',         "DATETIME NULL"),
+    ('events',           'proposed_end',           "DATETIME NULL"),
+    ('events',           'proposed_by',            "VARCHAR(10) NULL"),
+    ('events',           'cancel_requested_at',    "DATETIME NULL"),
+    ('events',           'canceled_by',            "VARCHAR(10) NULL"),
+    ('events',           'canceled_at',            "DATETIME NULL"),
+    ('events',           'cancel_type',            "VARCHAR(16) NULL"),
 ]
 
 FORUM_CATEGORIES = [

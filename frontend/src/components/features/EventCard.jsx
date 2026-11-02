@@ -1,6 +1,7 @@
 // Session pieces shared by the tutoring pages:
 //   EventCard              one session, with the actions each side may take (only the tutor
-//                          confirms; either side cancels; the student pays the tutor directly)
+//                          confirms; either side cancels or proposes a new time; the student
+//                          pays the tutor directly)
 //   CompactSession         a session as a clickable row without actions
 //   MonthGrid              the month view used by both calendars
 //   ScheduleSessionDialog  a tutor books one of their students (created already confirmed)
@@ -8,13 +9,23 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import toast from 'react-hot-toast'
 import { createEvent, updateStatus } from '../../api/events'
+import {
+  acceptTime, agreeToCancel, askToCancel, cancelSession, downloadSeriesIcs, downloadSessionIcs,
+  dropCancelRequest, dropTime,
+} from '../../api/scheduling'
 import { getTutorProfile } from '../../api/tutors'
 import { errorMessage } from '../../api/client'
-import { firstName, formatMoney, formatTime, formatWhen } from '../../lib/format'
-import { canJoin, canReview } from '../../lib/sessions'
+import { firstName, formatDate, formatMoney, formatTime, formatWhen } from '../../lib/format'
+import { invalidate } from '../../lib/query'
+import {
+  FREE_CANCEL_HOURS, REPEAT_WEEKS, canAddToCalendar, canJoin, canReschedule, canReview, googleCalendarUrl,
+  isLateCancel, isUpcoming, laterWeeks, needsPayment,
+} from '../../lib/sessions'
 import { Avatar, DateChip, Icon, StatusPill } from '../ui'
 import { useConfirm } from '../ui/confirm'
+import RescheduleDialog from './RescheduleDialog'
 import ReviewDialog from './ReviewDialog'
+import './scheduling.css'
 
 const TONE = {
   pending:   'var(--amber)',
@@ -37,8 +48,11 @@ const visualStatus = (ev) =>
 function pillProps(ev) {
   const status = visualStatus(ev)
   if (status === 'expired') return { status: 'canceled', label: 'Expired' }
+  if (status === 'canceled') return { status }
+  if (ev.cancel_requested_at && status === 'confirmed') return { status: 'pending', label: 'Cancel requested' }
+  if (ev.proposed_start) return { status: 'pending', label: 'New time proposed' }
   if (ev.role === 'tutor' && status === 'pending') return { status, label: 'Needs answer' }
-  if (ev.role === 'tutor' && status === 'confirmed') return { status, label: 'Unpaid' }
+  if (ev.role === 'tutor' && status === 'confirmed' && needsPayment(ev)) return { status, label: 'Unpaid' }
   return { status }
 }
 
@@ -50,6 +64,53 @@ function durationLabel(ev) {
   return m ? `${h} h ${m}` : `${h} h`
 }
 
+/** "Only this session" or "this and the later weeks", for cancelling part of a series. */
+function ScopeChoice({ later, onChange }) {
+  const [value, setValue] = useState('one')
+  const pick = (next) => { setValue(next); onChange(next) }
+  return (
+    <div className="scope-choice" role="radiogroup" aria-label="Which sessions">
+      <label><input type="radio" name="cancel-scope" checked={value === 'one'} onChange={() => pick('one')} />Only this session</label>
+      <label>
+        <input type="radio" name="cancel-scope" checked={value === 'series'} onChange={() => pick('series')} />
+        {later === 1 ? 'This one and next week’s' : `This one and the ${later} weeks after it`}
+      </label>
+    </div>
+  )
+}
+
+/** The ⋯ button with a menu of less frequent actions. Choosing an item closes it. */
+function SessionMenu({ children }) {
+  const [open, setOpen] = useState(false)
+  const wrap = useRef(null)
+
+  useEffect(() => {
+    if (!open) return undefined
+    const onDown = (e) => { if (!wrap.current?.contains(e.target)) setOpen(false) }
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  return (
+    <span ref={wrap} style={{ position: 'relative', display: 'inline-flex', marginLeft: 'auto' }}>
+      <button type="button" className="icon-btn" style={{ width: 26, height: 26 }} aria-haspopup="menu" aria-expanded={open}
+        aria-label="More actions" title="More actions" onClick={() => setOpen((v) => !v)}>
+        <Icon name="more_horiz" />
+      </button>
+      {open && (
+        <div className="menu" role="menu" style={{ top: 'calc(100% + 4px)', right: 0 }} onClick={() => setOpen(false)}>
+          {children}
+        </div>
+      )}
+    </span>
+  )
+}
+
 // ── EventCard ────────────────────────────────────────────────────────────────
 
 /**
@@ -59,43 +120,112 @@ function durationLabel(ev) {
 export default function EventCard({ event: ev, onChanged, variant = 'date', showMessage = true }) {
   const [busy, setBusy] = useState(false)
   const [reviewing, setReviewing] = useState(false)
+  const [moving, setMoving] = useState(false)
   const confirm = useConfirm()
 
   const asTutor = ev.role === 'tutor'
-  const upcoming = new Date(ev.start_time) > new Date()
+  const upcoming = isUpcoming(ev)
   const canceled = ev.status === 'canceled'
   const otherName = (asTutor ? ev.student_name : ev.tutor_name) || 'Unknown'
+  const other = firstName(otherName)
   const otherUserId = asTutor ? ev.student_user_id : ev.tutor_user_id
+  const weekly = ev.series_size > 1 && ev.series_index
+  const proposal = Boolean(ev.proposed_start) && !canceled
+  const myProposal = proposal && ev.proposed_by === ev.role
+  const cancelAsked = Boolean(ev.cancel_requested_at) && ev.status === 'confirmed'
 
-  const canAnswer = asTutor && ev.status === 'pending' && upcoming
-  const canPay = !asTutor && ev.status === 'confirmed'
-  const canCancel = upcoming && (ev.status === 'confirmed' || (ev.status === 'pending' && !asTutor))
+  const canAnswer = asTutor && ev.status === 'pending' && upcoming && !proposal
+  const canPay = !asTutor && needsPayment(ev)
+  const canCancel = upcoming && !cancelAsked && (ev.status === 'confirmed' || (ev.status === 'pending' && !asTutor))
+  const movable = canReschedule(ev) && !proposal && !cancelAsked
+  const calendar = canAddToCalendar(ev)
   const joinable = canJoin(ev)
   const reviewable = canReview(ev)
-  const hasActions = canAnswer || canPay || canCancel || joinable || reviewable || (showMessage && otherUserId && !canceled)
+  const hasMenu = movable || calendar || canCancel
+  const hasActions = canAnswer || proposal || cancelAsked || canPay || joinable || reviewable || hasMenu ||
+    (showMessage && otherUserId && !canceled)
 
-  async function cancel() {
-    const withdrawing = ev.status === 'pending'
-    const ok = await confirm({
-      title: withdrawing ? 'Withdraw this request?' : 'Cancel this session?',
-      body: `${ev.title || 'Tutoring session'} · ${formatWhen(ev.start_time)}`,
-      confirmLabel: withdrawing ? 'Withdraw' : 'Cancel session',
-      cancelLabel: 'Keep',
-      danger: true,
-    })
-    if (ok) change('canceled', withdrawing ? 'Request withdrawn' : 'Session cancelled')
-  }
-
-  async function change(status, message) {
+  async function run(request, fallback) {
     setBusy(true)
     try {
-      await updateStatus(ev.id_event, status)
-      toast.success(message)
+      const res = await request()
+      toast.success(res?.data?.message || fallback)
+      invalidate('events', 'slots')
       await onChanged?.()
     } catch (err) {
       toast.error(errorMessage(err, 'Could not update the session'))
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function decline() {
+    if (weekly) {
+      const ok = await confirm({
+        title: `Decline all ${ev.series_size} weeks?`,
+        body: `${ev.title || 'Tutoring session'} · weekly from ${formatWhen(ev.start_time)}`,
+        confirmLabel: 'Decline',
+        cancelLabel: 'Keep',
+        danger: true,
+      })
+      if (!ok) return
+    }
+    run(() => cancelSession(ev.id_event), 'Request declined')
+  }
+
+  async function cancel() {
+    const what = `${ev.title || 'Tutoring session'} · ${formatWhen(ev.start_time)}`
+
+    // Inside 24 hours a student can only ask: the tutor has to agree
+    if (!asTutor && isLateCancel(ev)) {
+      const ok = await confirm({
+        title: `Ask ${other} to cancel?`,
+        body: (
+          <>
+            <p>{what}</p>
+            <p style={{ marginTop: 8 }}>
+              Sessions can be cancelled free of charge until {FREE_CANCEL_HOURS} hours before they start.
+              This one is sooner, so {other} has to agree. Until then it stays booked.
+            </p>
+          </>
+        ),
+        confirmLabel: 'Ask to cancel',
+        cancelLabel: 'Keep session',
+      })
+      if (ok) run(() => askToCancel(ev.id_event), `Asked ${other} to cancel`)
+      return
+    }
+
+    const withdrawing = ev.status === 'pending'
+    const later = laterWeeks(ev)
+    const scope = { current: 'one' }
+    const ok = await confirm({
+      title: withdrawing ? 'Withdraw this request?' : 'Cancel this session?',
+      body: (
+        <>
+          <p>{what}</p>
+          {!withdrawing && (
+            <p style={{ marginTop: 8 }}>
+              {asTutor
+                ? 'Cancellations by tutors are counted, so only cancel when you have to.'
+                : `Free to cancel until ${FREE_CANCEL_HOURS} hours before it starts.`}
+            </p>
+          )}
+          {later > 0 && <ScopeChoice later={later} onChange={(value) => { scope.current = value }} />}
+        </>
+      ),
+      confirmLabel: withdrawing ? 'Withdraw' : 'Cancel session',
+      cancelLabel: 'Keep',
+      danger: true,
+    })
+    if (ok) run(() => cancelSession(ev.id_event, scope.current), withdrawing ? 'Request withdrawn' : 'Session cancelled')
+  }
+
+  async function download(save) {
+    try {
+      await save()
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not create the calendar file'))
     }
   }
 
@@ -121,8 +251,21 @@ export default function EventCard({ event: ev, onChanged, variant = 'date', show
         </div>
         <div className="meta">
           {asTutor ? otherName : `with ${otherName}`}
-          {variant === 'time' ? '' : ` · ${when}`} · {formatMoney(ev.amount)}
+          {variant === 'time' ? '' : ` · ${when}`} · {Number(ev.amount) > 0 ? formatMoney(ev.amount) : <span className="free">Free</span>}
+          {weekly && ` · Week ${ev.series_index} of ${ev.series_size}`}
         </div>
+        {proposal && (
+          <div className="session-note">
+            <Icon name="schedule" />
+            <span>{myProposal ? 'You proposed' : `${other} proposed`} {formatWhen(ev.proposed_start)}–{formatTime(ev.proposed_end)}</span>
+          </div>
+        )}
+        {cancelAsked && (
+          <div className="session-note">
+            <Icon name="event_busy" />
+            <span>{asTutor ? `${other} asked to cancel` : `You asked ${other} to cancel`}</span>
+          </div>
+        )}
         {ev.description && <div className="meta" title={ev.description}>“{ev.description}”</div>}
       </div>
 
@@ -136,14 +279,49 @@ export default function EventCard({ event: ev, onChanged, variant = 'date', show
           {canAnswer && (
             <>
               <button type="button" className="btn btn-coral btn-sm" disabled={busy}
-                onClick={() => change('confirmed', 'Session confirmed')}>
-                <Icon name="check" />Confirm
+                onClick={() => run(() => updateStatus(ev.id_event, 'confirmed'), 'Session confirmed')}>
+                <Icon name="check" />{weekly ? `Confirm all ${ev.series_size}` : 'Confirm'}
               </button>
-              <button type="button" className="btn btn-ghost btn-sm" disabled={busy}
-                onClick={() => change('canceled', 'Session declined')}>
+              <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={decline}>
                 Decline
               </button>
             </>
+          )}
+          {proposal && !myProposal && (
+            <>
+              <button type="button" className="btn btn-coral btn-sm" disabled={busy}
+                onClick={() => run(() => acceptTime(ev.id_event), 'Session moved')}>
+                <Icon name="check" />Accept new time
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" disabled={busy}
+                onClick={() => run(() => dropTime(ev.id_event), 'New time declined')}>
+                Decline
+              </button>
+            </>
+          )}
+          {myProposal && (
+            <button type="button" className="btn btn-quiet btn-sm" disabled={busy}
+              onClick={() => run(() => dropTime(ev.id_event), 'Proposal withdrawn')}>
+              Withdraw new time
+            </button>
+          )}
+          {cancelAsked && asTutor && (
+            <>
+              <button type="button" className="btn btn-coral btn-sm" disabled={busy}
+                onClick={() => run(() => agreeToCancel(ev.id_event), 'Session cancelled')}>
+                Agree to cancel
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" disabled={busy}
+                onClick={() => run(() => dropCancelRequest(ev.id_event), 'Session kept')}>
+                Keep session
+              </button>
+            </>
+          )}
+          {cancelAsked && !asTutor && (
+            <button type="button" className="btn btn-quiet btn-sm" disabled={busy}
+              onClick={() => run(() => dropCancelRequest(ev.id_event), 'Request withdrawn')}>
+              Withdraw request
+            </button>
           )}
           {canPay && (
             <Link to="/payments" className="btn btn-coral btn-sm"><Icon name="credit_card" />Pay {formatMoney(ev.amount)}</Link>
@@ -154,14 +332,42 @@ export default function EventCard({ event: ev, onChanged, variant = 'date', show
           {showMessage && otherUserId && !canceled && (
             <Link to="/messages" search={{ user: otherUserId }} className="btn btn-ghost btn-sm"><Icon name="chat" />Message</Link>
           )}
-          {canCancel && (
-            <button type="button" className="btn btn-quiet btn-sm" disabled={busy} onClick={cancel}>
-              {ev.status === 'pending' ? 'Withdraw' : 'Cancel'}
-            </button>
+          {hasMenu && (
+            <SessionMenu>
+              {movable && (
+                <button type="button" role="menuitem" className="menu-item" onClick={() => setMoving(true)}>
+                  <Icon name="schedule" />{!asTutor && ev.status === 'pending' ? 'Change time' : 'Propose a new time'}
+                </button>
+              )}
+              {calendar && (
+                <>
+                  <a role="menuitem" className="menu-item" href={googleCalendarUrl(ev)} target="_blank" rel="noreferrer">
+                    <Icon name="calendar_add_on" />Add to Google Calendar
+                  </a>
+                  <button type="button" role="menuitem" className="menu-item" onClick={() => download(() => downloadSessionIcs(ev.id_event))}>
+                    <Icon name="download" />Download .ics
+                  </button>
+                  {weekly && (
+                    <button type="button" role="menuitem" className="menu-item" onClick={() => download(() => downloadSeriesIcs(ev.series_id))}>
+                      <Icon name="calendar_month" />Download all weeks (.ics)
+                    </button>
+                  )}
+                </>
+              )}
+              {canCancel && (
+                <>
+                  {(movable || calendar) && <div className="menu-sep" />}
+                  <button type="button" role="menuitem" className="menu-item danger" disabled={busy} onClick={cancel}>
+                    <Icon name="event_busy" />{ev.status === 'pending' ? 'Withdraw request' : 'Cancel session'}
+                  </button>
+                </>
+              )}
+            </SessionMenu>
           )}
         </div>
       )}
       {reviewing && <ReviewDialog event={ev} onClose={() => setReviewing(false)} onDone={onChanged} />}
+      {moving && <RescheduleDialog event={ev} onClose={() => setMoving(false)} onDone={onChanged} />}
     </div>
   )
 }
@@ -358,24 +564,26 @@ const DURATIONS = [
   { minutes: 120, label: '2 hours' },
 ]
 
-/** A tutor books a session with one of their students. It's created as confirmed. */
+/** A tutor books a session with one of their students, once or weekly. It's created as confirmed. */
 export function ScheduleSessionDialog({ students, studentId, date, onClose, onScheduled }) {
   const tomorrow = dayKey(new Date(Date.now() + 86_400_000))
   const firstDay = date && dayKey(date) >= dayKey(new Date()) ? dayKey(date) : tomorrow
   const [form, setForm] = useState({
     student: String(studentId ?? students[0]?.id_student ?? ''),
-    title: '', date: firstDay, time: '17:00', minutes: 60, notes: '',
+    title: '', date: firstDay, time: '17:00', minutes: 60, repeat: 1, notes: '',
   })
   const [rate, setRate] = useState(null)
   const [saving, setSaving] = useState(false)
+  const confirm = useConfirm()
   const closeRef = useRef(onClose)
   closeRef.current = onClose
+  const confirming = useRef(false)
 
   useEffect(() => {
     getTutorProfile()
       .then(({ data }) => setRate(Number(data.profile?.hourly_rate ?? 20)))
       .catch(() => setRate(20))
-    const onKey = (e) => { if (e.key === 'Escape') closeRef.current() }
+    const onKey = (e) => { if (e.key === 'Escape' && !confirming.current) closeRef.current() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
@@ -394,17 +602,39 @@ export function ScheduleSessionDialog({ students, studentId, date, onClose, onSc
       return
     }
     const end = new Date(start.getTime() + form.minutes * 60_000)
+    const schedule = (skipConflicts = false) => createEvent({
+      student_id: student.id_student,
+      title: form.title.trim() || 'Tutoring session',
+      description: form.notes.trim(),
+      start_time: localISO(start),
+      end_time: localISO(end),
+      repeat_weeks: form.repeat,
+      skip_conflicts: skipConflicts,
+    })
     setSaving(true)
     try {
-      const { data } = await createEvent({
-        student_id: student.id_student,
-        title: form.title.trim() || 'Tutoring session',
-        description: form.notes.trim(),
-        start_time: localISO(start),
-        end_time: localISO(end),
-      })
-      toast.success(`Session booked with ${name}`)
-      onScheduled?.(data.event)
+      let res
+      try {
+        res = await schedule()
+      } catch (err) {
+        // Some weeks clash: offer to book the others
+        const conflicts = err.response?.data?.conflicts
+        if (!conflicts || conflicts.length >= form.repeat) throw err
+        confirming.current = true
+        const ok = await confirm({
+          title: `${conflicts.length} of ${form.repeat} weeks ${conflicts.length === 1 ? 'isn’t' : 'aren’t'} free`,
+          body: conflicts.map((c) => `${formatDate(c.start_time, { weekday: 'short' })}: ${c.message}`).join(' · '),
+          confirmLabel: `Book the other ${form.repeat - conflicts.length}`,
+          cancelLabel: 'Change time',
+        })
+        confirming.current = false
+        if (!ok) return
+        res = await schedule(true)
+      }
+      const count = res.data.events?.length ?? 1
+      toast.success(count > 1 ? `${count} weekly sessions booked with ${name}` : `Session booked with ${name}`)
+      invalidate('events', 'slots')
+      onScheduled?.(res.data.event)
       onClose()
     } catch (err) {
       toast.error(errorMessage(err, 'Could not schedule the session'))
@@ -460,6 +690,14 @@ export function ScheduleSessionDialog({ students, studentId, date, onClose, onSc
             </div>
           </div>
           <label className="field">
+            <span>Repeat</span>
+            <select className="input" value={form.repeat} onChange={(e) => setForm((f) => ({ ...f, repeat: Number(e.target.value) }))}>
+              {REPEAT_WEEKS.map((n) => (
+                <option key={n} value={n}>{n === 1 ? 'Just this once' : `Every week for ${n} weeks`}</option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
             <span>Notes</span>
             <textarea className="input" value={form.notes} onChange={set('notes')} placeholder="What to prepare, links, topics" />
           </label>
@@ -467,7 +705,10 @@ export function ScheduleSessionDialog({ students, studentId, date, onClose, onSc
 
         <div className="dialog-foot" style={{ alignItems: 'center' }}>
           <span style={{ flex: 1, fontSize: 13, color: 'var(--text-muted)' }}>
-            {price == null ? '' : <><strong style={{ fontWeight: 600, color: 'var(--text)' }}>{formatMoney(price)}</strong> at {formatMoney(rate)}/hr</>}
+            {price == null ? '' : (
+              <><strong style={{ fontWeight: 600, color: 'var(--text)' }}>{formatMoney(price)}</strong>
+                {form.repeat > 1 ? ` a week · ${form.repeat} weeks` : ` at ${formatMoney(rate)}/hr`}</>
+            )}
           </span>
           <button type="button" className="btn btn-quiet" onClick={onClose}>Cancel</button>
           <button type="submit" className="btn btn-coral" disabled={saving || !student}>
