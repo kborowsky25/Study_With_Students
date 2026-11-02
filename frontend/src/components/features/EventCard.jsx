@@ -256,7 +256,7 @@ export default function EventCard({ event: ev, onChanged, variant = 'date', show
         </div>
         {proposal && (
           <div className="session-note">
-            <Icon name="update" />
+            <Icon name="schedule" />
             <span>{myProposal ? 'You proposed' : `${other} proposed`} {formatWhen(ev.proposed_start)}–{formatTime(ev.proposed_end)}</span>
           </div>
         )}
@@ -336,7 +336,7 @@ export default function EventCard({ event: ev, onChanged, variant = 'date', show
             <SessionMenu>
               {movable && (
                 <button type="button" role="menuitem" className="menu-item" onClick={() => setMoving(true)}>
-                  <Icon name="update" />{!asTutor && ev.status === 'pending' ? 'Change time' : 'Propose a new time'}
+                  <Icon name="schedule" />{!asTutor && ev.status === 'pending' ? 'Change time' : 'Propose a new time'}
                 </button>
               )}
               {calendar && (
@@ -349,7 +349,7 @@ export default function EventCard({ event: ev, onChanged, variant = 'date', show
                   </button>
                   {weekly && (
                     <button type="button" role="menuitem" className="menu-item" onClick={() => download(() => downloadSeriesIcs(ev.series_id))}>
-                      <Icon name="date_range" />Download all weeks (.ics)
+                      <Icon name="calendar_month" />Download all weeks (.ics)
                     </button>
                   )}
                 </>

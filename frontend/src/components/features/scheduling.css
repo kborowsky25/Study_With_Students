@@ -80,7 +80,7 @@ span.slot-time:hover { border-color: var(--border-strong); color: var(--text-mut
 .scope-choice input { accent-color: var(--coral); margin: 0; }
 
 .session-note { display: flex; align-items: center; gap: 5px; margin-top: 3px; font-size: 12.5px; color: var(--text-muted); min-width: 0; }
-.session-note .material-symbols-outlined { font-size: 15px; color: var(--amber); flex-shrink: 0; }
+.session-note .icon { font-size: 15px; color: var(--amber); flex-shrink: 0; }
 .session-note span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .free { color: var(--coral); font-weight: 500; }
