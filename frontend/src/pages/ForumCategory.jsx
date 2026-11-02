@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
 import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
+import CategoryIcon from '../components/features/CategoryIcon'
 import UserBadges from '../components/features/UserBadges'
 import { Avatar, Card, EmptyState, Icon, SkeletonRows } from '../components/ui'
 import { getCategory } from '../api/forum'
@@ -82,7 +83,7 @@ export default function ForumCategory() {
           <div className="dash-head">
             {category ? (
               <h1 style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                <Icon name={category.icon || 'forum'} size={24} style={{ color: 'var(--coral)' }} />
+                <CategoryIcon icon={category.icon} size={24} style={{ color: 'var(--coral)' }} />
                 {category.name}
               </h1>
             ) : (

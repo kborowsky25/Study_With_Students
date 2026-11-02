@@ -36,10 +36,12 @@ frontend/
     hooks/              useUnreadCount, useNow, useEscape, useAutoFocus
     lib/                framework-free logic, unit-tested with Vitest (*.test.js next to each module)
     components/
+      brand/            our own icon set (icons.jsx), illustrations and the logo
       ui/               primitives: Icon, Avatar, Card, Stat, Pill, StatusPill, EmptyState… and confirm.jsx
       layout/           HubLayout (the logged-in shell), Sidebar, CommandPalette, Navbar/Footer (public site)
       features/         larger shared pieces: EventCard, TutorCard, BookSessionModal, ScreeningQueue, SpotlightTour…
     pages/              one component per route (some with a page stylesheet, e.g. Messages.css)
+    styles/brand.css    brand illustration styles
     styles/app.css      hub primitives (shell, card, row, btn, pill, dialog, tabs…)
     styles/responsive.css  touch targets and wrapping rows for phones
     index.css           design tokens (dark and light) and the public site's styles
@@ -94,6 +96,7 @@ choice is stored in `localStorage.sws_hub_mode`.
 | `dates.js` | `startOfDay`, `sameDay`, `byStart`, `toDateInput`, `toLocalISO` (what the API expects) |
 | `sessions.js` | session rules: `canJoin`, `canReview`, `needsPayment`, `bookingFee`, `totalPrice`, `isStudyRoomCopy` |
 | `meetings.js` | study rooms and classes: safe links (`meetingUrl`, `normaliseLink`) and timing (`livePhase`, `minutesUntil`) |
+| `xp.js` | graduation levels: `xpFor`, `levelFor`, tiers and thresholds (dashboards and the XP page) |
 | `query.js` / `queries.js` | the read cache and its keys |
 | `navigation.js` | sidebar / palette / shortcut items |
 | `errors.js`, `keyboard.js`, `forum.js` | `notifyError`, the ⌘/Ctrl+Enter shortcut, `authorOf` |
@@ -101,6 +104,9 @@ choice is stored in `localStorage.sws_hub_mode`.
 **UI conventions** (the design system: Linear-like structure in the brand's navy, coral
 and slate, Noto Sans JP):
 
+- Icons: `<Icon name="…" />` from `components/ui` draws our own SVG set
+  (`components/brand/icons.jsx`, sized by font-size). Unknown names render a dot and warn in
+  development; for names that come from the database use a fallback, as `CategoryIcon` does.
 - Colours only through the tokens in `index.css` (`--text`, `--text-muted`, `--surface`,
   `--border`, `--coral`…). Neutral tints are `rgb(var(--fg) / 0.06)`, never
   `rgba(255,255,255,…)`, so light mode keeps working. Check both themes.

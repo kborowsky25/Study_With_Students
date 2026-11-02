@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
+import CategoryIcon from '../components/features/CategoryIcon'
 import { Avatar, Card, EmptyState, Icon, SkeletonRows } from '../components/ui'
 import { getCategories, getRecentThreads } from '../api/forum'
 import { useAutoFocus } from '../hooks/useAutoFocus'
@@ -12,7 +13,7 @@ import { plural, timeAgo } from '../lib/format'
 function CategoryRow({ category: c }) {
   return (
     <Link to="/forum/category/$categoryId" params={{ categoryId: String(c.id) }} className="row">
-      <Icon name={c.icon || 'forum'} size={20} style={{ color: 'var(--coral)', width: 22 }} />
+      <CategoryIcon icon={c.icon} size={20} style={{ color: 'var(--coral)', width: 22 }} />
       <div className="main">
         <div className="title">{c.name}</div>
         {c.description && <div className="meta">{c.description}</div>}
@@ -45,7 +46,7 @@ function CategoryPicker({ categories, onPick, onClose }) {
           {categories.map((c, i) => (
             <button key={c.id} type="button" className="row" style={{ paddingLeft: 18, paddingRight: 18 }}
               ref={i === 0 ? first : undefined} onClick={() => onPick(c)}>
-              <Icon name={c.icon || 'forum'} size={18} style={{ color: 'var(--coral)', width: 20 }} />
+              <CategoryIcon icon={c.icon} size={18} style={{ color: 'var(--coral)', width: 20 }} />
               <div className="main"><div className="title">{c.name}</div></div>
             </button>
           ))}
