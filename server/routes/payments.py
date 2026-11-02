@@ -8,6 +8,7 @@ from flask_jwt_extended import jwt_required
 from ..config import Config
 from ..db import current_user_id, get_db
 from ..extensions import stripe, stripe_dict, stripe_enabled
+from ..referrals import reward_first_payment
 from .events import EVENT_COLUMNS, EVENT_JOINS, fetch_event, real_session_sql
 
 bp = Blueprint('payments', __name__, url_prefix='/api')
@@ -17,12 +18,14 @@ def _pence(value):
     return int(round(float(value or 0) * 100))
 
 
-def _line_item(name, pence):
-    return {'quantity': 1, 'price_data': {'currency': 'gbp', 'unit_amount': pence, 'product_data': {'name': name}}}
+def _line_item(name, pence, description=None):
+    product = {'name': name, **({'description': description} if description else {})}
+    return {'quantity': 1, 'price_data': {'currency': 'gbp', 'unit_amount': pence, 'product_data': product}}
 
 
 def mark_event_paid(cur, event_id, student_user_id):
     """Record a Stripe-verified payment for a session (idempotent; the Stripe webhook uses it too).
+    A family's first payment earns whoever invited them a credit (server/referrals.py).
 
     Returns False if the session doesn't exist or isn't that student's.
     """
@@ -37,6 +40,7 @@ def mark_event_paid(cur, event_id, student_user_id):
         return False
     if row[0] != 'paid':
         cur.execute("UPDATE events SET status = 'paid' WHERE id_event = %s", (event_id,))
+        reward_first_payment(cur, student_user_id, event_id)
     return True
 
 
@@ -85,8 +89,11 @@ def create_checkout_session(event_id):
     if amount_pence < 50:
         return jsonify({'error': 'Amount too small for card payment (minimum £0.50)'}), 400
     # The tutor's price and the booking fee are separate lines, so the fee is visible at checkout.
-    # Sessions booked before the fee existed have booking_fee 0 and are charged without one.
-    line_items = [_line_item(f"{ev['title']} with {ev['tutor_name']}", amount_pence)]
+    # Sessions booked before the fee existed have booking_fee 0 and are charged without one, and
+    # so are sessions an invite credit paid the fee of: no £0 line, a note on the session instead.
+    waived = float(ev.get('fee_waived') or 0)
+    note = f'Booking fee of £{waived:.2f} waived with an invite credit' if waived else None
+    line_items = [_line_item(f"{ev['title']} with {ev['tutor_name']}", amount_pence, note)]
     fee_pence  = _pence(ev.get('booking_fee'))
     if fee_pence:
         line_items.append(_line_item('Booking fee', fee_pence))

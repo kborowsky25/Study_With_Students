@@ -742,6 +742,14 @@ export const ICONS = {
       <path d="M12.75 18.25l4.85-2.3a1.6 1.6 0 0 1 1.95 2.45l-5.1 3a3 3 0 0 1-2.15.35L6.25 20.5H3.5" />
     </>
   ),
+  // A wrapped present: invites and the credits they earn.
+  redeem: (
+    <>
+      <rect x="3.5" y="8" width="17" height="4.5" rx="1.5" />
+      <path d="M5.25 12.5v6a2 2 0 0 0 2 2h9.5a2 2 0 0 0 2-2v-6M12 8v12.5" />
+      <path d="M12 8C11 5.6 9.5 4 8 4c-1.3 0-1.95 1.05-1.55 2.05C6.95 7.3 9 8 12 8zM12 8c1-2.4 2.5-4 4-4 1.3 0 1.95 1.05 1.55 2.05C17.05 7.3 15 8 12 8z" />
+    </>
+  ),
   // Outline of the logo rocket, tilted for take-off.
   rocket_launch: (
     <g transform="translate(0.4 -0.4) rotate(45 12 12)">

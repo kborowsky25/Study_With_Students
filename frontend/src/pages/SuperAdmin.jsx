@@ -8,7 +8,7 @@ import client from '../api/client'
 import { getScreeningQueue } from '../api/screening'
 import { toDateInput } from '../lib/dates'
 import { formatDate, formatMoney } from '../lib/format'
-import { bookingFee } from '../lib/sessions'
+import { bookingFee, feeWaived } from '../lib/sessions'
 import DbsReviewPanel from '../components/features/DbsReviewPanel'
 
 const TABS = [
@@ -157,6 +157,7 @@ function Sessions({ events, status, onRetry }) {
               <div className="row-actions">
                 <span className="side">
                   {formatMoney(ev.amount)}{bookingFee(ev) > 0 && ` + ${formatMoney(bookingFee(ev))} fee`}
+                  {feeWaived(ev) > 0 && ' · fee waived'}
                 </span>
                 <StatusPill status={ev.status} />
               </div>

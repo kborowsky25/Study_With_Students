@@ -12,6 +12,7 @@ from flask_jwt_extended import jwt_required
 
 from ..config import Config
 from ..db import current_user_id, get_db
+from ..referrals import release_credit, spend_credit
 from ..scheduling import (
     DEFAULT_NOTICE_HOURS,
     FREE_CANCEL_HOURS,
@@ -56,7 +57,7 @@ def booking_fee(amount):
     return round(float(amount) * BOOKING_FEE_PERCENT / 100, 2)
 
 EVENT_COLUMNS = """
-    e.id_event, e.title, e.description, e.start_time, e.end_time, e.status, e.amount, e.booking_fee,
+    e.id_event, e.title, e.description, e.start_time, e.end_time, e.status, e.amount, e.booking_fee, e.fee_waived,
     e.tutor_id, e.student_id, e.created_at, e.meeting_url,
     e.kind, e.series_id, e.proposed_start, e.proposed_end, e.proposed_by,
     e.cancel_requested_at, e.canceled_by, e.cancel_type,
@@ -313,6 +314,12 @@ def create_event():
             """, (uid, tutor_id, student_id, title, (data.get('description') or '').strip(),
                   when, when + length, status, amount, fee, 'intro' if intro else 'session'))
             ids.append(cur.lastrowid)
+        # The family's invite credits (server/referrals.py) pay the booking fee of the first weeks, one each
+        if fee:
+            for event_id in ids:
+                if not spend_credit(cur, student_user, event_id, now):
+                    break
+                cur.execute("UPDATE events SET booking_fee = 0, fee_waived = %s WHERE id_event = %s", (fee, event_id))
         marks = ', '.join(['%s'] * len(ids))
         series_id = ids[0] if len(ids) > 1 else None
         if series_id:
@@ -340,6 +347,7 @@ def _cancel(cur, week, *, by, kind, now):
             cancel_requested_at = NULL, proposed_start = NULL, proposed_end = NULL, proposed_by = NULL
         WHERE id_event = %s
     """, (by, now, kind, week['id_event']))
+    release_credit(cur, week['id_event'])  # an invite credit spent on it can be used again
 
 
 @bp.route('/events/<int:event_id>/status', methods=['PUT'])

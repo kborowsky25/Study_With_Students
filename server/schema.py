@@ -47,6 +47,12 @@ COLUMN_MIGRATIONS = [
     ('events',           'canceled_at',            "DATETIME NULL"),
     ('events',           'cancel_type',            "VARCHAR(16) NULL"),
     ('email_verifications', 'attempts',               "INT NOT NULL DEFAULT 0"),
+    # Referrals (server/referrals.py): XP they award (older databases may lack users.xp), invite
+    # codes made on first use, who invited whom (indexed for the invite list), fees a credit paid
+    ('users',            'xp',                     "INT NOT NULL DEFAULT 0"),
+    ('users',            'referral_code',          "VARCHAR(12) NULL UNIQUE"),
+    ('users',            'referred_by',            "INT NULL, ADD KEY ix_users_referred_by (referred_by)"),
+    ('events',           'fee_waived',             "DECIMAL(10,2) NOT NULL DEFAULT 0.00"),
 ]
 
 FORUM_CATEGORIES = [

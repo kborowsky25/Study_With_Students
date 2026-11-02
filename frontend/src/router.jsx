@@ -52,6 +52,7 @@ const Classroom      = lazy(() => import('./pages/Classroom'))
 const XP             = lazy(() => import('./pages/XP'))
 const StudentProfile = lazy(() => import('./pages/StudentProfile'))
 const Progress       = lazy(() => import('./pages/Progress'))
+const Referrals      = lazy(() => import('./pages/Referrals'))
 
 // Admin
 const AdminScreening = lazy(() => import('./pages/AdminScreening'))
@@ -146,6 +147,7 @@ const routeTree = rootRoute.addChildren([
   page('/messages',   Messages,   requireAuth),
   page('/xp',         XP,         requireAuth),
   page('/progress',   Progress,   requireAuth),
+  page('/referrals',  Referrals,  requireAuth),
 
   // Community: free for everyone who is logged in
   page('/forum',                            ForumHome,         requireAuth),

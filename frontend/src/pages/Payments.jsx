@@ -8,7 +8,7 @@ import { createCheckout, getPayments, verifyPayment } from '../api/payments'
 import { errorMessage } from '../api/client'
 import { byStart } from '../lib/dates'
 import { formatMoney, formatTime } from '../lib/format'
-import { bookingFee, needsPayment, totalPrice } from '../lib/sessions'
+import { bookingFee, feeWaived, needsPayment, totalPrice } from '../lib/sessions'
 
 const HISTORY_PREVIEW = 6
 
@@ -33,17 +33,19 @@ function SessionRow({ ev, children }) {
   )
 }
 
-/** The total, with the price and booking fee under it when there is a fee. */
+/** The total, with the price and booking fee under it when there is a fee (or an invite credit paid it). */
 function Price({ ev, muted }) {
   const fee = bookingFee(ev)
+  const waived = feeWaived(ev)
   return (
     <span style={{ textAlign: 'right', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
       <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: muted ? 'var(--text-muted)' : 'var(--text)' }}>
         {formatMoney(totalPrice(ev))}
       </span>
-      {fee > 0 && (
+      {(fee > 0 || waived > 0) && (
         <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-faint)' }}>
-          {formatMoney(ev.amount)} + {formatMoney(fee)} fee
+          {fee > 0 ? <>{formatMoney(ev.amount)} + {formatMoney(fee)} fee</>
+            : <><s>{formatMoney(waived)}</s> fee waived</>}
         </span>
       )}
     </span>
@@ -52,7 +54,9 @@ function Price({ ev, muted }) {
 
 const payTitle = (ev) => {
   const fee = bookingFee(ev)
-  return `${formatMoney(ev.amount)} to ${ev.tutor_name}${fee ? ` + ${formatMoney(fee)} booking fee` : ''}`
+  const waived = feeWaived(ev)
+  return `${formatMoney(ev.amount)} to ${ev.tutor_name}${fee ? ` + ${formatMoney(fee)} booking fee`
+    : waived ? ` · ${formatMoney(waived)} booking fee waived` : ''}`
 }
 
 export default function Payments() {

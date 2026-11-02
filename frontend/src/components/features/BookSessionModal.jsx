@@ -69,6 +69,8 @@ export default function BookSessionModal({ tutor, onClose, onBooked }) {
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
   const repeat = intro ? 1 : form.repeat
+  // Invite credits pay the booking fee of the first weeks booked, one each (server/referrals.py)
+  const waivedWeeks = intro ? 0 : Math.min(Number(info?.fee_credits) || 0, repeat)
 
   const book = (skipConflicts = false) => createEvent({
     tutor_id: tutor.id_tutor,
@@ -112,9 +114,11 @@ export default function BookSessionModal({ tutor, onClose, onBooked }) {
         if (!res) return
       }
       const count = res.data.events?.length ?? 1
-      toast.success(intro ? `Intro call requested from ${name}`
-        : count > 1 ? `${count} weekly sessions requested from ${name}` : `Request sent to ${name}`)
-      invalidate('events', 'slots', 'booking')
+      const waived = (res.data.events ?? []).filter((ev) => Number(ev.fee_waived) > 0).length
+      const sent = intro ? `Intro call requested from ${name}`
+        : count > 1 ? `${count} weekly sessions requested from ${name}` : `Request sent to ${name}`
+      toast.success(waived ? `${sent} · booking fee${waived > 1 ? 's' : ''} waived` : sent)
+      invalidate('events', 'slots', 'booking', 'referrals')
       onBooked?.(res.data.event)
       onClose()
     } catch (err) {
@@ -197,10 +201,19 @@ export default function BookSessionModal({ tutor, onClose, onBooked }) {
             ) : (
               <>
                 <div>
-                  <b style={{ color: 'var(--text)', fontWeight: 600, fontSize: 14 }}>{formatMoney(price.total, { decimals: 2 })}</b>
+                  <b style={{ color: 'var(--text)', fontWeight: 600, fontSize: 14 }}>
+                    {formatMoney(waivedWeeks === repeat ? price.amount : price.total, { decimals: 2 })}
+                  </b>
                   {repeat > 1 ? ` a week · ${repeat} weeks` : ' total'}
                 </div>
-                <div>{formatMoney(price.amount, { decimals: 2 })} to {name} + {formatMoney(price.fee, { decimals: 2 })} booking fee</div>
+                {waivedWeeks === repeat ? (
+                  <div>{formatMoney(price.amount, { decimals: 2 })} to {name} · <s>{formatMoney(price.fee, { decimals: 2 })}</s> booking fee waived</div>
+                ) : (
+                  <div>
+                    {formatMoney(price.amount, { decimals: 2 })} to {name} + {formatMoney(price.fee, { decimals: 2 })} booking fee
+                    {waivedWeeks > 0 && `, waived for ${waivedWeeks === 1 ? 'week 1' : `weeks 1–${waivedWeeks}`}`}
+                  </div>
+                )}
               </>
             )}
           </div>

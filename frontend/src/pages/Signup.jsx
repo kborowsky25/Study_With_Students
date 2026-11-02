@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import toast from 'react-hot-toast'
 import { register as apiRegister, sendVerification } from '../api/auth'
+import { lookupInvite } from '../api/referrals'
 import { useAuth } from '../context/AuthContext'
+import { currentInvite, forgetInvite } from '../lib/invite'
+import { Icon } from '../components/ui'
 import Art from '../components/marketing/Art'
 import { MarketingPage } from '../components/marketing'
 
@@ -86,8 +89,24 @@ export default function Signup() {
   const [otp,     setOtp]     = useState('')
   const [loading, setLoading] = useState(false)
   const [resendIn, setResendIn] = useState(0)
+  const [invite, setInvite] = useState(currentInvite)  // code from an invite link, kept while they browse
+  const [inviter, setInviter] = useState(null)
   const navigate = useNavigate()
   const { login } = useAuth()
+
+  // Who sent the invite link, for the line under the title
+  useEffect(() => {
+    if (!invite) return
+    let live = true
+    lookupInvite(invite)
+      .then(({ data }) => live && setInviter(data.first_name))
+      .catch((err) => {
+        if (err.response?.status !== 404) return
+        forgetInvite()
+        if (live) setInvite(null)
+      })
+    return () => { live = false }
+  }, [invite])
 
   // Countdown timer for resend button
   useEffect(() => {
@@ -135,9 +154,11 @@ export default function Signup() {
     if (otp.length !== 6) { toast.error('Enter the full 6-digit code'); return }
     setLoading(true)
     try {
-      const { data } = await apiRegister(form.name, form.email, form.password, otp)
+      const { data } = await apiRegister(form.name, form.email, form.password, otp, invite)
+      forgetInvite()
       login(data.access_token, data.user)
-      toast.success(`Welcome aboard, ${form.name.split(' ')[0]}!`)
+      const first = form.name.split(' ')[0]
+      toast.success(data.invited_by ? `Welcome aboard, ${first}! Your first booking fee is on us.` : `Welcome aboard, ${first}!`)
       navigate({ to: '/hub/student' })
     } catch (err) {
       toast.error(err.response?.data?.error ?? 'Registration failed')
@@ -172,6 +193,9 @@ export default function Signup() {
               <>
                 <h1 className="mk-auth-title">Create an account</h1>
                 <p className="mk-sub">We're so excited for you to join and kickstart your journey!</p>
+                {inviter && (
+                  <p className="mk-invite"><Icon name="redeem" />{inviter} invited you — your first booking fee is on us</p>
+                )}
 
                 <form onSubmit={handleSendCode} className="mk-form">
                   <input

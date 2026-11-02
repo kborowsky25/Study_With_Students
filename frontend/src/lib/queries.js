@@ -8,6 +8,7 @@ import { getStudyRooms } from '../api/studyrooms'
 import { getCategories, getRecentThreads } from '../api/forum'
 import { getLearningProfile, getRecommendedTutors } from '../api/learning'
 import { getTutorReviews } from '../api/reviews'
+import { getReferrals } from '../api/referrals'
 import { prefetchQuery } from './query'
 
 export const Q = {
@@ -26,6 +27,7 @@ export const Q = {
   learningProfile:  ['learning:profile', getLearningProfile],
   recommended:      ['tutors:recommended', () => getRecommendedTutors(5)],
   tutorReviews:     (tutorId) => [`reviews:${tutorId}`, () => getTutorReviews(tutorId)],
+  referrals:        ['referrals', getReferrals],
 }
 
 const ROUTES = {
@@ -35,6 +37,7 @@ const ROUTES = {
   '/messages':         [Q.conversations],
   '/calendar/student': [Q.events],
   '/calendar/tutor':   [Q.events],
+  '/referrals':        [Q.referrals],
 }
 
 

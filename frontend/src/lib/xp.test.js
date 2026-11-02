@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { levelFor, THRESHOLDS, TIERS, xpFor, xpSessions } from './xp'
+import { awardedXp, levelFor, THRESHOLDS, TIERS, xpFor, xpSessions } from './xp'
 
 const ev = (role, status, patch = {}) => ({ role, status, amount: 22, title: 'Mechanics', ...patch })
 
@@ -20,6 +20,13 @@ describe('xpFor', () => {
 
   it('tutors: 50 per confirmed or paid session, 100 per paid one, 30 per student', () => {
     expect(xpFor('tutor', events, 2)).toBe(50 + 100 + 60)
+  })
+
+  it('adds XP the API awarded, which only counts on the tutor side', () => {
+    const user = { xp: 150 }
+    expect(xpFor('tutor', events, 2, awardedXp('tutor', user))).toBe(50 + 100 + 60 + 150)
+    expect(awardedXp('student', user)).toBe(0)
+    expect(awardedXp('tutor', null)).toBe(0)
   })
 
   it('ignores cancelled sessions and study rooms saved to the calendar', () => {

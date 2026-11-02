@@ -292,3 +292,21 @@ CREATE TABLE IF NOT EXISTS background_checks (
   UNIQUE KEY ux_background_checks_tutor (tutor_id),
   KEY ix_background_checks_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Referrals (server/referrals.py): rewards for inviting people, each earned once per invited
+-- person. welcome = the invited family's first booking fee waived; family = the inviter's next
+-- fee waived once that family's first session is paid; tutor = XP for a tutor whose invited
+-- tutor is approved. A credit is spent on the session in `event_id` (NULL while unused).
+CREATE TABLE IF NOT EXISTS referral_rewards (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  user_id     INT NOT NULL,
+  referred_id INT NOT NULL,
+  kind        VARCHAR(10) NOT NULL,
+  xp          INT NOT NULL DEFAULT 0,
+  event_id    INT NULL,
+  used_at     DATETIME NULL,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY ux_referral_rewards (kind, referred_id),
+  KEY ix_referral_rewards_user (user_id),
+  KEY ix_referral_rewards_event (event_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

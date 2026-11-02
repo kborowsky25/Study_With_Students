@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 
 from ..db import current_user_id, get_db
+from ..referrals import available_credits
 from ..scheduling import (
     DEFAULT_NOTICE_HOURS,
     MAX_SLOT_WEEKS,
@@ -181,8 +182,9 @@ def _tutor(cur, tutor_id):
 @bp.route('/tutors/<int:tutor_id>/booking-info', methods=['GET'])
 @jwt_required()
 def booking_info(tutor_id):
-    """What the booking dialog needs: whether the tutor has set weekly hours (instant booking)
-    and whether this student can still have their free intro call."""
+    """What the booking dialog needs: whether the tutor has set weekly hours (instant booking),
+    whether this student can still have their free intro call, and how many booking fees their
+    invite credits will pay."""
     uid = current_user_id()
     conn = get_db(); cur = conn.cursor(dictionary=True)
     try:
@@ -201,6 +203,7 @@ def booking_info(tutor_id):
             'summary':          availability_summary(windows),
             'notice_hours':     tutor['booking_notice_hours'] or DEFAULT_NOTICE_HOURS,
             'intro_call':       bool(link) and intro_call_available(cur, tutor_id, link['id_student']),
+            'fee_credits':      available_credits(cur, uid, local_now()),
         })
     finally:
         cur.close(); conn.close()

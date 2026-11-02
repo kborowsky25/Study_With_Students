@@ -32,6 +32,7 @@ export const STUDENT_NAV = [
     title: 'You',
     items: [
       { to: '/xp',         label: 'Graduation', icon: 'military_tech',     key: 'x' },
+      { to: '/referrals',  label: 'Invite friends', icon: 'redeem',      key: 'v' },
     ],
   },
 ]
@@ -67,6 +68,7 @@ export const TUTOR_NAV = [
     title: 'You',
     items: [
       { to: '/xp', label: 'Graduation', icon: 'military_tech', key: 'x' },
+      { to: '/referrals', label: 'Invite friends', icon: 'redeem', key: 'v' },
     ],
   },
 ]

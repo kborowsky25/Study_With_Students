@@ -83,3 +83,6 @@ export const bookingFee = (ev) => Number(ev.booking_fee) || 0
 
 /** What the family pays for a session: the tutor's price plus the booking fee. */
 export const totalPrice = (ev) => (Number(ev.amount) || 0) + bookingFee(ev)
+
+/** The booking fee an invite credit paid instead of the family (their `booking_fee` is then 0). */
+export const feeWaived = (ev) => Number(ev.fee_waived) || 0
