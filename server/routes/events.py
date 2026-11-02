@@ -5,12 +5,20 @@ from datetime import datetime
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 
+from ..config import Config
 from ..db import current_user_id, get_db
 
 bp = Blueprint('events', __name__, url_prefix='/api')
 
+# Families pay this on top of the tutor's price; tutors keep 100% of `amount`.
+BOOKING_FEE_PERCENT = getattr(Config, 'BOOKING_FEE_PERCENT', 5)
+
+
+def booking_fee(amount):
+    return round(float(amount) * BOOKING_FEE_PERCENT / 100, 2)
+
 EVENT_COLUMNS = """
-    e.id_event, e.title, e.description, e.start_time, e.end_time, e.status, e.amount,
+    e.id_event, e.title, e.description, e.start_time, e.end_time, e.status, e.amount, e.booking_fee,
     e.tutor_id, e.student_id, e.created_at, e.meeting_url,
     rv.rating AS my_rating,
     u_t.name AS tutor_name,   tp.id_user AS tutor_user_id,
@@ -125,10 +133,10 @@ def create_event():
 
         cur.execute("""
             INSERT INTO events (user_id, tutor_id, student_id, title, description,
-                                start_time, end_time, status, amount)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                start_time, end_time, status, amount, booking_fee)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (uid, tutor_id, student_id, title, (data.get('description') or '').strip(),
-              start, end, status, amount))
+              start, end, status, amount, booking_fee(amount)))
         event_id = cur.lastrowid
         if status == 'confirmed':
             cur.execute("UPDATE events SET meeting_url = %s WHERE id_event = %s", (new_meeting_url(event_id), event_id))

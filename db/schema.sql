@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS events (
   start_time  DATETIME NOT NULL,
   end_time    DATETIME NOT NULL,
   amount      DECIMAL(10,2) NULL DEFAULT 20.00,
+  booking_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   status      ENUM('pending','confirmed','canceled','paid') NULL DEFAULT 'pending',
   created_at  TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   KEY ix_events_user (user_id),
