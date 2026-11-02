@@ -1,0 +1,127 @@
+/* Lesson notes and progress — the notes dialog, the timeline and the progress page.
+   Same rules as styles/app.css: tokens only, hairlines, small radii.
+   This file can load before app.css, so overrides of its rules need a more specific
+   selector (.dialog.notes-dialog, .row.subject-row …) rather than a later position. */
+
+/* Confidence: five small segments filled up to the rating */
+.conf { display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.conf i { width: 10px; height: 6px; border-radius: 1.5px; background: rgb(var(--fg) / 0.16); }
+.conf i.on { background: var(--coral); }
+.conf-label { width: 88px; flex-shrink: 0; font-size: 12.5px; color: var(--text-muted); white-space: nowrap; }
+
+.trend { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; color: var(--text-faint); white-space: nowrap; }
+.trend .icon { font-size: 15px; }
+.trend.up .icon { color: var(--green); }
+.trend.down .icon { color: var(--red); }
+.trend-slot { width: 16px; flex-shrink: 0; display: inline-flex; justify-content: center; }
+
+/* Homework */
+.hw-list { display: flex; flex-direction: column; gap: 6px; }
+.hw { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+.hw-check {
+  width: 16px; height: 16px; margin-top: 2px; flex-shrink: 0; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 4px; border: 1.5px solid var(--border-strong); background: transparent; color: #fff;
+  cursor: pointer; transition: background 0.1s, border-color 0.1s;
+}
+button.hw-check:hover:not(:disabled) { border-color: var(--coral); }
+.hw-check.on { background: var(--coral); border-color: var(--coral); }
+.hw-check.readonly { cursor: default; }
+.hw-check .icon { font-size: 12px; stroke-width: 2.75; }
+.hw-main { flex: 1; min-width: 0; }
+.hw-task { font-size: 13.5px; line-height: 1.45; overflow-wrap: anywhere; }
+.hw.done .hw-task { color: var(--text-faint); text-decoration: line-through; }
+.hw-meta { font-size: 12px; color: var(--text-faint); margin-top: 1px; }
+.hw-meta .overdue { color: var(--red); }
+.hw-rows { padding: 10px 16px 12px; }
+.hw-rows + .group-head { border-top: 1px solid var(--border); }
+
+/* A lesson note */
+.note-body { display: flex; flex-direction: column; gap: 12px; }
+.note-label { display: block; margin-bottom: 4px; font-size: 12px; font-weight: 500; color: var(--text-faint); }
+.note-text { font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.note-topics { display: flex; flex-direction: column; }
+.note-topic { display: flex; align-items: center; gap: 10px; min-height: 26px; font-size: 13.5px; }
+.note-topic .name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Timeline of notes */
+.timeline { display: flex; flex-direction: column; }
+.note-item { display: grid; grid-template-columns: 96px minmax(0, 1fr); column-gap: 12px; padding: 14px 16px 16px; border-top: 1px solid var(--border); }
+.note-item:first-child { border-top: 0; }
+.note-item > .date-col { padding-top: 2px; }
+.note-head { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 22px; }
+.note-head h4 { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.note-meta { margin: 1px 0 12px; font-size: 12.5px; color: var(--text-faint); }
+
+/* Notes dialog */
+/* Head and foot stay put; only the body scrolls */
+.dialog.notes-dialog { max-width: 640px; display: flex; flex-direction: column; overflow: hidden; }
+.notes-dialog > form { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.notes-dialog .dialog-body { flex: 1; min-height: 0; overflow-y: auto; }
+.notes-dialog .dialog-head { align-items: flex-start; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.notes-dialog .sub { margin-top: 2px; font-size: 12.5px; color: var(--text-faint); }
+.field-head { display: flex; align-items: center; gap: 8px; }
+.field-head > span { flex: 1; font-size: 12.5px; font-weight: 500; color: var(--text-muted); }
+.field-head .count { font-size: 12px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.field-head .input { width: 168px; height: 26px; font-size: 12.5px; }
+.topic-pick { max-height: 292px; overflow-y: auto; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); }
+.topic-pick-row { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 4px 8px 4px 10px; border-top: 1px solid var(--border); }
+.topic-pick-row:first-child { border-top: 0; }
+.topic-pick-row .name { flex: 1; min-width: 0; font-size: 13px; color: var(--text-muted); }
+.topic-pick-row .was { display: block; font-size: 11.5px; color: var(--text-faint); }
+.topic-pick-row.on .name { color: var(--text); font-weight: 500; }
+.topic-pick-empty { padding: 12px; font-size: 13px; color: var(--text-faint); }
+.rate { display: inline-flex; gap: 2px; flex-shrink: 0; }
+.rate button { width: 24px; height: 24px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--text-faint); font: inherit; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; cursor: pointer; }
+.rate button:hover { background: rgb(var(--fg) / 0.08); color: var(--text); }
+.rate button.fill { background: var(--coral-soft); color: var(--coral); }
+.rate button.on { background: var(--coral); color: #fff; }
+.rate-label { width: 84px; flex-shrink: 0; font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.hw-edit { display: flex; align-items: center; gap: 6px; }
+.hw-edit .task { flex: 1; min-width: 0; }
+.hw-edit input[type='date'] { width: 148px; flex-shrink: 0; }
+.hw-edit .ticked { color: var(--green); font-size: 16px; flex-shrink: 0; }
+
+/* Progress page */
+.progress-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  grid-template-areas: 'main side' 'notes side';
+  gap: 20px;
+  align-items: start;
+}
+.progress-grid > .area-main { grid-area: main; min-width: 0; }
+.progress-grid > .area-side { grid-area: side; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+.progress-grid > .area-notes { grid-area: notes; min-width: 0; }
+.progress-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.topic-row .conf-label { width: 92px; }
+.topic-row.untouched { min-height: 32px; padding-top: 4px; padding-bottom: 4px; }
+.topic-row.untouched .title { color: var(--text-faint); font-weight: 400; }
+.subject-row .progress { width: 96px; flex-shrink: 0; }
+
+.cov-chart { display: flex; align-items: flex-end; gap: 6px; height: 104px; padding: 14px 16px 0; }
+.cov-chart .col { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 5px; }
+.cov-chart .stack { position: relative; width: 100%; max-width: 22px; flex: 1; }
+.cov-chart .stack i { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 3px 3px 1px 1px; }
+.cov-chart .stack .covered { background: rgb(var(--fg) / 0.18); }
+.cov-chart .stack .confident { background: var(--coral); }
+.cov-chart .col > span { font-size: 10.5px; color: var(--text-faint); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.chart-legend { display: flex; gap: 16px; padding: 10px 16px 12px; font-size: 12px; color: var(--text-faint); }
+.chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.chart-legend i { width: 8px; height: 8px; border-radius: 2px; }
+
+@media (max-width: 1040px) {
+  .progress-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'main' 'side' 'notes'; }
+}
+
+@media (max-width: 520px) {
+  .note-item { grid-template-columns: minmax(0, 1fr); }
+  .note-item > .date-col { width: auto; padding: 0 0 2px; }
+  .conf-label, .rate-label { display: none; }
+  .hw-edit { flex-wrap: wrap; }
+  .hw-edit .task { flex-basis: calc(100% - 36px); }
+  .hw-edit input[type='date'] { flex: 1; width: auto; }
+  .field-head .input { width: 128px; }
+  .subject-row .progress { width: 56px; }
+  .row.subject-row .meta { white-space: normal; }
+}
