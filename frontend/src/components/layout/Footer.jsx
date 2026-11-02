@@ -5,8 +5,9 @@ const CORAL = '#ff725e'
 export default function Footer() {
   return (
     <footer style={{
+      '--fg': '255 255 255', // the footer stays navy in both themes
       background: '#141d2e',
-      borderTop: '1px solid rgba(255,255,255,0.05)',
+      borderTop: '1px solid rgb(var(--fg) / 0.05)',
       color: 'white',
       fontFamily: '"Noto Sans JP", sans-serif',
     }}>
@@ -20,7 +21,7 @@ export default function Footer() {
             <p style={{ fontSize: '20px', fontWeight: 900, marginBottom: '10px' }}>
               Study<span style={{ color: CORAL }}>WithStudents</span>
             </p>
-            <p style={{ color: 'rgba(255,255,255,0.38)', fontSize: '13px', lineHeight: 1.7, maxWidth: '260px', marginBottom: '18px' }}>
+            <p style={{ color: 'rgb(var(--fg) / 0.38)', fontSize: '13px', lineHeight: 1.7, maxWidth: '260px', marginBottom: '18px' }}>
               Peer tutoring with 0% commission. University students helping university students — and funding education charities.
             </p>
             {/* Stats micro-strip */}
@@ -31,7 +32,7 @@ export default function Footer() {
               ].map(({ val, label }) => (
                 <div key={label}>
                   <p style={{ fontSize: '16px', fontWeight: 900, color: CORAL, lineHeight: 1 }}>{val}</p>
-                  <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.28)', marginTop: '2px' }}>{label}</p>
+                  <p style={{ fontSize: '11px', color: 'rgb(var(--fg) / 0.28)', marginTop: '2px' }}>{label}</p>
                 </div>
               ))}
             </div>
@@ -39,7 +40,7 @@ export default function Footer() {
 
           {/* Platform */}
           <div>
-            <p style={{ fontWeight: 700, fontSize: '13px', color: 'rgba(255,255,255,0.70)', marginBottom: '14px', letterSpacing: '0.04em' }}>Platform</p>
+            <p style={{ fontWeight: 700, fontSize: '13px', color: 'rgb(var(--fg) / 0.70)', marginBottom: '14px', letterSpacing: '0.04em' }}>Platform</p>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {[
                 { label: 'Find Tutors',    to: '/find-tutors'  },
@@ -50,9 +51,9 @@ export default function Footer() {
                 <li key={label}>
                   <Link
                     to={to}
-                    style={{ color: 'rgba(255,255,255,0.40)', fontSize: '13px', textDecoration: 'none', transition: 'color 0.2s ease' }}
+                    style={{ color: 'rgb(var(--fg) / 0.40)', fontSize: '13px', textDecoration: 'none', transition: 'color 0.2s ease' }}
                     onMouseEnter={e => { e.currentTarget.style.color = CORAL }}
-                    onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.40)' }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'rgb(var(--fg) / 0.40)' }}
                   >{label}</Link>
                 </li>
               ))}
@@ -61,7 +62,7 @@ export default function Footer() {
 
           {/* Company */}
           <div>
-            <p style={{ fontWeight: 700, fontSize: '13px', color: 'rgba(255,255,255,0.70)', marginBottom: '14px', letterSpacing: '0.04em' }}>Company</p>
+            <p style={{ fontWeight: 700, fontSize: '13px', color: 'rgb(var(--fg) / 0.70)', marginBottom: '14px', letterSpacing: '0.04em' }}>Company</p>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {[
                 { label: 'About Us',        to: '/about'       },
@@ -71,9 +72,9 @@ export default function Footer() {
                 <li key={label}>
                   <Link
                     to={to}
-                    style={{ color: 'rgba(255,255,255,0.40)', fontSize: '13px', textDecoration: 'none', transition: 'color 0.2s ease' }}
+                    style={{ color: 'rgb(var(--fg) / 0.40)', fontSize: '13px', textDecoration: 'none', transition: 'color 0.2s ease' }}
                     onMouseEnter={e => { e.currentTarget.style.color = CORAL }}
-                    onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.40)' }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'rgb(var(--fg) / 0.40)' }}
                   >{label}</Link>
                 </li>
               ))}
@@ -82,7 +83,7 @@ export default function Footer() {
 
           {/* Account */}
           <div>
-            <p style={{ fontWeight: 700, fontSize: '13px', color: 'rgba(255,255,255,0.70)', marginBottom: '14px', letterSpacing: '0.04em' }}>Account</p>
+            <p style={{ fontWeight: 700, fontSize: '13px', color: 'rgb(var(--fg) / 0.70)', marginBottom: '14px', letterSpacing: '0.04em' }}>Account</p>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {[
                 { label: 'Sign Up Free', to: '/signup'    },
@@ -93,9 +94,9 @@ export default function Footer() {
                 <li key={label}>
                   <Link
                     to={to}
-                    style={{ color: 'rgba(255,255,255,0.40)', fontSize: '13px', textDecoration: 'none', transition: 'color 0.2s ease' }}
+                    style={{ color: 'rgb(var(--fg) / 0.40)', fontSize: '13px', textDecoration: 'none', transition: 'color 0.2s ease' }}
                     onMouseEnter={e => { e.currentTarget.style.color = CORAL }}
-                    onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.40)' }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'rgb(var(--fg) / 0.40)' }}
                   >{label}</Link>
                 </li>
               ))}
@@ -105,7 +106,7 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div style={{
-          borderTop: '1px solid rgba(255,255,255,0.05)',
+          borderTop: '1px solid rgb(var(--fg) / 0.05)',
           paddingTop: '20px',
           display: 'flex',
           flexDirection: 'row',
@@ -114,15 +115,15 @@ export default function Footer() {
           gap: '12px',
           flexWrap: 'wrap',
         }}>
-          <p style={{ color: 'rgba(255,255,255,0.22)', fontSize: '12px' }}>
+          <p style={{ color: 'rgb(var(--fg) / 0.22)', fontSize: '12px' }}>
             © {new Date().getFullYear()} StudyWithStudents. All rights reserved.
           </p>
           <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-            <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em' }}>0% COMMISSION</span>
-            <span style={{ color: 'rgba(255,255,255,0.10)', fontSize: '11px' }}>·</span>
-            <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em' }}>STUDENT-FIRST</span>
-            <span style={{ color: 'rgba(255,255,255,0.10)', fontSize: '11px' }}>·</span>
-            <span style={{ color: 'rgba(255,255,255,0.18)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em' }}>50% TO CHARITY</span>
+            <span style={{ color: 'rgb(var(--fg) / 0.18)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em' }}>0% COMMISSION</span>
+            <span style={{ color: 'rgb(var(--fg) / 0.10)', fontSize: '11px' }}>·</span>
+            <span style={{ color: 'rgb(var(--fg) / 0.18)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em' }}>STUDENT-FIRST</span>
+            <span style={{ color: 'rgb(var(--fg) / 0.10)', fontSize: '11px' }}>·</span>
+            <span style={{ color: 'rgb(var(--fg) / 0.18)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em' }}>50% TO CHARITY</span>
           </div>
         </div>
       </div>

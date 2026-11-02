@@ -2,11 +2,29 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "beautiful-snyder-frontend",
+      "name": "api",
+      "runtimeExecutable": ".venv/bin/python",
+      "runtimeArgs": [
+        "-m",
+        "flask",
+        "--app",
+        "api/index.py",
+        "run",
+        "--debug",
+        "--port",
+        "5001"
+      ],
+      "port": 5001
+    },
+    {
+      "name": "web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--port", "5173"],
-      "port": 5173,
-      "cwd": ".claude/worktrees/beautiful-snyder/frontend"
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "cwd": "frontend",
+      "port": 5173
     }
   ]
 }

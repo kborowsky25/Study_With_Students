@@ -1,403 +1,294 @@
-import { useEffect, useState } from 'react'
-import { Link, useParams } from '@tanstack/react-router'
-import { getThread, createPost } from '../api/forum'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate, useParams } from '@tanstack/react-router'
+import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
+import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
 import UserBadges from '../components/features/UserBadges'
-import toast from 'react-hot-toast'
+import { Avatar, Card, EmptyState, Icon, SkeletonRows } from '../components/ui'
+import { createPost, deletePost, deleteThread, getThread } from '../api/forum'
+import { errorMessage } from '../api/client'
+import { formatDate, formatTime, timeAgo } from '../lib/format'
 
-const CORAL = '#ff725e'
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
+const SUBMIT_KEYS = isMac ? '⌘ Enter' : 'Ctrl + Enter'
 
-const AVATAR_COLORS = [
-  '#6c63ff', '#3a86ff', '#06d6a0', '#f9c74f', '#f4845f',
-  '#a8dadc', '#e63946', '#2ec4b6', '#ff9f1c', '#b5838d',
-]
+const plural = (n, one, many = `${one}s`) => `${n} ${Number(n) === 1 ? one : many}`
+const authorOf = (item) => item?.author_name?.trim() || 'Member'
+const fullDate = (value) => `${formatDate(value, { year: 'numeric' })}, ${formatTime(value)}`
+const bodyText = (text) => String(text ?? '').replace(/\s+$/, '')
+const sameUser = (a, b) => a != null && b != null && Number(a) === Number(b)
 
-function getAvatarColor(str = '') {
-  let hash = 0
-  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash)
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
+// Post bodies keep the author's line breaks.
+const BODY = { fontSize: 13.5, lineHeight: 1.65, color: 'var(--text)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }
+
+// The API client already handles 401 (back to login) and 402 (Explorer upsell toast).
+function notify(err) {
+  const status = err?.response?.status
+  if (status !== 401 && status !== 402) toast.error(errorMessage(err))
 }
 
-function UserAvatar({ name = '', size = 36 }) {
-  const color = getAvatarColor(name)
+/** One post in the thread: the opening post (`op`) or a reply. */
+function Post({ post, op = false, byAuthor = false, mine = false, busy = false, onDelete }) {
+  const name = authorOf(post)
   return (
-    <div style={{
-      width: size, height: size, borderRadius: '50%', flexShrink: 0,
-      background: color + '28',
-      border: `1.5px solid ${color}45`,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: color, fontSize: Math.floor(size * 0.36) + 'px', fontWeight: '700',
-      userSelect: 'none',
-    }}>
-      {name?.[0]?.toUpperCase() ?? '?'}
+    <div id={op ? undefined : `post-${post.id}`} className="row" style={{ alignItems: 'flex-start', padding: op ? '14px 14px 16px' : '12px 14px' }}>
+      <Avatar name={name} size={op ? 30 : 26} />
+      <div className="main">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minHeight: 20 }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>{name}</span>
+          {post.author_is_tutor && <UserBadges isTutor />}
+          {byAuthor && <span className="pill plain">Author</span>}
+          <span style={{ fontSize: 12.5, color: 'var(--text-faint)' }} title={fullDate(post.created_at)}>{timeAgo(post.created_at)}</span>
+        </div>
+        <div style={{ ...BODY, ...(op && { fontSize: 14, lineHeight: 1.7 }), marginTop: op ? 8 : 4 }}>{bodyText(post.content)}</div>
+      </div>
+      {mine && onDelete && (
+        <button type="button" className="icon-btn" style={{ width: 28, height: 28, opacity: busy ? 0.5 : 1 }}
+          disabled={busy} onClick={() => onDelete(post)} title="Delete reply" aria-label="Delete reply">
+          <Icon name="delete" size={17} />
+        </button>
+      )}
     </div>
   )
 }
 
-function formatDate(ts) {
-  if (!ts) return ''
-  return new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+function Detail({ label, children }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '7px 0', fontSize: 13 }}>
+      <span style={{ color: 'var(--text-faint)' }}>{label}</span>
+      <span style={{ fontWeight: 500, textAlign: 'right', minWidth: 0 }}>{children}</span>
+    </div>
+  )
 }
 
-function VoteBlock({ vertical = true }) {
-  const [vote, setVote] = useState(0)
+function ThreadDetails({ thread, posts }) {
+  const people = useMemo(() => {
+    const byUser = new Map([[thread.user_id, { id: thread.user_id, name: authorOf(thread), tutor: thread.author_is_tutor, replies: 0, author: true }]])
+    for (const p of posts) {
+      const person = byUser.get(p.user_id) ?? { id: p.user_id, name: authorOf(p), tutor: p.author_is_tutor, replies: 0, author: false }
+      person.replies += 1
+      byUser.set(p.user_id, person)
+    }
+    return [...byUser.values()]
+  }, [thread, posts])
+  const lastReply = posts.length ? posts[posts.length - 1].created_at : null
+
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: vertical ? 'column' : 'row',
-      alignItems: 'center',
-      gap: vertical ? '4px' : '8px',
-    }}>
-      <button
-        onClick={() => setVote(v => v === 1 ? 0 : 1)}
-        style={{
-          background: 'none', border: 'none', cursor: 'pointer', padding: '2px',
-          color: vote === 1 ? CORAL : 'var(--text-faint)',
-          display: 'flex', borderRadius: '6px', transition: 'color 0.12s',
-        }}
-        onMouseEnter={e => { if (vote !== 1) e.currentTarget.style.color = CORAL }}
-        onMouseLeave={e => { if (vote !== 1) e.currentTarget.style.color = 'var(--text-faint)' }}
-      >
-        <span className="material-symbols-outlined" style={{ fontSize: vertical ? '22px' : '19px' }}>arrow_drop_up</span>
-      </button>
-      <span style={{
-        fontWeight: '700', fontSize: '13px',
-        color: vote === 1 ? CORAL : vote === -1 ? '#3a86ff' : 'var(--text-muted)',
-        minWidth: '14px', textAlign: 'center',
-      }}>
-        {vote}
-      </span>
-      <button
-        onClick={() => setVote(v => v === -1 ? 0 : -1)}
-        style={{
-          background: 'none', border: 'none', cursor: 'pointer', padding: '2px',
-          color: vote === -1 ? '#3a86ff' : 'var(--text-faint)',
-          display: 'flex', borderRadius: '6px', transition: 'color 0.12s',
-        }}
-        onMouseEnter={e => { if (vote !== -1) e.currentTarget.style.color = '#3a86ff' }}
-        onMouseLeave={e => { if (vote !== -1) e.currentTarget.style.color = 'var(--text-faint)' }}
-      >
-        <span className="material-symbols-outlined" style={{ fontSize: vertical ? '22px' : '19px' }}>arrow_drop_down</span>
-      </button>
-    </div>
+    <Card title="Details">
+      <div style={{ padding: '4px 14px 8px' }}>
+        <Detail label="Category">
+          <Link to="/forum/category/$categoryId" params={{ categoryId: String(thread.category_id) }} className="card-link" style={{ fontSize: 13 }}>
+            {thread.category_name}
+          </Link>
+        </Detail>
+        <Detail label="Started"><span title={fullDate(thread.created_at)}>{formatDate(thread.created_at, { year: 'numeric' })}</span></Detail>
+        <Detail label="Replies">{posts.length}</Detail>
+        <Detail label="Last reply">{lastReply ? <span title={fullDate(lastReply)}>{timeAgo(lastReply)}</span> : '—'}</Detail>
+      </div>
+      <div style={{ padding: '10px 14px 4px', borderTop: '1px solid var(--border)', fontSize: 12.5, fontWeight: 500, color: 'var(--text-muted)' }}>
+        Participants
+      </div>
+      <div style={{ paddingBottom: 8 }}>
+        {people.map((p) => (
+          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 14px' }}>
+            <Avatar name={p.name} size={22} />
+            <span style={{ flex: 1, minWidth: 0, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
+            {p.tutor && <UserBadges isTutor />}
+            <span style={{ fontSize: 12, color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
+              {p.author ? 'Author' : plural(p.replies, 'reply', 'replies')}
+            </span>
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
+function ThreadSkeleton() {
+  return (
+    <>
+      <div className="dash-head">
+        <div className="skeleton" style={{ width: '52%', height: 30 }} />
+      </div>
+      <div className="dash-grid">
+        <section className="card"><SkeletonRows rows={3} /></section>
+        <section className="card"><SkeletonRows rows={2} /></section>
+      </div>
+    </>
   )
 }
 
 export default function ForumThread() {
-  const { threadId } = useParams({ from: '/forum/thread/$threadId' })
+  const { threadId } = useParams({ strict: false })
+  const navigate = useNavigate()
   const { user } = useAuth()
-  const [thread,  setThread]  = useState(null)
-  const [posts,   setPosts]   = useState([])
-  const [loading, setLoading] = useState(true)
-  const [reply,   setReply]   = useState('')
+  const [thread, setThread] = useState(null)
+  const [posts, setPosts] = useState([])
+  const [status, setStatus] = useState('loading')
+  const [reply, setReply] = useState('')
   const [posting, setPosting] = useState(false)
+  const [busy, setBusy] = useState(null)        // 'thread', or the id of a reply being deleted
+  const [revealPost, setRevealPost] = useState(null)
+  const composerRef = useRef(null)
+  const request = useRef(0)
 
-  async function load() {
+  const load = useCallback(async ({ quiet = false } = {}) => {
+    const id = ++request.current
+    if (!quiet) setStatus('loading')
     try {
       const { data } = await getThread(threadId)
+      if (id !== request.current) return
       setThread(data.thread)
       setPosts(data.posts ?? [])
-    } catch { toast.error('Could not load thread') }
-    finally { setLoading(false) }
-  }
+      setStatus('ready')
+    } catch (err) {
+      if (id !== request.current) return
+      if (err?.response?.status === 404) return setStatus('missing')
+      notify(err)
+      if (!quiet) setStatus('error')
+    }
+  }, [threadId])
 
-  useEffect(() => { load() }, [threadId])
+  useEffect(() => { load() }, [load])
 
-  async function handlePost(e) {
-    e.preventDefault()
-    if (!reply.trim()) return
+  // Bring a reply you just posted into view once it has rendered.
+  useEffect(() => {
+    if (!revealPost) return
+    document.getElementById(`post-${revealPost}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    setRevealPost(null)
+  }, [revealPost, posts])
+
+  async function submitReply(e) {
+    e?.preventDefault()
+    const text = reply.trim()
+    if (!text || posting) return
     setPosting(true)
     try {
-      await createPost(threadId, reply)
+      const { data } = await createPost(threadId, text)
       setReply('')
-      load()
-    } catch { toast.error('Failed to post') }
-    finally { setPosting(false) }
+      toast.success('Reply posted')
+      await load({ quiet: true })
+      setRevealPost(data.post?.id ?? null)
+    } catch (err) {
+      notify(err)
+    } finally {
+      setPosting(false)
+    }
   }
+
+  function onComposerKeyDown(e) {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !e.nativeEvent.isComposing) {
+      e.preventDefault()
+      submitReply()
+    }
+  }
+
+  function focusComposer() {
+    const el = composerRef.current
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el.focus({ preventScroll: true })
+  }
+
+  async function removeThread() {
+    if (!window.confirm('Delete this thread and all of its replies? This can’t be undone.')) return
+    setBusy('thread')
+    try {
+      await deleteThread(thread.id)
+      toast.success('Thread deleted')
+      navigate({ to: '/forum/category/$categoryId', params: { categoryId: String(thread.category_id) }, replace: true })
+    } catch (err) {
+      notify(err)
+      setBusy(null)
+    }
+  }
+
+  async function removePost(post) {
+    if (!window.confirm('Delete this reply? This can’t be undone.')) return
+    setBusy(post.id)
+    try {
+      await deletePost(post.id)
+      setPosts((list) => list.filter((p) => p.id !== post.id))
+      toast.success('Reply deleted')
+    } catch (err) {
+      notify(err)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const ownThread = sameUser(thread?.user_id, user?.id)
 
   return (
     <HubLayout>
-      <div style={{ maxWidth: '860px', margin: '0 auto' }}>
+      <PageTitle title={thread?.category_name || 'Forum'} icon="forum" />
 
-        {/* Back link */}
-        <Link
-          to="/forum"
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: '5px',
-            color: 'var(--text-faint)', fontSize: '13px', fontWeight: '500',
-            textDecoration: 'none', marginBottom: '20px',
-            transition: 'color 0.15s',
-          }}
-          onMouseEnter={e => e.currentTarget.style.color = 'var(--text)'}
-          onMouseLeave={e => e.currentTarget.style.color = 'var(--text-faint)'}
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: '17px' }}>arrow_back</span>
-          Back to category
-        </Link>
-
-        {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ height: '140px', borderRadius: '16px', background: 'var(--bg-card)', border: '1px solid var(--border)', animation: 'pulse 1.5s ease-in-out infinite' }} />
-            <div style={{ height: '80px', borderRadius: '14px', background: 'var(--bg-card)', border: '1px solid var(--border)', animation: 'pulse 1.5s ease-in-out infinite' }} />
-            <div style={{ height: '80px', borderRadius: '14px', background: 'var(--bg-card)', border: '1px solid var(--border)', animation: 'pulse 1.5s ease-in-out infinite' }} />
-          </div>
-        ) : (
+      <nav aria-label="Breadcrumb" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14, minWidth: 0 }}>
+        <Link to="/forum" className="card-link" activeOptions={{ exact: true }}><Icon name="arrow_back" />Forum</Link>
+        {thread && (
           <>
-            {/* ── Thread post card ──────────────────────────────────── */}
-            <div style={{
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border)',
-              borderRadius: '16px',
-              overflow: 'hidden',
-              marginBottom: '20px',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'stretch' }}>
-                {/* Vote sidebar */}
-                <div style={{
-                  width: '52px', flexShrink: 0,
-                  background: 'var(--bg)',
-                  borderRight: '1px solid var(--border)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  padding: '20px 0',
-                }}>
-                  <VoteBlock vertical />
-                </div>
-
-                {/* Post content */}
-                <div style={{ flex: 1, minWidth: 0, padding: '20px 22px' }}>
-                  {/* Author */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-                    <UserAvatar name={thread?.author_name} size={32} />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                      <span style={{ color: 'var(--text)', fontWeight: '700', fontSize: '13px' }}>{thread?.author_name}</span>
-                      <UserBadges isTutor={!!thread?.is_tutor} isPremium={!!thread?.is_premium} />
-                      <span style={{ color: 'var(--text-faint)', fontSize: '12px' }}>
-                        {formatDate(thread?.created_at)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Title */}
-                  <h1 style={{
-                    color: 'var(--text)', fontWeight: '900', fontSize: '22px',
-                    letterSpacing: '-0.4px', lineHeight: 1.35, marginBottom: '14px',
-                  }}>
-                    {thread?.title}
-                  </h1>
-
-                  {/* Content */}
-                  <p style={{
-                    color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.7,
-                    marginBottom: '18px',
-                  }}>
-                    {thread?.content}
-                  </p>
-
-                  {/* Action bar */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: '6px',
-                      color: 'var(--text-faint)', fontSize: '12px', fontWeight: '600',
-                    }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: '17px' }}>chat_bubble_outline</span>
-                      {posts.length} Comments
-                    </div>
-                    <button style={{
-                      display: 'flex', alignItems: 'center', gap: '6px',
-                      color: 'var(--text-faint)', fontSize: '12px', fontWeight: '600',
-                      background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px',
-                      borderRadius: '6px', transition: 'background 0.1s, color 0.1s',
-                    }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg)'; e.currentTarget.style.color = 'var(--text-muted)' }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-faint)' }}
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: '17px' }}>share</span>
-                      Share
-                    </button>
-                    <button style={{
-                      display: 'flex', alignItems: 'center', gap: '6px',
-                      color: 'var(--text-faint)', fontSize: '12px', fontWeight: '600',
-                      background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px',
-                      borderRadius: '6px', transition: 'background 0.1s, color 0.1s',
-                    }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg)'; e.currentTarget.style.color = 'var(--text-muted)' }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-faint)' }}
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: '17px' }}>bookmark_border</span>
-                      Save
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* ── Comments header ───────────────────────────────────── */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '20px', color: 'var(--text-faint)' }}>chat_bubble</span>
-              <h2 style={{ color: 'var(--text)', fontWeight: '800', fontSize: '16px' }}>
-                {posts.length} {posts.length === 1 ? 'Comment' : 'Comments'}
-              </h2>
-            </div>
-
-            {/* ── Add comment form ──────────────────────────────────── */}
-            <div style={{
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border)',
-              borderRadius: '14px',
-              padding: '18px 20px',
-              marginBottom: '16px',
-            }}>
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                <UserAvatar name={user?.name ?? 'You'} size={36} />
-                <form onSubmit={handlePost} style={{ flex: 1 }}>
-                  <textarea
-                    value={reply}
-                    onChange={e => setReply(e.target.value)}
-                    rows={3}
-                    placeholder="What are your thoughts?"
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      background: 'var(--bg)',
-                      border: '1.5px solid var(--border)',
-                      borderRadius: '10px',
-                      color: 'var(--text)',
-                      fontSize: '13.5px',
-                      outline: 'none',
-                      resize: 'vertical',
-                      lineHeight: 1.6,
-                      fontFamily: 'inherit',
-                      transition: 'border-color 0.15s',
-                      boxSizing: 'border-box',
-                      marginBottom: '10px',
-                    }}
-                    onFocus={e => e.target.style.borderColor = CORAL + '60'}
-                    onBlur={e => e.target.style.borderColor = 'var(--border)'}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <button
-                      type="submit"
-                      disabled={posting || !reply.trim()}
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '7px',
-                        padding: '9px 20px', borderRadius: '10px',
-                        background: reply.trim() ? CORAL : 'var(--border)',
-                        color: reply.trim() ? 'white' : 'var(--text-faint)',
-                        border: 'none', fontWeight: '700', fontSize: '13px',
-                        cursor: reply.trim() ? 'pointer' : 'not-allowed',
-                        transition: 'background 0.15s, color 0.15s, opacity 0.15s',
-                        opacity: posting ? 0.7 : 1,
-                      }}
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: '17px' }}>send</span>
-                      {posting ? 'Posting…' : 'Comment'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-
-            {/* ── Reply list ────────────────────────────────────────── */}
-            {posts.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {posts.map((post, i) => {
-                  const isMe = post.user_id === user?.id
-                  const authorColor = getAvatarColor(post.author_name ?? '')
-                  return (
-                    <div
-                      key={post.id}
-                      className={`animate-slide-up delay-${Math.min(i * 100, 500)}`}
-                      style={{
-                        background: 'var(--bg-card)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '14px',
-                        overflow: 'hidden',
-                        borderLeft: `3px solid ${isMe ? CORAL + '80' : authorColor + '50'}`,
-                        transition: 'border-color 0.15s',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'stretch' }}>
-                        {/* Vote column */}
-                        <div style={{
-                          width: '44px', flexShrink: 0,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          padding: '14px 0',
-                          borderRight: '1px solid var(--border)',
-                          background: 'var(--bg)',
-                        }}>
-                          <VoteBlock vertical />
-                        </div>
-
-                        {/* Comment body */}
-                        <div style={{ flex: 1, minWidth: 0, padding: '14px 16px' }}>
-                          {/* Author row */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '9px', marginBottom: '10px' }}>
-                            <UserAvatar name={post.author_name} size={28} />
-                            <span style={{
-                              color: isMe ? CORAL : 'var(--text)', fontWeight: '700', fontSize: '13px',
-                            }}>
-                              {post.author_name}
-                            </span>
-                            <UserBadges isTutor={!!post.is_tutor} isPremium={!!post.is_premium} />
-                            {isMe && (
-                              <span style={{
-                                background: CORAL + '20', color: CORAL,
-                                fontSize: '10px', fontWeight: '700',
-                                padding: '2px 8px', borderRadius: '20px',
-                                border: `1px solid ${CORAL}35`,
-                              }}>
-                                You
-                              </span>
-                            )}
-                            <span style={{ color: 'var(--text-faint)', fontSize: '12px', marginLeft: 'auto' }}>
-                              {formatDate(post.created_at)}
-                            </span>
-                          </div>
-
-                          {/* Content */}
-                          <p style={{
-                            color: 'var(--text-muted)', fontSize: '13.5px', lineHeight: 1.65,
-                            marginBottom: '10px',
-                          }}>
-                            {post.content}
-                          </p>
-
-                          {/* Reply action */}
-                          <button style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '5px',
-                            color: 'var(--text-faint)', fontSize: '12px', fontWeight: '600',
-                            background: 'none', border: 'none', cursor: 'pointer',
-                            padding: '3px 8px', borderRadius: '6px', transition: 'background 0.1s, color 0.1s',
-                          }}
-                            onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg)'; e.currentTarget.style.color = 'var(--text-muted)' }}
-                            onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-faint)' }}
-                          >
-                            <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>reply</span>
-                            Reply
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-
-            {posts.length === 0 && (
-              <div style={{
-                textAlign: 'center', padding: '48px 20px',
-                background: 'var(--bg-card)', border: '1px solid var(--border)',
-                borderRadius: '14px',
-              }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '40px', color: 'var(--text-faint)', marginBottom: '10px', display: 'block' }}>chat_bubble_outline</span>
-                <p style={{ color: 'var(--text-muted)', fontWeight: '600', marginBottom: '4px' }}>No comments yet</p>
-                <p style={{ color: 'var(--text-faint)', fontSize: '13px' }}>Be the first to share your thoughts!</p>
-              </div>
-            )}
+            <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>/</span>
+            <Link to="/forum/category/$categoryId" params={{ categoryId: String(thread.category_id) }} className="card-link">
+              {thread.category_name}
+            </Link>
           </>
         )}
-      </div>
+      </nav>
+
+      {status === 'loading' ? <ThreadSkeleton /> : status === 'missing' ? (
+        <Card>
+          <EmptyState title="This thread doesn’t exist or was deleted."
+            action={<Link to="/forum" className="btn btn-ghost btn-sm">Back to the forum</Link>} />
+        </Card>
+      ) : status === 'error' || !thread ? (
+        <Card>
+          <EmptyState title="Couldn’t load this thread."
+            action={<button className="btn btn-ghost btn-sm" onClick={() => load()}>Try again</button>} />
+        </Card>
+      ) : (
+        <>
+          <div className="dash-head">
+            <h1 style={{ flex: '1 1 420px', minWidth: 0, overflowWrap: 'anywhere' }}>{thread.title}</h1>
+            <div className="dash-actions">
+              {ownThread && (
+                <button className="btn btn-danger" onClick={removeThread} disabled={busy === 'thread'}>
+                  {busy === 'thread' ? 'Deleting…' : 'Delete'}
+                </button>
+              )}
+              <button className="btn btn-ghost" onClick={focusComposer}>Reply</button>
+            </div>
+          </div>
+
+          <div className="dash-grid">
+            <section className="card">
+              <div className="row-list">
+                <Post post={thread} op />
+                <div className="row" style={{ minHeight: 34, padding: '0 14px', background: 'rgb(var(--fg) / 0.03)', fontSize: 12.5, fontWeight: 500, color: 'var(--text-muted)' }}>
+                  {posts.length ? plural(posts.length, 'reply', 'replies') : 'No replies yet'}
+                </div>
+                {posts.map((p) => (
+                  <Post key={p.id} post={p} byAuthor={sameUser(p.user_id, thread.user_id)} mine={sameUser(p.user_id, user?.id)}
+                    busy={busy === p.id} onDelete={removePost} />
+                ))}
+              </div>
+
+              <form onSubmit={submitReply} style={{ padding: '12px 14px 14px', borderTop: '1px solid var(--border)' }}>
+                <textarea ref={composerRef} className="input" rows={3} value={reply}
+                  onChange={(e) => setReply(e.target.value)} onKeyDown={onComposerKeyDown}
+                  placeholder="Write a reply…" aria-label="Write a reply" />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+                  <button type="submit" className="btn btn-coral btn-sm" disabled={posting || !reply.trim()} title={`Post reply (${SUBMIT_KEYS})`}>
+                    {posting ? 'Posting…' : 'Post reply'}
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            <ThreadDetails thread={thread} posts={posts} />
+          </div>
+        </>
+      )}
     </HubLayout>
   )
 }

@@ -1,412 +1,106 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { Link } from '@tanstack/react-router'
+import toast from 'react-hot-toast'
+import { PageTitle } from '../context/PageTitleContext'
+import HubLayout from '../components/layout/HubLayout'
+import EventCard, { CompactSession, MonthGrid } from '../components/features/EventCard'
+import { BookSessionButton } from '../components/features/TutorCard'
+import { Card, Icon, SkeletonRows } from '../components/ui'
 import { getEvents } from '../api/events'
 import { getActiveTutors } from '../api/tutors'
-import { getStudyRooms } from '../api/studyrooms'
-import HubLayout from '../components/layout/HubLayout'
-import { PageTitle } from '../context/PageTitleContext'
-import toast from 'react-hot-toast'
+import { errorMessage } from '../api/client'
 
-const WEEK_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const MONTHS    = ['January','February','March','April','May','June','July','August','September','October','November','December']
+const LEGEND = [
+  { status: 'pending', label: 'Awaiting tutor' },
+  { status: 'confirmed', label: 'Confirmed' },
+  { status: 'paid', label: 'Paid' },
+  { status: 'canceled', label: 'Cancelled' },
+]
 
-function toDateStr(date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-}
+const emptyLine = { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '16px 18px', fontSize: 13, color: 'var(--text-faint)' }
 
-function makeGoogleLink(ev) {
-  const fmt = d => new Date(d).toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z'
-  const url = new URL('https://calendar.google.com/calendar/render')
-  url.searchParams.set('action', 'TEMPLATE')
-  url.searchParams.set('text', ev.title)
-  url.searchParams.set('dates', `${fmt(ev.start_time)}/${fmt(ev.end_time)}`)
-  if (ev.description) url.searchParams.set('details', ev.description)
-  return url.toString()
-}
-
-function makeOutlookLink(ev) {
-  const url = new URL('https://outlook.live.com/calendar/0/addevent')
-  url.searchParams.set('subject', ev.title)
-  url.searchParams.set('startdt', ev.start_time)
-  url.searchParams.set('enddt', ev.end_time)
-  if (ev.description) url.searchParams.set('body', ev.description)
-  return url.toString()
-}
-
-function fmtTime(iso) {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-}
-
-function fmtDate(dateStr) {
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-}
-
-const STATUS_COLOR = {
-  pending:   '#fbbf24',
-  confirmed: '#34d399',
-  canceled:  '#f87171',
-  paid:      '#60a5fa',
-}
-
+const startOfDay = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x }
+const startOfMonth = (d) => new Date(d.getFullYear(), d.getMonth(), 1)
+const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+const byStart = (a, b) => new Date(a.start_time) - new Date(b.start_time)
 
 export default function CalendarStudent() {
-  const [events,       setEvents]       = useState([])
-  const [studyRooms,   setStudyRooms]   = useState([])
-  const [activeTutors, setActiveTutors] = useState([])
-  const [loading,      setLoading]      = useState(true)
-  const [viewDate,     setViewDate]     = useState(new Date())
-  const [selectedDay,  setSelectedDay]  = useState(toDateStr(new Date()))
+  const [events, setEvents] = useState([])
+  const [tutors, setTutors] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [month, setMonth] = useState(() => startOfMonth(new Date()))
+  const [selected, setSelected] = useState(() => startOfDay(new Date()))
 
-  async function load() {
-    try {
-      const results = await Promise.allSettled([getEvents(), getActiveTutors(), getStudyRooms()])
-      const ev = results[0].status === 'fulfilled' ? results[0].value.data.events ?? [] : []
-      const at = results[1].status === 'fulfilled' ? results[1].value.data.tutors ?? [] : []
-      const sr = results[2].status === 'fulfilled' ? results[2].value.data.rooms  ?? [] : []
-      setEvents(ev)
-      setActiveTutors(at)
-      setStudyRooms(sr)
-    } catch { toast.error('Could not load calendar') }
-    finally  { setLoading(false) }
+  const load = useCallback(() => Promise.allSettled([getEvents(), getActiveTutors()]).then(([ev, tu]) => {
+    if (ev.status === 'fulfilled') setEvents((ev.value.data.events ?? []).filter((e) => e.role === 'student'))
+    else toast.error(errorMessage(ev.reason, 'Could not load your sessions'))
+    if (tu.status === 'fulfilled') setTutors(tu.value.data.tutors ?? [])
+    setLoading(false)
+  }), [])
+
+  useEffect(() => { load() }, [load])
+
+  function select(day) {
+    const d = startOfDay(day)
+    setSelected(d)
+    setMonth((m) => (m.getFullYear() === d.getFullYear() && m.getMonth() === d.getMonth() ? m : startOfMonth(d)))
   }
 
-  useEffect(() => { load() }, [])
+  function onBooked(ev) {
+    load()
+    if (ev?.start_time) select(new Date(ev.start_time))
+  }
 
-  const year  = viewDate.getFullYear()
-  const month = viewDate.getMonth()
-
-  const firstWeekday   = new Date(year, month, 1).getDay()
-  const daysInMonth    = new Date(year, month + 1, 0).getDate()
-  const cells          = []
-  for (let i = 0; i < firstWeekday; i++) cells.push(null)
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
-  const numRows = Math.ceil(cells.length / 7)
-
-  const today       = toDateStr(new Date())
-  const todayDt     = new Date(); todayDt.setHours(0,0,0,0)
-  const todayIdx    = cells.indexOf(new Date().getDate())
-  const todayRow    = todayIdx >= 0 ? Math.floor(todayIdx / 7) : -1
-  const isThisMonth = year === new Date().getFullYear() && month === new Date().getMonth()
-  const todayWeekday = new Date().getDay()
-
-  const eventsByDate = {}
-  events.forEach(ev => {
-    const d = toDateStr(new Date(ev.start_time))
-    if (!eventsByDate[d]) eventsByDate[d] = []
-    eventsByDate[d].push(ev)
-  })
-
-  const selectedEvents = eventsByDate[selectedDay] ?? []
+  const now = new Date()
+  const dayEvents = events.filter((e) => sameDay(new Date(e.start_time), selected)).sort(byStart)
   const upcoming = events
-    .filter(e => e.status !== 'canceled' && new Date(e.start_time) > new Date())
-    .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
-    .slice(0, 8)
-
-  const now            = new Date()
-  const tutoringSessions = events.filter(e => e.status !== 'canceled' && new Date(e.start_time) > now).length
-  const upcomingGroups   = studyRooms.filter(r => new Date(r.end_time) > now).length
-
-  function prevMonth() { setViewDate(new Date(year, month - 1, 1)) }
-  function nextMonth() { setViewDate(new Date(year, month + 1, 1)) }
+    .filter((e) => e.status !== 'canceled' && new Date(e.end_time) > now && !(e.status === 'pending' && new Date(e.start_time) <= now))
+    .sort(byStart)
 
   return (
-    <HubLayout noScroll>
+    <HubLayout initialMode="student">
       <PageTitle title="Calendar" icon="calendar_month" />
-      <style>{`
-        @keyframes todayPulse {
-          0%,100% { box-shadow: 0 0 0 0 rgba(255,114,94,0.45); }
-          50%      { box-shadow: 0 0 0 7px rgba(255,114,94,0); }
-        }
-        .daycell { transition: all 0.14s ease; }
-        .daycell:hover { transform: scale(1.08) !important; }
-      `}</style>
 
-      <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
+      <div className="dash-head">
+        <h1>Calendar</h1>
+        <div className="dash-actions">
+          {tutors.length || loading
+            ? <BookSessionButton tutors={tutors} onBooked={onBooked} />
+            : <Link to="/find-tutors" className="btn btn-coral"><Icon name="person_search" />Find a tutor</Link>}
+        </div>
+      </div>
 
-        {/* Grid */}
-        <div style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'1fr 300px', gap:'14px', overflow:'hidden' }}>
+      <div className="dash-grid">
+        <div className="dash-col">
+          <MonthGrid month={month} onMonthChange={setMonth} selected={selected} onSelect={select}
+            events={events} legend={LEGEND} />
+        </div>
 
-          {/* Calendar */}
-          <div className="glass" style={{ padding:'18px 20px', display:'flex', flexDirection:'column', overflow:'hidden' }}>
-
-            {/* Month nav */}
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'14px', flexShrink:0 }}>
-              <button onClick={prevMonth} className="daycell" style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:'10px', padding:'7px', cursor:'pointer', display:'flex', alignItems:'center' }}
-                onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.10)'}
-                onMouseLeave={e=>e.currentTarget.style.background='var(--bg-card)'}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize:'20px', color:'var(--text-muted)' }}>chevron_left</span>
-              </button>
-              <div style={{ textAlign:'center' }}>
-                <h2 style={{ fontWeight:700, fontSize:'17px', color:'var(--text)' }}>{MONTHS[month]} {year}</h2>
-                {isThisMonth && <p style={{ fontSize:'10px', color:'var(--text-faint)', marginTop:'1px' }}>{new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})}</p>}
-              </div>
-              <button onClick={nextMonth} className="daycell" style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:'10px', padding:'7px', cursor:'pointer', display:'flex', alignItems:'center' }}
-                onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.10)'}
-                onMouseLeave={e=>e.currentTarget.style.background='var(--bg-card)'}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize:'20px', color:'var(--text-muted)' }}>chevron_right</span>
-              </button>
-            </div>
-
-            {/* Weekday headers */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'4px', marginBottom:'6px', flexShrink:0 }}>
-              {WEEK_DAYS.map((d, i) => {
-                const col = isThisMonth && i === todayWeekday
-                return (
-                  <div key={d} style={{
-                    textAlign:'center', fontSize:'11px', fontWeight:'700',
-                    color: col ? '#ff725e' : 'var(--text-faint)',
-                    padding:'4px 0', letterSpacing:'0.05em',
-                    borderRadius:'6px',
-                    background: col ? 'rgba(255,114,94,0.08)' : 'transparent',
-                  }}>{d}</div>
-                )
-              })}
-            </div>
-
-            {/* Day grid */}
-            {loading ? (
-              <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-muted)', flexDirection:'column', gap:'8px' }}>
-                <span className="material-symbols-outlined" style={{ fontSize:'32px', opacity:0.4 }}>calendar_month</span>
-                Loading…
+        <div className="dash-col">
+          <Card title={selected.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
+            count={dayEvents.length || null}>
+            {loading ? <SkeletonRows rows={2} /> : dayEvents.length ? (
+              <div className="row-list">
+                {dayEvents.map((ev) => <EventCard key={ev.id_event} event={ev} variant="time" onChanged={load} />)}
               </div>
             ) : (
-              <div style={{
-                flex:1, minHeight:0,
-                display:'grid',
-                gridTemplateColumns:'repeat(7,1fr)',
-                gridTemplateRows:`repeat(${numRows},1fr)`,
-                gap:'3px',
-              }}>
-                {cells.map((day, idx) => {
-                  if (!day) return <div key={`pad-${idx}`} />
-                  const dateStr    = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
-                  const isToday    = dateStr === today
-                  const isSelected = dateStr === selectedDay
-                  const hasEvents  = Boolean(eventsByDate[dateStr])
-                  const past       = dateStr < today
-                  const rowIdx     = Math.floor(idx / 7)
-                  const isTodayRow = isThisMonth && rowIdx === todayRow
-
-                  return (
-                    <button
-                      key={dateStr}
-                      className="daycell"
-                      onClick={() => setSelectedDay(dateStr)}
-                      title={hasEvents ? `${eventsByDate[dateStr].length} session${eventsByDate[dateStr].length>1?'s':''}` : undefined}
-                      style={{
-                        borderRadius:'10px',
-                        border: isSelected
-                          ? '2px solid #ff725e'
-                          : isToday
-                            ? '2px solid rgba(255,114,94,0.55)'
-                            : isTodayRow && !past
-                              ? '2px solid rgba(255,114,94,0.10)'
-                              : '2px solid transparent',
-                        background: isSelected
-                          ? 'linear-gradient(135deg,#ff725e,#ff9a3c)'
-                          : isToday
-                            ? 'rgba(255,114,94,0.14)'
-                            : isTodayRow ? 'rgba(255,114,94,0.04)' : 'transparent',
-                        cursor:'pointer',
-                        display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-                        gap:'3px', minHeight:0,
-                        opacity: past && !isSelected ? 0.28 : 1,
-                        animation: isToday ? 'todayPulse 2.5s ease-in-out infinite' : 'none',
-                        boxShadow: isSelected ? '0 4px 12px rgba(255,114,94,0.30)' : 'none',
-                      }}
-                      onMouseEnter={e => {
-                        if (!isSelected) { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.opacity = '1' }
-                      }}
-                      onMouseLeave={e => {
-                        if (!isSelected) {
-                          e.currentTarget.style.background = isToday ? 'rgba(255,114,94,0.14)' : isTodayRow ? 'rgba(255,114,94,0.04)' : 'transparent'
-                          e.currentTarget.style.opacity = past ? '0.28' : '1'
-                        }
-                      }}
-                    >
-                      <span style={{
-                        fontSize:'13px',
-                        fontWeight: isToday || isSelected ? '800' : '400',
-                        color: isSelected ? 'white' : isToday ? '#ff725e' : 'var(--text)',
-                        lineHeight:1,
-                      }}>{day}</span>
-                      {hasEvents && (
-                        <div style={{ display: 'flex', gap: '2px', justifyContent: 'center', flexWrap: 'nowrap' }}>
-                          {eventsByDate[dateStr].slice(0, 3).map((ev, i) => (
-                            <span key={i} style={{
-                              width: '4px', height: '4px', borderRadius: '50%', display: 'block', flexShrink: 0,
-                              background: isSelected ? 'rgba(255,255,255,0.9)' : (STATUS_COLOR[ev.status] ?? '#ff725e'),
-                            }} />
-                          ))}
-                          {eventsByDate[dateStr].length > 3 && (
-                            <span style={{ fontSize: '7px', lineHeight: '4px', color: isSelected ? 'rgba(255,255,255,0.7)' : 'var(--text-faint)' }}>
-                              +{eventsByDate[dateStr].length - 3}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </button>
-                  )
-                })}
-              </div>
+              <div style={emptyLine}>Nothing on this day.</div>
             )}
+          </Card>
 
-            {/* Legend */}
-            <div style={{ flexShrink:0, marginTop:'8px', paddingTop:'8px', borderTop:'1px solid var(--border)', display:'flex', gap:'14px', flexWrap:'wrap' }}>
-              {[
-                { bg:'linear-gradient(135deg,#ff725e,#ff9a3c)', label:'Today' },
-                { bg:'rgba(255,114,94,0.04)', label:'Current week', border:'1px solid rgba(255,114,94,0.12)' },
-                { bg:'#34d399', dot:true, label:'Confirmed' },
-                { bg:'#fbbf24', dot:true, label:'Pending' },
-                { bg:'rgba(255,255,255,0.12)', label:'Past (faded)' },
-              ].map(({ bg, label, border, dot }) => (
-                <div key={label} style={{ display:'flex', alignItems:'center', gap:'5px' }}>
-                  {dot
-                    ? <span style={{ width:'6px', height:'6px', borderRadius:'50%', background:bg, display:'inline-block' }} />
-                    : <span style={{ width:'14px', height:'10px', borderRadius:'4px', background:bg, border:border||'none', display:'inline-block' }} />
-                  }
-                  <span style={{ fontSize:'10px', color:'var(--text-faint)' }}>{label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Right panel */}
-          <div style={{ display:'flex', flexDirection:'column', gap:'10px', overflow:'hidden' }}>
-
-            {/* Session type stat chips */}
-            <div style={{ display: 'flex', gap: '8px', flexShrink: 0, minWidth: 0 }}>
-              {[
-                { icon: 'school',      color: '#ff725e', count: tutoringSessions, label: `Tutoring Session${tutoringSessions !== 1 ? 's' : ''}` },
-                { icon: 'groups',      color: '#60a5fa', count: upcomingGroups,   label: `Study Group${upcomingGroups !== 1 ? 's' : ''}` },
-              ].map(({ icon, color, count, label }) => (
-                <div key={label} style={{
-                  flex: 1, minWidth: 0,
-                  background: `${color}10`, border: `1px solid ${color}28`,
-                  borderRadius: '12px', padding: '10px 12px',
-                  display: 'flex', alignItems: 'center', gap: '8px',
-                  overflow: 'hidden',
-                }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '18px', color, flexShrink: 0, fontVariationSettings: '"FILL" 1' }}>{icon}</span>
-                  <div style={{ minWidth: 0 }}>
-                    <span style={{ fontSize: '18px', fontWeight: '900', color: 'var(--text)', lineHeight: 1, display: 'block' }}>{count}</span>
-                    <span style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{label}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Selected day */}
-            <div className="glass" style={{ padding:'14px', overflow:'auto', flex:'0 0 auto', maxHeight:'36%' }}>
-              <h3 style={{ fontWeight:700, fontSize:'13px', color:'var(--text)', marginBottom:'10px', display:'flex', alignItems:'center', gap:'5px' }}>
-                <span className="material-symbols-outlined" style={{ fontSize:'14px', color:'#ff725e' }}>today</span>
-                {fmtDate(selectedDay)}
-              </h3>
-              {selectedEvents.length === 0 ? (
-                <div style={{ textAlign:'center', padding:'14px 0' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize:'28px', color:'var(--text-faint)', display:'block', marginBottom:'5px' }}>event_busy</span>
-                  <p style={{ color:'var(--text-muted)', fontSize:'12px' }}>No sessions on this day</p>
-                </div>
-              ) : (
-                <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
-                  {selectedEvents.map(ev => <EventCard key={ev.id_event} ev={ev} />)}
-                </div>
-              )}
-            </div>
-
-            {/* Upcoming */}
-            <div className="glass" style={{ padding:'14px', flex:1, overflow:'auto', minHeight:0 }}>
-              <h3 style={{ fontWeight:700, fontSize:'13px', color:'var(--text)', marginBottom:'10px', display:'flex', alignItems:'center', gap:'5px' }}>
-                <span className="material-symbols-outlined" style={{ fontSize:'14px', color:'#34d399' }}>upcoming</span>
-                Upcoming Sessions
-              </h3>
-              {upcoming.length === 0 ? (
-                <div style={{ textAlign:'center', padding:'12px 0' }}>
-                  <p style={{ color:'var(--text-muted)', fontSize:'12px', marginBottom:'8px' }}>No upcoming sessions</p>
-                  <a href="/find-tutors" style={{ fontSize:'11px', color:'#ff725e', fontWeight:'700', textDecoration:'none' }}>Find a tutor →</a>
-                </div>
-              ) : (
-                <div style={{ display:'flex', flexDirection:'column' }}>
-                  {upcoming.map(ev => (
-                    <div key={ev.id_event} style={{ padding:'8px 0', borderBottom:'1px solid var(--border)' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'5px' }}>
-                        <div style={{ width:'6px', height:'6px', borderRadius:'50%', flexShrink:0, background:STATUS_COLOR[ev.status]??'#fbbf24', boxShadow:`0 0 5px ${STATUS_COLOR[ev.status]??'#fbbf24'}80` }} />
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <p style={{ color:'var(--text)', fontSize:'12px', fontWeight:'600', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ev.title}</p>
-                          <p style={{ color:'var(--text-muted)', fontSize:'10px' }}>
-                            {new Date(ev.start_time).toLocaleDateString('en-GB',{day:'numeric',month:'short'})} · {fmtTime(ev.start_time)}
-                          </p>
-                        </div>
-                        <span style={{ fontSize:'9px', fontWeight:'700', color:STATUS_COLOR[ev.status]??'#fbbf24', flexShrink:0, textTransform:'uppercase', letterSpacing:'0.05em' }}>
-                          {ev.status}
-                        </span>
-                      </div>
-                      <div style={{ display:'flex', gap:'5px', paddingLeft:'14px' }}>
-                        <a href={makeGoogleLink(ev)} target="_blank" rel="noopener noreferrer"
-                          style={{ display:'flex', alignItems:'center', gap:'3px', fontSize:'10px', fontWeight:'600', color:'#4285F4', background:'rgba(66,133,244,0.08)', border:'1px solid rgba(66,133,244,0.20)', borderRadius:'6px', padding:'3px 7px', textDecoration:'none', transition:'background 0.15s' }}
-                          onMouseEnter={e=>e.currentTarget.style.background='rgba(66,133,244,0.18)'}
-                          onMouseLeave={e=>e.currentTarget.style.background='rgba(66,133,244,0.08)'}
-                        >
-                          <span className="material-symbols-outlined" style={{ fontSize:'11px' }}>calendar_add_on</span>Google
-                        </a>
-                        <a href={makeOutlookLink(ev)} target="_blank" rel="noopener noreferrer"
-                          style={{ display:'flex', alignItems:'center', gap:'3px', fontSize:'10px', fontWeight:'600', color:'#0078D4', background:'rgba(0,120,212,0.08)', border:'1px solid rgba(0,120,212,0.20)', borderRadius:'6px', padding:'3px 7px', textDecoration:'none', transition:'background 0.15s' }}
-                          onMouseEnter={e=>e.currentTarget.style.background='rgba(0,120,212,0.18)'}
-                          onMouseLeave={e=>e.currentTarget.style.background='rgba(0,120,212,0.08)'}
-                        >
-                          <span className="material-symbols-outlined" style={{ fontSize:'11px' }}>calendar_month</span>Outlook
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-          </div>
+          <Card title="Upcoming" icon="event_upcoming" count={upcoming.length || null}>
+            {loading ? <SkeletonRows rows={3} /> : upcoming.length ? (
+              <div className="row-list">
+                {upcoming.slice(0, 6).map((ev) => (
+                  <CompactSession key={ev.id_event} event={ev} onClick={() => select(new Date(ev.start_time))} />
+                ))}
+              </div>
+            ) : (
+              <div style={emptyLine}>No upcoming sessions.</div>
+            )}
+          </Card>
         </div>
       </div>
     </HubLayout>
-  )
-}
-
-function EventCard({ ev }) {
-  return (
-    <div style={{
-      background:'rgba(255,255,255,0.04)', border:'1px solid var(--border)',
-      borderRadius:'10px', padding:'11px',
-      borderLeft:`3px solid ${STATUS_COLOR[ev.status]??'#fbbf24'}`,
-    }}>
-      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:'5px', gap:'8px' }}>
-        <p style={{ color:'var(--text)', fontSize:'12px', fontWeight:'700', flex:1 }}>{ev.title}</p>
-        <span style={{
-          fontSize:'9px', fontWeight:'700', color:STATUS_COLOR[ev.status]??'#fbbf24',
-          background:`${STATUS_COLOR[ev.status]??'#fbbf24'}22`, padding:'2px 6px',
-          borderRadius:'20px', flexShrink:0, textTransform:'uppercase', letterSpacing:'0.04em',
-        }}>{ev.status}</span>
-      </div>
-      <p style={{ color:'var(--text-muted)', fontSize:'11px', marginBottom:'9px' }}>
-        {fmtTime(ev.start_time)} – {fmtTime(ev.end_time)}
-      </p>
-      <p style={{ fontSize:'9px', color:'var(--text-faint)', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:'5px' }}>Add to calendar</p>
-      <div style={{ display:'flex', gap:'6px' }}>
-        <a href={makeGoogleLink(ev)} target="_blank" rel="noopener noreferrer"
-          style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:'5px', fontSize:'11px', fontWeight:'700', color:'#4285F4', background:'rgba(66,133,244,0.10)', border:'1px solid rgba(66,133,244,0.25)', borderRadius:'9px', padding:'6px 8px', textDecoration:'none', transition:'all 0.15s' }}
-          onMouseEnter={e => e.currentTarget.style.background='rgba(66,133,244,0.20)'}
-          onMouseLeave={e => e.currentTarget.style.background='rgba(66,133,244,0.10)'}
-        >
-          <span className="material-symbols-outlined" style={{ fontSize:'14px' }}>calendar_add_on</span>Google
-        </a>
-        <a href={makeOutlookLink(ev)} target="_blank" rel="noopener noreferrer"
-          style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:'5px', fontSize:'11px', fontWeight:'700', color:'#0078D4', background:'rgba(0,120,212,0.10)', border:'1px solid rgba(0,120,212,0.25)', borderRadius:'9px', padding:'6px 8px', textDecoration:'none', transition:'all 0.15s' }}
-          onMouseEnter={e => e.currentTarget.style.background='rgba(0,120,212,0.20)'}
-          onMouseLeave={e => e.currentTarget.style.background='rgba(0,120,212,0.10)'}
-        >
-          <span className="material-symbols-outlined" style={{ fontSize:'14px' }}>calendar_month</span>Outlook
-        </a>
-      </div>
-    </div>
   )
 }

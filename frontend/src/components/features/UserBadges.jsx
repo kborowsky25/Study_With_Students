@@ -1,47 +1,18 @@
 /**
- * UserBadges — inline role/plan chips shown next to author names.
+ * UserBadges — small role labels shown next to an author's name.
  *
- * Usage:
- *   <UserBadges isTutor={true} isPremium={false} />
+ *   <UserBadges isTutor />     → "Tutor" (coral dot) for verified tutors
+ *   <UserBadges isPremium />   → "Explorer" (amber dot) for £5/month members
  *
- * Renders a "Tutor" chip (coral) or "Student" chip (muted), plus an
- * optional gold "Explorer ✦" chip when isPremium is true.
+ * Regular members get no label, so busy lists stay calm; renders nothing then.
  */
-export default function UserBadges({ isTutor = false, isPremium = false }) {
+export default function UserBadges({ isTutor = false, isPremium = false, style }) {
+  if (!isTutor && !isPremium) return null
+
   return (
-    <span style={{ display: 'inline-flex', gap: '4px', alignItems: 'center', verticalAlign: 'middle' }}>
-      {isTutor ? (
-        <span style={{
-          background: 'rgba(255,114,94,0.14)',
-          border: '1px solid rgba(255,114,94,0.30)',
-          color: '#ff725e',
-          fontSize: '9px', fontWeight: '800',
-          padding: '1px 6px', borderRadius: '20px',
-          letterSpacing: '0.04em', textTransform: 'uppercase',
-          whiteSpace: 'nowrap',
-        }}>Tutor ✦</span>
-      ) : (
-        <span style={{
-          background: 'rgba(255,255,255,0.07)',
-          border: '1px solid rgba(255,255,255,0.12)',
-          color: 'rgba(255,255,255,0.45)',
-          fontSize: '9px', fontWeight: '800',
-          padding: '1px 6px', borderRadius: '20px',
-          letterSpacing: '0.04em', textTransform: 'uppercase',
-          whiteSpace: 'nowrap',
-        }}>Student</span>
-      )}
-      {isPremium && (
-        <span style={{
-          background: 'rgba(251,191,36,0.16)',
-          border: '1px solid rgba(251,191,36,0.30)',
-          color: '#fbbf24',
-          fontSize: '9px', fontWeight: '800',
-          padding: '1px 6px', borderRadius: '20px',
-          letterSpacing: '0.04em', textTransform: 'uppercase',
-          whiteSpace: 'nowrap',
-        }}>Explorer ✦</span>
-      )}
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, verticalAlign: 'middle', flexShrink: 0, ...style }}>
+      {isTutor && <span className="pill pill-coral" title="Verified tutor">Tutor</span>}
+      {isPremium && <span className="pill pill-amber" title="Explorer member">Explorer</span>}
     </span>
   )
 }

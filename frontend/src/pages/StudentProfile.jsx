@@ -179,7 +179,7 @@ export default function StudentProfile() {
                 onClick={() => setEditing(true)}
                 style={{
                   width: '100%', padding: '9px', borderRadius: '10px',
-                  background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)',
+                  background: 'rgb(var(--fg) / 0.06)', border: '1px solid var(--border)',
                   color: 'var(--text-muted)', fontSize: '12px', fontWeight: '700',
                   cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                 }}
@@ -220,7 +220,7 @@ export default function StudentProfile() {
                       value={bioForm.education_level}
                       onChange={e => setBioForm(f => ({ ...f, education_level: e.target.value }))}
                       style={{
-                        width: '100%', background: 'var(--input-bg, rgba(255,255,255,0.06))',
+                        width: '100%', background: 'var(--input-bg, rgb(var(--fg) / 0.06))',
                         border: '1px solid var(--border)', borderRadius: '10px',
                         color: 'var(--text)', fontSize: '12px', padding: '9px 10px', outline: 'none',
                       }}
@@ -239,7 +239,7 @@ export default function StudentProfile() {
                       onChange={e => setBioForm(f => ({ ...f, school_name: e.target.value }))}
                       placeholder="e.g. King's College London"
                       style={{
-                        width: '100%', background: 'var(--input-bg, rgba(255,255,255,0.06))',
+                        width: '100%', background: 'var(--input-bg, rgb(var(--fg) / 0.06))',
                         border: '1px solid var(--border)', borderRadius: '10px',
                         color: 'var(--text)', fontSize: '12px', padding: '9px 10px', outline: 'none',
                         boxSizing: 'border-box',
@@ -258,7 +258,7 @@ export default function StudentProfile() {
                     onChange={e => setBioForm(f => ({ ...f, study_year: e.target.value }))}
                     placeholder="e.g. Year 2, Final Year, Year 11…"
                     style={{
-                      width: '100%', background: 'var(--input-bg, rgba(255,255,255,0.06))',
+                      width: '100%', background: 'var(--input-bg, rgb(var(--fg) / 0.06))',
                       border: '1px solid var(--border)', borderRadius: '10px',
                       color: 'var(--text)', fontSize: '12px', padding: '9px 10px', outline: 'none',
                       boxSizing: 'border-box',
@@ -276,7 +276,7 @@ export default function StudentProfile() {
                     rows={4}
                     placeholder="Tell others what subjects you're studying, what you're working on, or what you're looking for in a tutor…"
                     style={{
-                      width: '100%', background: 'var(--input-bg, rgba(255,255,255,0.06))',
+                      width: '100%', background: 'var(--input-bg, rgb(var(--fg) / 0.06))',
                       border: '1px solid var(--border)', borderRadius: '10px',
                       color: 'var(--text)', fontSize: '13px', padding: '10px 12px', outline: 'none',
                       resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box',

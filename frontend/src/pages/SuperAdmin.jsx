@@ -11,12 +11,12 @@ const AMBER  = '#fbbf24'
 const GREEN  = '#34d399'
 const RED    = '#f87171'
 const PURPLE = '#a78bfa'
-const NAVY   = '#1b263b'
-const CARD   = 'rgba(255,255,255,0.04)'
-const BORDER = 'rgba(255,255,255,0.08)'
+const NAVY = 'var(--bg)'
+const CARD   = 'rgb(var(--fg) / 0.04)'
+const BORDER = 'rgb(var(--fg) / 0.08)'
 
 const SCREENING_STATUS = {
-  none:     { label: 'No Docs',  color: 'rgba(255,255,255,0.35)', bg: 'rgba(255,255,255,0.06)' },
+  none:     { label: 'No Docs',  color: 'rgb(var(--fg) / 0.35)', bg: 'rgb(var(--fg) / 0.06)' },
   pending:  { label: 'Pending',  color: AMBER, bg: 'rgba(251,191,36,0.12)' },
   approved: { label: 'Approved', color: GREEN, bg: 'rgba(52,211,153,0.12)' },
   rejected: { label: 'Rejected', color: RED,   bg: 'rgba(248,113,113,0.12)' },
@@ -43,7 +43,7 @@ function StatCard({ icon, label, value, color = CORAL, sub }) {
       padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255,255,255,0.40)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+        <span style={{ fontSize: '11px', fontWeight: '700', color: 'rgb(var(--fg) / 0.40)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
           {label}
         </span>
         <div style={{
@@ -54,10 +54,10 @@ function StatCard({ icon, label, value, color = CORAL, sub }) {
           <span className="material-symbols-outlined" style={{ fontSize: '17px', color, fontVariationSettings: '"FILL" 1' }}>{icon}</span>
         </div>
       </div>
-      <p style={{ fontSize: '30px', fontWeight: '900', color: 'white', lineHeight: 1, fontFamily: 'monospace' }}>
+      <p style={{ fontSize: '30px', fontWeight: '900', color: 'var(--text)', lineHeight: 1, fontFamily: 'monospace' }}>
         {value ?? '—'}
       </p>
-      {sub && <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}>{sub}</p>}
+      {sub && <p style={{ fontSize: '11px', color: 'rgb(var(--fg) / 0.35)' }}>{sub}</p>}
     </div>
   )
 }
@@ -74,18 +74,18 @@ function RejectModal({ tutor, onReject, onCancel }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
       <div style={{ width: '100%', maxWidth: '420px', borderRadius: '16px', background: '#1e2d45', border: '1px solid rgba(248,113,113,0.25)', padding: '24px' }}>
-        <h3 style={{ color: 'white', fontWeight: '800', fontSize: '17px', marginBottom: '6px' }}>Reject application</h3>
-        <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: '13px', marginBottom: '16px' }}>
-          For: <strong style={{ color: 'white' }}>{tutor.name}</strong> ({tutor.email})
+        <h3 style={{ color: 'var(--text)', fontWeight: '800', fontSize: '17px', marginBottom: '6px' }}>Reject application</h3>
+        <p style={{ color: 'rgb(var(--fg) / 0.50)', fontSize: '13px', marginBottom: '16px' }}>
+          For: <strong style={{ color: 'var(--text)' }}>{tutor.name}</strong> ({tutor.email})
         </p>
         <textarea
           value={notes} onChange={e => setNotes(e.target.value)}
           placeholder="Optional reason (sent to tutor by email)"
           rows={4}
-          style={{ width: '100%', padding: '12px', borderRadius: '10px', resize: 'vertical', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'white', fontSize: '13px', lineHeight: 1.6, outline: 'none', fontFamily: '"Noto Sans JP", sans-serif', boxSizing: 'border-box' }}
+          style={{ width: '100%', padding: '12px', borderRadius: '10px', resize: 'vertical', background: 'rgb(var(--fg) / 0.06)', border: '1px solid rgb(var(--fg) / 0.12)', color: 'var(--text)', fontSize: '13px', lineHeight: 1.6, outline: 'none', fontFamily: '"Noto Sans JP", sans-serif', boxSizing: 'border-box' }}
         />
         <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
-          <button onClick={onCancel} style={{ flex: 1, padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: '600', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.60)', cursor: 'pointer' }}>Cancel</button>
+          <button onClick={onCancel} style={{ flex: 1, padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: '600', background: 'rgb(var(--fg) / 0.07)', border: '1px solid rgb(var(--fg) / 0.12)', color: 'rgb(var(--fg) / 0.60)', cursor: 'pointer' }}>Cancel</button>
           <button onClick={submit} disabled={loading} style={{ flex: 1, padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: '700', background: `linear-gradient(135deg, ${RED}, #dc2626)`, border: 'none', color: 'white', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}>
             {loading ? 'Rejecting…' : 'Reject & Notify'}
           </button>
@@ -106,19 +106,19 @@ function ScreeningRow({ tutor, onApprove, onReject }) {
           {tutor.name?.charAt(0).toUpperCase() ?? '?'}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ color: 'white', fontWeight: '700', fontSize: '14px', marginBottom: '2px' }}>{tutor.name}</p>
-          <p style={{ color: 'rgba(255,255,255,0.40)', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tutor.email}</p>
+          <p style={{ color: 'var(--text)', fontWeight: '700', fontSize: '14px', marginBottom: '2px' }}>{tutor.name}</p>
+          <p style={{ color: 'rgb(var(--fg) / 0.40)', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tutor.email}</p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
           {chip(tutor.screening_status)}
-          {tutor.university && <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.30)' }}>{tutor.university}</span>}
+          {tutor.university && <span style={{ fontSize: '10px', color: 'rgb(var(--fg) / 0.30)' }}>{tutor.university}</span>}
         </div>
-        <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'rgba(255,255,255,0.25)', marginLeft: '4px' }}>
+        <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'rgb(var(--fg) / 0.25)', marginLeft: '4px' }}>
           {expanded ? 'expand_less' : 'expand_more'}
         </span>
       </div>
       {expanded && (
-        <div style={{ padding: '0 16px 16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ padding: '0 16px 16px', borderTop: '1px solid rgb(var(--fg) / 0.06)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginTop: '14px', marginBottom: '16px' }}>
             {[
               { label: 'Uni Email', value: tutor.uni_email, verified: tutor.uni_email_verified },
@@ -126,8 +126,8 @@ function ScreeningRow({ tutor, onApprove, onReject }) {
               { label: 'Submitted', value: tutor.created_at ? new Date(tutor.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—' },
             ].map(({ label, value, verified }) => (
               <div key={label}>
-                <p style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>{label}</p>
-                <p style={{ fontSize: '13px', color: value ? 'white' : 'rgba(255,255,255,0.25)' }}>
+                <p style={{ fontSize: '10px', fontWeight: '700', color: 'rgb(var(--fg) / 0.30)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>{label}</p>
+                <p style={{ fontSize: '13px', color: value ? 'white' : 'rgb(var(--fg) / 0.25)' }}>
                   {value ?? '—'}
                   {verified && <span className="material-symbols-outlined" style={{ fontSize: '12px', color: GREEN, marginLeft: '4px', verticalAlign: 'middle', fontVariationSettings: '"FILL" 1' }}>verified</span>}
                 </p>
@@ -136,20 +136,20 @@ function ScreeningRow({ tutor, onApprove, onReject }) {
           </div>
           {tutor.subjects && (
             <div style={{ marginBottom: '14px' }}>
-              <p style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>Subjects</p>
-              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.70)' }}>{tutor.subjects}</p>
+              <p style={{ fontSize: '10px', fontWeight: '700', color: 'rgb(var(--fg) / 0.30)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>Subjects</p>
+              <p style={{ fontSize: '13px', color: 'rgb(var(--fg) / 0.70)' }}>{tutor.subjects}</p>
             </div>
           )}
           {proofUrl && (
             <div style={{ marginBottom: '14px' }}>
-              <p style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Proof Document</p>
+              <p style={{ fontSize: '10px', fontWeight: '700', color: 'rgb(var(--fg) / 0.30)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Proof Document</p>
               {tutor.proof_doc_path?.endsWith('.pdf') ? (
-                <a href={proofUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)', color: TEAL, fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>
+                <a href={proofUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', background: 'rgb(var(--fg) / 0.07)', border: '1px solid rgb(var(--fg) / 0.10)', color: TEAL, fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>
                   <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>picture_as_pdf</span> View PDF
                 </a>
               ) : (
                 <a href={proofUrl} target="_blank" rel="noreferrer">
-                  <img src={proofUrl} alt="Proof" style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.10)' }} />
+                  <img src={proofUrl} alt="Proof" style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain', borderRadius: '10px', border: '1px solid rgb(var(--fg) / 0.10)' }} />
                 </a>
               )}
             </div>
@@ -181,7 +181,7 @@ function ScreeningRow({ tutor, onApprove, onReject }) {
 function OverviewTab({ stats, loadingStats }) {
   if (loadingStats) return (
     <div style={{ textAlign: 'center', padding: '60px 0' }}>
-      <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'rgba(255,255,255,0.20)', animation: 'spin 1s linear infinite' }}>progress_activity</span>
+      <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'rgb(var(--fg) / 0.20)', animation: 'spin 1s linear infinite' }}>progress_activity</span>
     </div>
   )
   if (!stats) return null
@@ -194,13 +194,14 @@ function OverviewTab({ stats, loadingStats }) {
         <StatCard icon="person"         label="Students"         value={stats.total_students}      color={PURPLE} />
         <StatCard icon="pending"        label="Pending Reviews"  value={stats.pending_screenings}  color={AMBER} />
         <StatCard icon="calendar_month" label="Total Sessions"   value={stats.total_sessions}      color={GREEN} sub={`${stats.completed_sessions} completed`} />
-        <StatCard icon="workspace_premium" label="Premium Users" value={stats.premium_users}       color={AMBER} />
+        <StatCard icon="workspace_premium" label="Explorer members" value={stats.premium_users}    color={AMBER} sub="£5 / month each" />
+        <StatCard icon="savings"        label="Monthly revenue"  value={`£${(stats.monthly_recurring_revenue ?? 0).toLocaleString('en-GB')}`} color={GREEN} sub="0% commission on sessions" />
       </div>
 
       {/* Signup sparkline */}
       {stats.signups_last_30d?.length > 0 && (
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '14px', padding: '20px' }}>
-          <p style={{ fontSize: '11px', fontWeight: '700', color: 'rgba(255,255,255,0.40)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '16px' }}>
+          <p style={{ fontSize: '11px', fontWeight: '700', color: 'rgb(var(--fg) / 0.40)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '16px' }}>
             New sign-ups — last 30 days
           </p>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: '3px', height: '60px' }}>
@@ -212,8 +213,8 @@ function OverviewTab({ stats, loadingStats }) {
             })()}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
-            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)' }}>{stats.signups_last_30d[0]?.day}</span>
-            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)' }}>{stats.signups_last_30d[stats.signups_last_30d.length - 1]?.day}</span>
+            <span style={{ fontSize: '10px', color: 'rgb(var(--fg) / 0.25)' }}>{stats.signups_last_30d[0]?.day}</span>
+            <span style={{ fontSize: '10px', color: 'rgb(var(--fg) / 0.25)' }}>{stats.signups_last_30d[stats.signups_last_30d.length - 1]?.day}</span>
           </div>
         </div>
       )}
@@ -243,7 +244,7 @@ function ScreeningTab({ queue, loading, onApprove, onReject }) {
         {TABS.map(({ key, label }) => {
           const active = filter === key
           return (
-            <button key={key} onClick={() => setFilter(key)} style={{ padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', background: active ? 'rgba(255,114,94,0.15)' : 'rgba(255,255,255,0.06)', border: `1px solid ${active ? 'rgba(255,114,94,0.30)' : BORDER}`, color: active ? CORAL : 'rgba(255,255,255,0.50)', cursor: 'pointer', transition: 'all 0.15s' }}>
+            <button key={key} onClick={() => setFilter(key)} style={{ padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', background: active ? 'rgba(255,114,94,0.15)' : 'rgb(var(--fg) / 0.06)', border: `1px solid ${active ? 'rgba(255,114,94,0.30)' : BORDER}`, color: active ? CORAL : 'rgb(var(--fg) / 0.50)', cursor: 'pointer', transition: 'all 0.15s' }}>
               {label} {counts[key] > 0 && <span style={{ opacity: 0.65 }}>({counts[key]})</span>}
             </button>
           )
@@ -251,12 +252,12 @@ function ScreeningTab({ queue, loading, onApprove, onReject }) {
       </div>
       {loading ? (
         <div style={{ textAlign: 'center', padding: '48px 0' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'rgba(255,255,255,0.20)' }}>hourglass_empty</span>
+          <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'rgb(var(--fg) / 0.20)' }}>hourglass_empty</span>
         </div>
       ) : displayed.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '48px 0' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '40px', color: 'rgba(255,255,255,0.15)', display: 'block', marginBottom: '10px' }}>inbox</span>
-          <p style={{ color: 'rgba(255,255,255,0.30)', fontSize: '14px' }}>No applications {filter ? `with status "${filter}"` : 'yet'}</p>
+          <span className="material-symbols-outlined" style={{ fontSize: '40px', color: 'rgb(var(--fg) / 0.15)', display: 'block', marginBottom: '10px' }}>inbox</span>
+          <p style={{ color: 'rgb(var(--fg) / 0.30)', fontSize: '14px' }}>No applications {filter ? `with status "${filter}"` : 'yet'}</p>
         </div>
       ) : displayed.map(tutor => (
         <ScreeningRow key={tutor.id_tutor} tutor={tutor} onApprove={onApprove} onReject={onReject} />
@@ -286,38 +287,38 @@ function UsersTab({ users, loading }) {
         <input
           value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Search name or email…"
-          style={{ flex: 1, minWidth: '180px', padding: '9px 14px', borderRadius: '10px', background: CARD, border: `1px solid ${BORDER}`, color: 'white', fontSize: '13px', outline: 'none', fontFamily: '"Noto Sans JP", sans-serif' }}
+          style={{ flex: 1, minWidth: '180px', padding: '9px 14px', borderRadius: '10px', background: CARD, border: `1px solid ${BORDER}`, color: 'var(--text)', fontSize: '13px', outline: 'none', fontFamily: '"Noto Sans JP", sans-serif' }}
         />
         {['', 'tutor', 'student', 'premium'].map(r => (
-          <button key={r} onClick={() => setRoleFilter(r)} style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', background: roleFilter === r ? 'rgba(255,114,94,0.15)' : 'rgba(255,255,255,0.06)', border: `1px solid ${roleFilter === r ? 'rgba(255,114,94,0.30)' : BORDER}`, color: roleFilter === r ? CORAL : 'rgba(255,255,255,0.50)', cursor: 'pointer' }}>
+          <button key={r} onClick={() => setRoleFilter(r)} style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', background: roleFilter === r ? 'rgba(255,114,94,0.15)' : 'rgb(var(--fg) / 0.06)', border: `1px solid ${roleFilter === r ? 'rgba(255,114,94,0.30)' : BORDER}`, color: roleFilter === r ? CORAL : 'rgb(var(--fg) / 0.50)', cursor: 'pointer' }}>
             {r || 'All'}
           </button>
         ))}
       </div>
       {loading ? (
         <div style={{ textAlign: 'center', padding: '48px 0' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'rgba(255,255,255,0.20)' }}>hourglass_empty</span>
+          <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'rgb(var(--fg) / 0.20)' }}>hourglass_empty</span>
         </div>
       ) : (
         <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', overflow: 'hidden' }}>
           {/* Header */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px 80px 80px 110px', gap: '0', padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px 80px 80px 110px', gap: '0', padding: '10px 16px', borderBottom: '1px solid rgb(var(--fg) / 0.06)' }}>
             {['User', 'Email', 'Role', 'Premium', 'Joined'].map(h => (
-              <span key={h} style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</span>
+              <span key={h} style={{ fontSize: '10px', fontWeight: '700', color: 'rgb(var(--fg) / 0.30)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{h}</span>
             ))}
           </div>
           <div style={{ maxHeight: '480px', overflowY: 'auto' }}>
             {filtered.length === 0 ? (
-              <p style={{ textAlign: 'center', padding: '32px', color: 'rgba(255,255,255,0.25)', fontSize: '13px' }}>No users found</p>
+              <p style={{ textAlign: 'center', padding: '32px', color: 'rgb(var(--fg) / 0.25)', fontSize: '13px' }}>No users found</p>
             ) : filtered.map(u => (
-              <div key={u.id_user} style={{ display: 'grid', gridTemplateColumns: '1fr 200px 80px 80px 110px', gap: '0', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', alignItems: 'center' }}>
+              <div key={u.id_user} style={{ display: 'grid', gridTemplateColumns: '1fr 200px 80px 80px 110px', gap: '0', padding: '12px 16px', borderBottom: '1px solid rgb(var(--fg) / 0.04)', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <div style={{ width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0, background: `${CORAL}22`, border: `1px solid ${CORAL}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '13px', color: CORAL }}>
                     {u.name?.charAt(0).toUpperCase() ?? '?'}
                   </div>
-                  <span style={{ fontSize: '13px', fontWeight: '600', color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</span>
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</span>
                 </div>
-                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</span>
+                <span style={{ fontSize: '12px', color: 'rgb(var(--fg) / 0.45)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</span>
                 <div>
                   {u.is_tutor
                     ? <span style={{ fontSize: '10px', fontWeight: '700', color: TEAL, background: 'rgba(45,212,191,0.12)', padding: '2px 8px', borderRadius: '12px' }}>Tutor</span>
@@ -329,16 +330,16 @@ function UsersTab({ users, loading }) {
                 <div>
                   {u.is_premium
                     ? <span className="material-symbols-outlined" style={{ fontSize: '16px', color: AMBER, fontVariationSettings: '"FILL" 1' }}>workspace_premium</span>
-                    : <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.20)' }}>—</span>}
+                    : <span style={{ fontSize: '12px', color: 'rgb(var(--fg) / 0.20)' }}>—</span>}
                 </div>
-                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}>
+                <span style={{ fontSize: '11px', color: 'rgb(var(--fg) / 0.35)' }}>
                   {u.created_at ? new Date(u.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : '—'}
                 </span>
               </div>
             ))}
           </div>
-          <div style={{ padding: '10px 16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.30)' }}>{filtered.length} of {users.length} users</span>
+          <div style={{ padding: '10px 16px', borderTop: '1px solid rgb(var(--fg) / 0.06)' }}>
+            <span style={{ fontSize: '11px', color: 'rgb(var(--fg) / 0.30)' }}>{filtered.length} of {users.length} users</span>
           </div>
         </div>
       )}
@@ -353,28 +354,28 @@ function SessionsTab({ events, loading }) {
     <div>
       {loading ? (
         <div style={{ textAlign: 'center', padding: '48px 0' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'rgba(255,255,255,0.20)' }}>hourglass_empty</span>
+          <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'rgb(var(--fg) / 0.20)' }}>hourglass_empty</span>
         </div>
       ) : events.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '48px 0' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '40px', color: 'rgba(255,255,255,0.15)', display: 'block', marginBottom: '10px' }}>event_busy</span>
-          <p style={{ color: 'rgba(255,255,255,0.30)', fontSize: '14px' }}>No sessions yet</p>
+          <span className="material-symbols-outlined" style={{ fontSize: '40px', color: 'rgb(var(--fg) / 0.15)', display: 'block', marginBottom: '10px' }}>event_busy</span>
+          <p style={{ color: 'rgb(var(--fg) / 0.30)', fontSize: '14px' }}>No sessions yet</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {events.map(ev => {
-            const color = STATUS_COLOR[ev.status] ?? 'rgba(255,255,255,0.35)'
+            const color = STATUS_COLOR[ev.status] ?? 'rgb(var(--fg) / 0.35)'
             return (
               <div key={ev.id_event} style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: '12px', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, flexShrink: 0, boxShadow: `0 0 6px ${color}` }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ color: 'white', fontWeight: '700', fontSize: '13px', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.title || 'Untitled session'}</p>
-                  <p style={{ color: 'rgba(255,255,255,0.40)', fontSize: '12px' }}>
+                  <p style={{ color: 'var(--text)', fontWeight: '700', fontSize: '13px', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.title || 'Untitled session'}</p>
+                  <p style={{ color: 'rgb(var(--fg) / 0.40)', fontSize: '12px' }}>
                     <span style={{ color: TEAL }}>{ev.student_name}</span> with <span style={{ color: CORAL }}>{ev.tutor_name}</span>
                   </p>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', marginBottom: '4px' }}>
+                  <p style={{ fontSize: '11px', color: 'rgb(var(--fg) / 0.35)', marginBottom: '4px' }}>
                     {ev.start_time ? new Date(ev.start_time).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}
                   </p>
                   <span style={{ fontSize: '10px', fontWeight: '700', color, background: `${color}18`, padding: '2px 8px', borderRadius: '12px', textTransform: 'capitalize' }}>
@@ -450,12 +451,12 @@ export default function SuperAdmin() {
   ]
 
   return (
-    <div style={{ minHeight: '100vh', background: NAVY, fontFamily: '"Noto Sans JP", sans-serif', color: 'white' }}>
+    <div style={{ minHeight: '100vh', background: NAVY, fontFamily: '"Noto Sans JP", sans-serif', color: 'var(--text)' }}>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg) } }
-        .admin-tab:hover { background: rgba(255,255,255,0.08) !important; }
-        input::placeholder { color: rgba(255,255,255,0.30); }
-        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
+        .admin-tab:hover { background: rgb(var(--fg) / 0.08) !important; }
+        input::placeholder { color: rgb(var(--fg) / 0.30); }
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: rgb(var(--fg) / 0.12); border-radius: 3px; }
       `}</style>
 
       {rejectModal && <RejectModal tutor={rejectModal} onReject={handleReject} onCancel={() => setRejectModal(null)} />}
@@ -464,11 +465,11 @@ export default function SuperAdmin() {
       <div style={{ borderBottom: `1px solid ${BORDER}`, padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '60px', position: 'sticky', top: 0, background: NAVY, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ width: '34px', height: '34px', borderRadius: '9px', background: `linear-gradient(135deg, ${CORAL}, #e05a47)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'white', fontVariationSettings: '"FILL" 1' }}>shield</span>
+            <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'var(--text)', fontVariationSettings: '"FILL" 1' }}>shield</span>
           </div>
           <div>
-            <p style={{ fontSize: '14px', fontWeight: '900', color: 'white', lineHeight: 1 }}>Super Admin</p>
-            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', lineHeight: 1.2 }}>StudyWithStudents</p>
+            <p style={{ fontSize: '14px', fontWeight: '900', color: 'var(--text)', lineHeight: 1 }}>Super Admin</p>
+            <p style={{ fontSize: '11px', color: 'rgb(var(--fg) / 0.35)', lineHeight: 1.2 }}>StudyWithStudents</p>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -478,7 +479,7 @@ export default function SuperAdmin() {
               <span style={{ fontSize: '13px', fontWeight: '700', color: AMBER }}>{pendingCount} pending</span>
             </div>
           )}
-          <button onClick={() => navigate({ to: '/hub' })} style={{ padding: '7px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', background: 'rgba(255,255,255,0.06)', border: `1px solid ${BORDER}`, color: 'rgba(255,255,255,0.50)', cursor: 'pointer' }}>
+          <button onClick={() => navigate({ to: '/hub' })} style={{ padding: '7px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', background: 'rgb(var(--fg) / 0.06)', border: `1px solid ${BORDER}`, color: 'rgb(var(--fg) / 0.50)', cursor: 'pointer' }}>
             ← Hub
           </button>
         </div>
@@ -487,8 +488,8 @@ export default function SuperAdmin() {
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px' }}>
         {/* Page title */}
         <div style={{ marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '26px', fontWeight: '900', color: 'white', marginBottom: '4px' }}>Admin Dashboard</h1>
-          <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)' }}>Logged in as <span style={{ color: CORAL }}>{user?.email}</span></p>
+          <h1 style={{ fontSize: '26px', fontWeight: '900', color: 'var(--text)', marginBottom: '4px' }}>Admin Dashboard</h1>
+          <p style={{ fontSize: '13px', color: 'rgb(var(--fg) / 0.35)' }}>Logged in as <span style={{ color: CORAL }}>{user?.email}</span></p>
         </div>
 
         {/* Tabs */}
@@ -505,7 +506,7 @@ export default function SuperAdmin() {
                   background: active ? 'rgba(255,114,94,0.12)' : 'transparent',
                   border: active ? `1px solid rgba(255,114,94,0.25)` : '1px solid transparent',
                   borderBottom: active ? `1px solid ${NAVY}` : '1px solid transparent',
-                  color: active ? CORAL : 'rgba(255,255,255,0.45)',
+                  color: active ? CORAL : 'rgb(var(--fg) / 0.45)',
                   cursor: 'pointer', transition: 'all 0.15s',
                   display: 'flex', alignItems: 'center', gap: '6px',
                   marginBottom: '-1px',

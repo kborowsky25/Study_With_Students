@@ -738,7 +738,7 @@ function XPBar() {
 
 // ── FAQ ───────────────────────────────────────────────────────────────────────
 const FAQ = [
-  { q: 'Is it really free?',                a: 'Yes. Finding tutors, messaging, and booking sessions are completely free. You only pay for sessions you book (directly to your tutor) and optionally £2/month for community features.' },
+  { q: 'Is it really free?',                a: 'Yes. Finding tutors, messaging, and booking sessions are completely free. You only pay for sessions you book (directly to your tutor) and optionally £5/month for community features.' },
   { q: 'How are tutors verified?',          a: 'Every tutor confirms a .ac.uk university email. UK universities only. You always see which university a tutor attends.' },
   { q: 'How do payments work?',             a: 'Payments go through Stripe — secure, instant, and direct. Students pay tutors directly. We take 0%. Tutors connect a Stripe payout account once to receive funds automatically.' },
   { q: 'Can I be both student and tutor?',  a: 'Yes. Switch between your student view and tutor hub from the sidebar at any time.' },
@@ -953,7 +953,7 @@ export default function HowItWorks() {
           {/* Left — explain */}
           <div>
             <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: CORAL, marginBottom: 12 }}>
-              Explorer Plan · £2/month
+              Explorer Plan · £5/month
             </p>
             <h2 style={{ fontSize: 'clamp(20px, 2.8vw, 28px)', fontWeight: 800, margin: '0 0 14px', letterSpacing: '-0.025em', lineHeight: 1.15, color: TEXT }}>
               Upgrade at any time.<br />Cancel whenever you want.
@@ -962,7 +962,7 @@ export default function HowItWorks() {
               The core tutoring experience — finding tutors, booking sessions, messaging — is always free. The Explorer Plan unlocks community features like Study Rooms, the Forum, Live Classrooms, and Study Notes.
             </p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {['No lock-in', 'Cancel anytime', '£2 flat · no surprises'].map(tag => (
+              {['No lock-in', 'Cancel anytime', '£5 flat · no surprises'].map(tag => (
                 <span key={tag} style={{ fontSize: 11, fontWeight: 700, background: `${CORAL}10`, color: CORAL, border: `1px solid ${CORAL}28`, padding: '4px 12px', borderRadius: 20 }}>{tag}</span>
               ))}
             </div>
@@ -988,7 +988,7 @@ export default function HowItWorks() {
             <Link to="/signup" style={{ display: 'block', textAlign: 'center', marginTop: 4, padding: '12px', borderRadius: 10, background: CORAL, color: 'white', fontWeight: 700, fontSize: 13, textDecoration: 'none', boxShadow: `0 4px 16px ${CORAL}35`, transition: 'opacity 0.15s' }}
               onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
               onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-            >Upgrade to Explorer · £2/month</Link>
+            >Upgrade to Explorer · £5/month</Link>
           </div>
         </div>
       </div>

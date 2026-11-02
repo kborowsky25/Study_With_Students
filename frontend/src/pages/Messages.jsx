@@ -1,822 +1,291 @@
-import { useEffect, useState, useRef } from 'react'
-import { useAuth } from '../context/AuthContext'
-import { getConversations, getMessages, sendMessage, searchUsers } from '../api/messages'
-import HubLayout from '../components/layout/HubLayout'
-import { PageTitle } from '../context/PageTitleContext'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import toast from 'react-hot-toast'
+import { useAuth } from '../context/AuthContext'
+import { PageTitle } from '../context/PageTitleContext'
+import HubLayout from '../components/layout/HubLayout'
+import { Avatar, EmptyState, Icon, Kbd, Pill, SkeletonRows } from '../components/ui'
+import { getConversations, getMessages, searchUsers, sendMessage } from '../api/messages'
+import { getUserProfile } from '../api/users'
+import { errorMessage } from '../api/client'
+import { notifyUnreadChanged } from '../hooks/useUnreadCount'
+import { formatDay, formatTime, timeAgo } from '../lib/format'
+import './Messages.css'
 
-const CORAL = '#ff725e'
+const THREAD_POLL_MS = 4000
+const INBOX_POLL_MS = 15000
 
-// Soft avatar colors for variety
-const AVATAR_COLORS = [
-  '#6c63ff', '#3a86ff', '#06d6a0', '#f9c74f', '#f4845f',
-  '#a8dadc', '#e63946', '#2ec4b6', '#ff9f1c', '#b5838d',
-]
+function NewMessageDialog({ onPick, onClose }) {
+  const [q, setQ] = useState('')
+  const [results, setResults] = useState([])
+  const [loading, setLoading] = useState(false)
 
-function getAvatarColor(name = '') {
-  let hash = 0
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
-}
+  useEffect(() => {
+    if (q.trim().length < 2) { setResults([]); return }
+    setLoading(true)
+    const t = setTimeout(() => {
+      searchUsers(q.trim())
+        .then(({ data }) => setResults(data.users ?? []))
+        .catch(() => setResults([]))
+        .finally(() => setLoading(false))
+    }, 250)
+    return () => clearTimeout(t)
+  }, [q])
 
-function Avatar({ name = '', size = 38 }) {
-  const color = getAvatarColor(name)
   return (
-    <div style={{
-      width: size, height: size, borderRadius: '50%',
-      background: color + '30',
-      border: `1.5px solid ${color}60`,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: color, fontSize: Math.floor(size * 0.36) + 'px', fontWeight: '700',
-      flexShrink: 0, userSelect: 'none',
-    }}>
-      {name?.[0]?.toUpperCase() ?? '?'}
+    <div className="overlay" onMouseDown={onClose}>
+      <div className="dialog palette" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="palette-input">
+          <Icon name="person_search" />
+          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or email address…"
+            onKeyDown={(e) => { if (e.key === 'Escape') onClose(); if (e.key === 'Enter' && results[0]) onPick(results[0]) }} />
+          <Kbd>esc</Kbd>
+        </div>
+        <div className="palette-list">
+          {q.trim().length < 2 ? (
+            <div className="palette-empty">Type at least two letters.</div>
+          ) : loading ? (
+            <div className="palette-empty">Searching…</div>
+          ) : results.length === 0 ? (
+            <div className="palette-empty">No one matches “{q}”.</div>
+          ) : results.map((u) => (
+            <div key={u.id_user} className="palette-item" onClick={() => onPick(u)}>
+              <Avatar name={u.name} size={26} />
+              <span className="grow" style={{ color: 'var(--text)' }}>{u.name}</span>
+              {u.is_tutor && <Pill tone="coral">Tutor</Pill>}
+              {u.university && <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{u.university}</span>}
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
 
-function formatTime(ts) {
-  if (!ts) return ''
-  const d = new Date(ts)
-  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-}
-
-function formatConvoTime(ts) {
-  if (!ts) return ''
-  const d = new Date(ts)
-  const now = new Date()
-  const diffDays = Math.floor((now - d) / 86400000)
-  if (diffDays === 0) return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-  if (diffDays === 1) return 'Yesterday'
-  if (diffDays < 7) return d.toLocaleDateString('en-GB', { weekday: 'short' })
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+function groupByDay(messages) {
+  const groups = []
+  for (const m of messages) {
+    const day = new Date(m.message_timestamp).toDateString()
+    const last = groups[groups.length - 1]
+    if (last?.day === day) last.items.push(m)
+    else groups.push({ day, label: formatDay(m.message_timestamp), items: [m] })
+  }
+  return groups
 }
 
 export default function Messages() {
   const { user } = useAuth()
-  const [convos,      setConvos]      = useState([])
-  const [selected,    setSelected]    = useState(null)
-  const [messages,    setMessages]    = useState([])
-  const [text,        setText]        = useState('')
-  const [loading,     setLoading]     = useState(true)
-  const [sending,     setSending]     = useState(false)
+  const navigate = useNavigate()
+  const search = useSearch({ strict: false })
+  const partnerId = search.user ? Number(search.user) : null
 
-  // Conversation search
-  const [convoSearch, setConvoSearch] = useState('')
+  const [conversations, setConversations] = useState([])
+  const [loadingInbox, setLoadingInbox] = useState(true)
+  const [partner, setPartner] = useState(null)      // { user_id, name }
+  const [messages, setMessages] = useState([])
+  const [loadingThread, setLoadingThread] = useState(false)
+  const [filter, setFilter] = useState('')
+  const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
+  const [composing, setComposing] = useState(false)
+  const threadRef = useRef(null)
+  const inputRef = useRef(null)
+  const stickToBottom = useRef(true)
 
-  // Compose / user search
-  const [composing,   setComposing]   = useState(false)
-  const [userQuery,   setUserQuery]   = useState('')
-  const [userResults, setUserResults] = useState([])
-  const [searching,   setSearching]   = useState(false)
+  const loadInbox = useCallback(() =>
+    getConversations()
+      .then(({ data }) => setConversations(data.conversations ?? []))
+      .catch(() => {})
+      .finally(() => setLoadingInbox(false)), [])
 
-  // Entrance animations
-  const [mounted, setMounted] = useState(false)
+  const loadThread = useCallback((id) =>
+    getMessages(id).then(({ data }) => {
+      setMessages(data.messages ?? [])
+      setConversations((list) => list.map((c) => (c.user_id === id ? { ...c, unread: 0 } : c)))
+      notifyUnreadChanged()
+    }), [])
 
-  const bottomRef    = useRef(null)
-  const searchTimer  = useRef(null)
-  const composeRef   = useRef(null)
-  const inputRef     = useRef(null)
-
-  // ── Lifecycle ────────────────────────────────────────────────────────────
+  // Inbox: load + poll
   useEffect(() => {
-    loadConversations()
-    requestAnimationFrame(() => setMounted(true))
-  }, [])
+    loadInbox()
+    const t = setInterval(loadInbox, INBOX_POLL_MS)
+    return () => clearInterval(t)
+  }, [loadInbox])
 
+  // Selected conversation follows ?user=
   useEffect(() => {
-    if (!selected) return
-    const id = setInterval(() => loadMessages(selected.user_id), 5000)
-    return () => clearInterval(id)
-  }, [selected])
+    if (!partnerId) { setPartner(null); setMessages([]); return }
+    const known = conversations.find((c) => c.user_id === partnerId)
+    if (known) setPartner({ user_id: known.user_id, name: known.name })
+    else if (partner?.user_id !== partnerId) {
+      getUserProfile(partnerId)
+        .then(({ data }) => setPartner({ user_id: partnerId, name: data.user.name }))
+        .catch(() => { toast.error('That user could not be found'); navigate({ to: '/messages', search: {} }) })
+    }
+  }, [partnerId, conversations])
 
+  // Thread: load + poll
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (!partnerId) return
+    setLoadingThread(true)
+    stickToBottom.current = true
+    loadThread(partnerId).catch(() => {}).finally(() => setLoadingThread(false))
+    const t = setInterval(() => loadThread(partnerId).catch(() => {}), THREAD_POLL_MS)
+    inputRef.current?.focus()
+    return () => clearInterval(t)
+  }, [partnerId, loadThread])
+
+  // Keep the newest message in view unless the user scrolled up
+  useEffect(() => {
+    const el = threadRef.current
+    if (el && stickToBottom.current) el.scrollTop = el.scrollHeight
   }, [messages])
 
-  // Close compose overlay on outside click
-  useEffect(() => {
-    if (!composing) return
-    function onClickOutside(e) {
-      if (composeRef.current && !composeRef.current.contains(e.target)) {
-        closeCompose()
-      }
-    }
-    document.addEventListener('mousedown', onClickOutside)
-    return () => document.removeEventListener('mousedown', onClickOutside)
-  }, [composing])
-
-  // Debounced user search
-  useEffect(() => {
-    if (!userQuery.trim() || userQuery.trim().length < 2) {
-      setUserResults([])
-      return
-    }
-    clearTimeout(searchTimer.current)
-    searchTimer.current = setTimeout(async () => {
-      setSearching(true)
-      try {
-        const { data } = await searchUsers(userQuery.trim())
-        setUserResults((data.users ?? []).filter(u => u.id_user !== user?.id))
-      } catch {
-        setUserResults([])
-      } finally {
-        setSearching(false)
-      }
-    }, 300)
-  }, [userQuery])
-
-  // ── Handlers ─────────────────────────────────────────────────────────────
-  async function loadConversations() {
-    try {
-      const { data } = await getConversations()
-      setConvos(data.conversations ?? [])
-    } catch {}
-    finally { setLoading(false) }
+  function open(id) {
+    navigate({ to: '/messages', search: { user: id } })
   }
 
-  async function loadMessages(userId) {
-    try {
-      const { data } = await getMessages(userId)
-      setMessages(data.messages ?? [])
-    } catch {}
-  }
-
-  function selectConvo(convo) {
-    setSelected(convo)
-    setComposing(false)
-    loadMessages(convo.user_id)
-    setTimeout(() => inputRef.current?.focus(), 100)
-  }
-
-  function openCompose() {
-    setComposing(true)
-    setUserQuery('')
-    setUserResults([])
-  }
-
-  function closeCompose() {
-    setComposing(false)
-    setUserQuery('')
-    setUserResults([])
-  }
-
-  function startNewConvo(foundUser) {
-    // Treat the found user as the selected conversation partner
-    const pseudoConvo = {
-      user_id: foundUser.id_user,
-      name: foundUser.name,
-      email: foundUser.email,
-      last_message: null,
-      unread: 0,
-    }
-    // Add to convos list if not already there
-    setConvos(prev => {
-      if (prev.some(c => c.user_id === foundUser.id_user)) return prev
-      return [pseudoConvo, ...prev]
-    })
-    selectConvo(pseudoConvo)
-  }
-
-  async function handleSend(e) {
-    e.preventDefault()
-    if (!text.trim() || !selected) return
+  async function send(e) {
+    e?.preventDefault()
+    const text = draft.trim()
+    if (!text || !partnerId || sending) return
     setSending(true)
     try {
-      await sendMessage(selected.user_id, text)
-      setText('')
-      await loadMessages(selected.user_id)
-      // Refresh convos so last_message updates
-      loadConversations()
-    } catch { toast.error('Failed to send') }
-    finally { setSending(false) }
+      const { data } = await sendMessage(partnerId, text)
+      setDraft('')
+      stickToBottom.current = true
+      setMessages((list) => [...list, data.data])
+      loadInbox()
+    } catch (err) {
+      toast.error(errorMessage(err, 'Message not sent'))
+    } finally {
+      setSending(false)
+      inputRef.current?.focus()
+    }
   }
 
-  // Filtered conversations by search
-  const filteredConvos = convoSearch.trim()
-    ? convos.filter(c => c.name?.toLowerCase().includes(convoSearch.toLowerCase()))
-    : convos
+  const visible = useMemo(() => {
+    const q = filter.trim().toLowerCase()
+    return q ? conversations.filter((c) => c.name.toLowerCase().includes(q)) : conversations
+  }, [conversations, filter])
 
-  // Group consecutive messages by sender
-  function groupMessages(msgs) {
-    const groups = []
-    msgs.forEach((msg, i) => {
-      const prev = msgs[i - 1]
-      const isFirst = !prev || prev.id_sender !== msg.id_sender
-      groups.push({ ...msg, isFirst })
-    })
-    return groups
-  }
+  const groups = useMemo(() => groupByDay(messages), [messages])
+  const lastMine = [...messages].reverse().find((m) => m.id_sender === user?.id)
 
-  const groupedMessages = groupMessages(messages)
-
-  // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <HubLayout raw>
-      <PageTitle title="Messages" icon="message" />
-      <style>{`
-        @keyframes convoIn {
-          from { opacity: 0; transform: translateX(-14px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes bubbleIn {
-          from { opacity: 0; transform: scale(0.88) translateY(8px); }
-          to   { opacity: 1; transform: scale(1) translateY(0); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-      <div style={{ display: 'flex', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
-
-        {/* ── Left panel: conversation list ──────────────────────────── */}
-        <div
-          className="sm:flex"
-          style={{
-            width: '300px', minWidth: '300px', flexShrink: 0,
-            background: 'var(--bg-card)',
-            borderRight: '1px solid var(--border)',
-            display: selected ? 'none' : 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-          }}
-        >
-          {/* Header */}
-          <div style={{
-            padding: '16px',
-            borderBottom: '1px solid var(--border)',
-            flexShrink: 0,
-            background: 'linear-gradient(180deg, var(--bg-card) 0%, var(--bg-card) 100%)',
-            position: 'relative',
-          }}>
-            {/* Coral accent line */}
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: `linear-gradient(90deg, ${CORAL}, ${CORAL}40, transparent)`, borderRadius: '2px 2px 0 0' }} />
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{
-                  width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0,
-                  background: CORAL + '18', border: `1px solid ${CORAL}30`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '18px', color: CORAL }}>message</span>
-                </div>
-                <div>
-                  <h2 style={{ color: 'var(--text)', fontWeight: '800', fontSize: '15px', letterSpacing: '-0.3px', margin: 0, lineHeight: 1.2 }}>
-                    Messages
-                  </h2>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '11px', margin: '2px 0 0' }}>
-                    {loading ? '…' : `${convos.length} conversation${convos.length !== 1 ? 's' : ''}`}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={openCompose}
-                title="New conversation"
-                style={{
-                  width: '34px', height: '34px', borderRadius: '10px',
-                  background: CORAL + '18',
-                  border: `1.5px solid ${CORAL}35`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', transition: 'all 0.15s',
-                  color: CORAL,
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = CORAL + '30'
-                  e.currentTarget.style.borderColor = CORAL + '60'
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = CORAL + '18'
-                  e.currentTarget.style.borderColor = CORAL + '35'
-                }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '17px' }}>edit</span>
-              </button>
-            </div>
-
-            {/* Search bar */}
-            <div style={{ position: 'relative' }}>
-              <span className="material-symbols-outlined" style={{
-                position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)',
-                fontSize: '17px', color: 'var(--text-faint)', pointerEvents: 'none',
-              }}>search</span>
-              <input
-                value={convoSearch}
-                onChange={e => setConvoSearch(e.target.value)}
-                placeholder="Search conversations…"
-                style={{
-                  width: '100%',
-                  padding: '9px 12px 9px 36px',
-                  background: 'var(--bg)',
-                  border: '1.5px solid var(--border)',
-                  borderRadius: '10px',
-                  color: 'var(--text)',
-                  fontSize: '13px',
-                  outline: 'none',
-                  transition: 'border-color 0.15s',
-                  boxSizing: 'border-box',
-                }}
-                onFocus={e => e.target.style.borderColor = CORAL + '60'}
-                onBlur={e => e.target.style.borderColor = 'var(--border)'}
-              />
-            </div>
+    <HubLayout raw noScroll>
+      <PageTitle title="Messages" icon="chat" />
+      <div className={`inbox ${partnerId ? 'has-thread' : ''}`}>
+        {/* ── Conversation list ── */}
+        <aside className="inbox-list">
+          <div className="inbox-list-head">
+            <h2>Inbox</h2>
+            <button className="btn btn-coral btn-sm" onClick={() => setComposing(true)}><Icon name="edit_square" />New</button>
           </div>
-
-          {/* Conversation list */}
-          <div style={{ flex: 1, overflowY: 'auto' }} className="scrollbar-hide">
-            {loading ? (
-              <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                {[1, 2, 3, 4].map(i => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px' }}>
-                    <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'var(--border)', flexShrink: 0 }} />
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '7px' }}>
-                      <div style={{ height: '13px', borderRadius: '6px', background: 'var(--border)', width: '55%' }} />
-                      <div style={{ height: '11px', borderRadius: '6px', background: 'var(--border)', width: '75%' }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : filteredConvos.length === 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '32px 20px', textAlign: 'center' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '44px', color: 'var(--text-faint)', marginBottom: '12px' }}>chat_bubble_outline</span>
-                <p style={{ color: 'var(--text-muted)', fontSize: '14px', fontWeight: '600', marginBottom: '6px' }}>
-                  {convoSearch ? 'No match found' : 'No messages yet'}
-                </p>
-                <p style={{ color: 'var(--text-faint)', fontSize: '12px', marginBottom: '16px', lineHeight: 1.5 }}>
-                  {convoSearch ? `No conversations matching "${convoSearch}"` : 'Start a conversation with a tutor or student'}
-                </p>
-                {!convoSearch && (
-                  <button
-                    onClick={openCompose}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: '6px',
-                      padding: '9px 16px', borderRadius: '10px',
-                      background: CORAL + '18', border: `1.5px solid ${CORAL}35`,
-                      color: CORAL, fontWeight: '700', fontSize: '12px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>add</span>
-                    New Message
-                  </button>
-                )}
-              </div>
-            ) : (
-              filteredConvos.map((convo, idx) => {
-                const isActive = selected?.user_id === convo.user_id
-                return (
-                  <button
-                    key={convo.user_id}
-                    onClick={() => selectConvo(convo)}
-                    style={{
-                      width: '100%',
-                      display: 'flex', alignItems: 'center', gap: '12px',
-                      padding: '12px 14px 12px 12px',
-                      background: isActive ? CORAL + '12' : 'transparent',
-                      borderBottom: '1px solid var(--border)',
-                      border: 'none',
-                      borderLeft: `3px solid ${isActive ? CORAL : 'transparent'}`,
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      transition: 'background 0.12s, border-color 0.12s, transform 0.15s',
-                      animation: mounted ? `convoIn 0.32s cubic-bezier(0.16,1,0.3,1) ${Math.min(idx * 45, 420)}ms both` : 'none',
-                    }}
-                    onMouseEnter={e => {
-                      if (!isActive) {
-                        e.currentTarget.style.background = 'var(--bg)'
-                        e.currentTarget.style.transform = 'translateX(3px)'
-                      }
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background = isActive ? CORAL + '12' : 'transparent'
-                      e.currentTarget.style.transform = 'translateX(0)'
-                    }}
-                  >
-                    <Avatar name={convo.name} size={44} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
-                        <p style={{
-                          color: 'var(--text)', fontWeight: convo.unread > 0 ? '700' : '600',
-                          fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          flex: 1, marginRight: '8px',
-                        }}>{convo.name}</p>
-                        {convo.last_message_at && (
-                          <span style={{ color: 'var(--text-faint)', fontSize: '11px', flexShrink: 0 }}>
-                            {formatConvoTime(convo.last_message_at)}
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <p style={{
-                          color: convo.unread > 0 ? 'var(--text-muted)' : 'var(--text-faint)',
-                          fontSize: '12px',
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          flex: 1, marginRight: '6px',
-                          fontWeight: convo.unread > 0 ? '500' : '400',
-                        }}>
-                          {convo.last_message ?? 'Say hello!'}
-                        </p>
-                        {convo.unread > 0 && (
-                          <span style={{
-                            minWidth: '19px', height: '19px', borderRadius: '999px',
-                            background: CORAL, color: 'white',
-                            fontSize: '10px', fontWeight: '700',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            flexShrink: 0, padding: '0 4px',
-                          }}>
-                            {convo.unread}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                )
-              })
-            )}
+          <div className="inbox-filter">
+            <Icon name="search" />
+            <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter conversations" />
           </div>
-        </div>
-
-        {/* ── Right panel: chat area ──────────────────────────────────── */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--bg)', overflow: 'hidden' }}>
-          {!selected ? (
-            /* Empty state */
-            <div
-              className="animate-fade-in"
-              style={{
-                flex: 1, display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center',
-                textAlign: 'center', padding: '40px',
-              }}
-            >
-              <div style={{
-                width: '80px', height: '80px', borderRadius: '50%',
-                background: CORAL + '15', border: `2px solid ${CORAL}25`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                marginBottom: '20px',
-              }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '38px', color: CORAL + 'aa' }}>forum</span>
-              </div>
-              <p style={{ color: 'var(--text)', fontSize: '18px', fontWeight: '700', marginBottom: '8px' }}>
-                Your messages
-              </p>
-              <p style={{ color: 'var(--text-faint)', fontSize: '14px', marginBottom: '6px', lineHeight: 1.6, maxWidth: '280px' }}>
-                Select a conversation from the list or start a new one
-              </p>
-              <button
-                onClick={openCompose}
-                style={{
-                  marginTop: '16px',
-                  display: 'flex', alignItems: 'center', gap: '8px',
-                  padding: '11px 22px', borderRadius: '12px',
-                  background: CORAL, color: 'white',
-                  border: 'none', fontWeight: '700', fontSize: '13px',
-                  cursor: 'pointer', transition: 'opacity 0.15s',
-                  boxShadow: `0 4px 16px ${CORAL}40`,
-                }}
-                onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
-                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
-                New Message
+          <div className="inbox-scroll">
+            {loadingInbox ? <SkeletonRows rows={4} /> : visible.length === 0 ? (
+              <EmptyState icon="forum" title={filter ? 'No matches' : 'No conversations yet'}
+                action={!filter && <button className="btn btn-ghost btn-sm" onClick={() => setComposing(true)}>Start one</button>}>
+                {!filter && 'Message a tutor or student to get started.'}
+              </EmptyState>
+            ) : visible.map((c) => (
+              <button key={c.user_id} className={`convo ${c.user_id === partnerId ? 'on' : ''} ${c.unread ? 'unread' : ''}`} onClick={() => open(c.user_id)}>
+                <Avatar name={c.name} size={36} />
+                <span className="convo-main">
+                  <span className="convo-top">
+                    <span className="convo-name">{c.name}</span>
+                    <span className="convo-time">{timeAgo(c.last_ts)}</span>
+                  </span>
+                  <span className="convo-preview">{c.last_from_me ? 'You: ' : ''}{c.last_message}</span>
+                </span>
+                {c.unread > 0 && <span className="nav-badge">{c.unread}</span>}
               </button>
+            ))}
+          </div>
+        </aside>
+
+        {/* ── Thread ── */}
+        <section className="inbox-thread">
+          {!partnerId ? (
+            <div className="thread-empty">
+              <EmptyState icon="chat_bubble" title="Your conversations live here"
+                action={<button className="btn btn-coral" onClick={() => setComposing(true)}><Icon name="edit_square" />New message</button>}>
+                Pick a conversation on the left, or start a new one with a tutor or student.
+              </EmptyState>
             </div>
           ) : (
             <>
-              {/* Chat top bar */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: '12px',
-                padding: '12px 20px',
-                borderBottom: '1px solid var(--border)',
-                background: 'var(--bg-card)',
-                flexShrink: 0,
-                boxShadow: '0 2px 12px rgba(0,0,0,0.10)',
-                position: 'relative',
-              }}>
-                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '1px', background: `linear-gradient(90deg, transparent, ${CORAL}30, transparent)` }} />
-                {/* Back button (mobile) */}
-                <button
-                  onClick={() => setSelected(null)}
-                  style={{
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    color: 'var(--text-faint)', padding: '4px',
-                    display: 'flex', borderRadius: '8px',
-                    transition: 'color 0.1s',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.color = 'var(--text)'}
-                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text-faint)'}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: '21px' }}>arrow_back</span>
+              <header className="thread-head">
+                <button className="icon-btn thread-back" onClick={() => navigate({ to: '/messages', search: {} })} aria-label="Back to inbox">
+                  <Icon name="arrow_back" />
                 </button>
-
-                <Avatar name={selected.name} size={40} />
-
+                <Avatar name={partner?.name ?? '…'} size={34} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ color: 'var(--text)', fontWeight: '700', fontSize: '14px', lineHeight: 1.2 }}>{selected.name}</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
-                    <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
-                    <span style={{ color: '#22c55e', fontSize: '11px', fontWeight: '500' }}>Online</span>
-                  </div>
+                  <div className="thread-name">{partner?.name ?? 'Loading…'}</div>
+                  <div className="thread-sub">Direct messages</div>
                 </div>
+                <Link to="/student/$userId" params={{ userId: String(partnerId) }} className="btn btn-quiet btn-sm hide-mobile">
+                  <Icon name="person" />Profile
+                </Link>
+              </header>
+
+              <div className="thread-scroll" ref={threadRef}
+                onScroll={(e) => { const el = e.currentTarget; stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80 }}>
+                {loadingThread && messages.length === 0 ? <SkeletonRows rows={3} /> : messages.length === 0 ? (
+                  <div className="thread-empty">
+                    <EmptyState icon="waving_hand" title={`Say hi to ${partner?.name?.split(' ')[0] ?? 'them'}`}>
+                      Introduce yourself and what you’d like help with.
+                    </EmptyState>
+                  </div>
+                ) : groups.map((g) => (
+                  <div key={g.day}>
+                    <div className="day-sep"><span>{g.label}</span></div>
+                    {g.items.map((m, i) => {
+                      const mine = m.id_sender === user?.id
+                      const next = g.items[i + 1]
+                      const tail = !next || next.id_sender !== m.id_sender
+                      return (
+                        <div key={m.id_message} className={`bubble-row ${mine ? 'mine' : ''} ${tail ? 'tail' : ''}`}>
+                          <div className="bubble" title={new Date(m.message_timestamp).toLocaleString('en-GB')}>{m.message}</div>
+                          {tail && (
+                            <div className="bubble-meta">
+                              {formatTime(m.message_timestamp)}
+                              {mine && m.id_message === lastMine?.id_message && m.read_at && <> · Seen</>}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
               </div>
 
-              {/* Messages */}
-              <div
-                className="animate-fade-in scrollbar-hide"
-                style={{
-                  flex: 1, overflowY: 'auto',
-                  padding: '20px 20px 8px',
-                  display: 'flex', flexDirection: 'column', gap: '2px',
-                }}
-              >
-                {messages.length === 0 && (
-                  <div style={{ textAlign: 'center', margin: 'auto', padding: '40px 20px' }}>
-                    <Avatar name={selected.name} size={56} />
-                    <p style={{ color: 'var(--text)', fontWeight: '700', fontSize: '15px', marginTop: '14px', marginBottom: '6px' }}>
-                      {selected.name}
-                    </p>
-                    <p style={{ color: 'var(--text-faint)', fontSize: '13px' }}>No messages yet — say hello!</p>
-                  </div>
-                )}
-
-                {groupedMessages.map((msg, i) => {
-                  const isMe = msg.id_sender === user?.id
-                  const nextMsg = groupedMessages[i + 1]
-                  const isLast = !nextMsg || nextMsg.id_sender !== msg.id_sender
-                  const showTime = isLast || (nextMsg && nextMsg.isFirst)
-
-                  // Bubble border radius: consecutive messages from same sender get one flat corner
-                  let borderRadius
-                  if (isMe) {
-                    borderRadius = msg.isFirst
-                      ? '18px 18px 4px 18px'
-                      : isLast
-                        ? '18px 4px 18px 18px'
-                        : '18px 4px 4px 18px'
-                  } else {
-                    borderRadius = msg.isFirst
-                      ? '18px 18px 18px 4px'
-                      : isLast
-                        ? '4px 18px 18px 18px'
-                        : '4px 18px 18px 4px'
-                  }
-
-                  const recentStart = Math.max(0, groupedMessages.length - 12)
-                  const bubbleDelay = i >= recentStart ? (i - recentStart) * 32 : 0
-                  return (
-                    <div
-                      key={i}
-                      style={{
-                        display: 'flex',
-                        flexDirection: isMe ? 'row-reverse' : 'row',
-                        alignItems: 'flex-end',
-                        gap: '8px',
-                        marginBottom: isLast ? '10px' : '2px',
-                        animation: `bubbleIn 0.22s cubic-bezier(0.16,1,0.3,1) ${bubbleDelay}ms both`,
-                      }}
-                    >
-                      {/* Avatar for received messages - only on last in group */}
-                      {!isMe && (
-                        <div style={{ width: '28px', flexShrink: 0 }}>
-                          {isLast && <Avatar name={selected.name} size={28} />}
-                        </div>
-                      )}
-
-                      <div style={{ maxWidth: '62%', display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
-                        <div style={{
-                          padding: '10px 14px',
-                          borderRadius,
-                          background: isMe
-                            ? `linear-gradient(135deg, ${CORAL}, #ff8f7e)`
-                            : 'var(--bg-card)',
-                          color: isMe ? 'white' : 'var(--text)',
-                          border: isMe ? 'none' : '1px solid var(--border)',
-                          fontSize: '13.5px',
-                          lineHeight: 1.55,
-                          wordBreak: 'break-word',
-                          boxShadow: isMe
-                            ? `0 2px 12px ${CORAL}30`
-                            : '0 1px 4px rgba(0,0,0,0.08)',
-                        }}>
-                          {msg.message}
-                        </div>
-                        {showTime && (
-                          <p style={{
-                            fontSize: '10px', marginTop: '4px',
-                            color: 'var(--text-faint)',
-                            padding: '0 2px',
-                          }}>
-                            {formatTime(msg.message_timestamp)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-                <div ref={bottomRef} />
-              </div>
-
-              {/* Input bar */}
-              <form
-                onSubmit={handleSend}
-                style={{
-                  display: 'flex', gap: '10px', alignItems: 'center',
-                  padding: '14px 20px',
-                  borderTop: '1px solid var(--border)',
-                  background: 'var(--bg-card)',
-                  flexShrink: 0,
-                }}
-              >
-                <div style={{ flex: 1, position: 'relative' }}>
-                  <input
-                    ref={inputRef}
-                    value={text}
-                    onChange={e => setText(e.target.value)}
-                    placeholder={`Message ${selected.name}…`}
-                    style={{
-                      width: '100%',
-                      padding: '11px 16px',
-                      background: 'var(--bg)',
-                      border: '1.5px solid var(--border)',
-                      borderRadius: '12px',
-                      color: 'var(--text)',
-                      fontSize: '13px',
-                      outline: 'none',
-                      transition: 'border-color 0.15s',
-                      boxSizing: 'border-box',
-                    }}
-                    onFocus={e => e.target.style.borderColor = CORAL + '60'}
-                    onBlur={e => e.target.style.borderColor = 'var(--border)'}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        handleSend(e)
-                      }
-                    }}
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={sending || !text.trim()}
-                  style={{
-                    width: '44px', height: '44px', borderRadius: '12px',
-                    background: text.trim() ? CORAL : 'var(--border)',
-                    color: text.trim() ? 'white' : 'var(--text-faint)',
-                    border: 'none',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: text.trim() ? 'pointer' : 'not-allowed',
-                    transition: 'background 0.15s, color 0.15s, transform 0.1s',
-                    flexShrink: 0,
-                    boxShadow: text.trim() ? `0 2px 10px ${CORAL}40` : 'none',
-                  }}
-                  onMouseEnter={e => { if (text.trim()) e.currentTarget.style.transform = 'scale(1.05)' }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: '19px' }}>send</span>
+              <form className="composer" onSubmit={send}>
+                <textarea
+                  ref={inputRef}
+                  rows={1}
+                  value={draft}
+                  maxLength={4000}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) send(e) }}
+                  placeholder={`Message ${partner?.name?.split(' ')[0] ?? ''}…`}
+                />
+                <button className="btn btn-coral" type="submit" disabled={!draft.trim() || sending} aria-label="Send">
+                  <Icon name="send" />
                 </button>
               </form>
+              <div className="composer-hint hide-mobile"><Kbd>↵</Kbd> send · <Kbd>⇧</Kbd><Kbd>↵</Kbd> new line</div>
             </>
           )}
-        </div>
+        </section>
       </div>
 
-      {/* ── Compose overlay ──────────────────────────────────────────────── */}
       {composing && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 100,
-          background: 'rgba(0,0,0,0.60)',
-          backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '20px',
-          animation: 'fadeIn 0.15s ease',
-        }}>
-          <div
-            ref={composeRef}
-            style={{
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border)',
-              borderRadius: '20px',
-              padding: '28px',
-              width: '100%',
-              maxWidth: '440px',
-              boxShadow: '0 24px 80px rgba(0,0,0,0.50)',
-              animation: 'slideUp 0.2s ease',
-            }}
-          >
-            {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '22px' }}>
-              <div>
-                <h3 style={{ color: 'var(--text)', fontWeight: '800', fontSize: '17px', marginBottom: '3px' }}>New Message</h3>
-                <p style={{ color: 'var(--text-faint)', fontSize: '12px' }}>Search for a user to start chatting</p>
-              </div>
-              <button
-                onClick={closeCompose}
-                style={{
-                  width: '32px', height: '32px', borderRadius: '10px',
-                  background: 'var(--bg)', border: '1px solid var(--border)',
-                  cursor: 'pointer', color: 'var(--text-muted)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'background 0.1s',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--border)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'var(--bg)'}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>close</span>
-              </button>
-            </div>
-
-            {/* To: label + search */}
-            <div style={{ marginBottom: '6px' }}>
-              <label style={{ color: 'var(--text-faint)', fontSize: '11px', fontWeight: '600', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>To</label>
-              <div style={{ position: 'relative' }}>
-                <span className="material-symbols-outlined" style={{
-                  position: 'absolute', left: '13px', top: '50%', transform: 'translateY(-50%)',
-                  fontSize: '18px', color: 'var(--text-faint)', pointerEvents: 'none',
-                }}>search</span>
-                <input
-                  autoFocus
-                  value={userQuery}
-                  onChange={e => setUserQuery(e.target.value)}
-                  placeholder="Search by name or email…"
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px 12px 42px',
-                    background: 'var(--bg)',
-                    border: '1.5px solid var(--border)',
-                    borderRadius: '12px',
-                    color: 'var(--text)',
-                    fontSize: '13px',
-                    outline: 'none',
-                    transition: 'border-color 0.15s',
-                    boxSizing: 'border-box',
-                  }}
-                  onFocus={e => e.target.style.borderColor = CORAL + '60'}
-                  onBlur={e => e.target.style.borderColor = 'var(--border)'}
-                />
-                {searching && (
-                  <span style={{
-                    position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
-                    color: 'var(--text-faint)', fontSize: '11px',
-                  }}>
-                    Searching…
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Results list */}
-            {userQuery.trim().length >= 2 && (
-              <div style={{
-                background: 'var(--bg)',
-                border: '1.5px solid var(--border)',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                maxHeight: '260px',
-                overflowY: 'auto',
-                marginTop: '8px',
-              }} className="scrollbar-hide">
-                {userResults.length === 0 && !searching ? (
-                  <div style={{ padding: '24px 16px', textAlign: 'center' }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'var(--text-faint)', marginBottom: '8px', display: 'block' }}>person_search</span>
-                    <p style={{ color: 'var(--text-faint)', fontSize: '13px' }}>No users found for "{userQuery}"</p>
-                  </div>
-                ) : (
-                  userResults.map(u => (
-                    <button
-                      key={u.id_user}
-                      onClick={() => startNewConvo(u)}
-                      style={{
-                        width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
-                        padding: '12px 14px',
-                        background: 'transparent',
-                        border: 'none', borderBottom: '1px solid var(--border)',
-                        cursor: 'pointer', textAlign: 'left',
-                        transition: 'background 0.1s',
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-card)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <Avatar name={u.name} size={40} />
-                      <div>
-                        <p style={{ color: 'var(--text)', fontWeight: '600', fontSize: '13px', marginBottom: '2px' }}>{u.name}</p>
-                        <p style={{ color: 'var(--text-faint)', fontSize: '11px' }}>{u.email}</p>
-                      </div>
-                      <span className="material-symbols-outlined" style={{ marginLeft: 'auto', fontSize: '18px', color: 'var(--text-faint)' }}>chevron_right</span>
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
-
-            {userQuery.trim().length < 2 && (
-              <p style={{ color: 'var(--text-faint)', fontSize: '12px', textAlign: 'center', marginTop: '14px' }}>
-                Type at least 2 characters to search
-              </p>
-            )}
-          </div>
-        </div>
+        <NewMessageDialog onClose={() => setComposing(false)} onPick={(u) => { setComposing(false); open(u.id_user) }} />
       )}
     </HubLayout>
   )

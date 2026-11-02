@@ -661,10 +661,10 @@ function PricingSection() {
           Pricing
         </p>
         <h2 data-reveal data-d="1" style={{ fontSize: "clamp(26px, 3.5vw, 38px)", fontWeight: "800", textAlign: "center", margin: "0 0 10px", letterSpacing: "-0.02em" }}>
-          Everything free. Explorer Plan for £2/mo.
+          Everything free. Explorer Plan for £5/mo.
         </h2>
         <p data-reveal data-d="2" style={{ textAlign: "center", color: TEXT_DIM, fontSize: "15px", margin: "0 auto 16px", lineHeight: 1.6, maxWidth: "480px" }}>
-          Tutoring, UCAS guidance, and booking are always free. The community extras are £2/month.
+          Tutoring, UCAS guidance, and booking are always free. The community extras are £5/month.
         </p>
 
         <div data-reveal data-d="2" style={{ display: "flex", justifyContent: "center", gap: "10px", marginBottom: "52px", flexWrap: "wrap" }}>
@@ -730,7 +730,7 @@ function PricingSection() {
             <div style={{ marginBottom: "18px" }}>
               <div style={{ fontSize: "12px", fontWeight: "800", color: CORAL, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "5px" }}>Explorer</div>
               <div style={{ display: "flex", alignItems: "baseline", gap: "4px", marginBottom: "3px" }}>
-                <div style={{ fontSize: "34px", fontWeight: "900", letterSpacing: "-0.04em" }}>£2</div>
+                <div style={{ fontSize: "34px", fontWeight: "900", letterSpacing: "-0.04em" }}>£5</div>
                 <div style={{ fontSize: "12px", color: TEXT_DIM }}>/month</div>
               </div>
               <div style={{ fontSize: "11px", color: TEXT_DIM }}>Everything in Free, plus:</div>
@@ -753,8 +753,8 @@ function PricingSection() {
   );
 }
 
-/// ── Why £2 section — two-column: bio left, solar system right ───────────────────
-function WhyTwoPounds() {
+/// ── Why £5 section — two-column: bio left, solar system right ───────────────────
+function WhyFivePounds() {
   const { dark } = useTheme();
   const CORAL = "#ff725e";
   const BORDER = dark ? "rgba(255,255,255,0.08)" : "rgba(27,38,59,0.10)";
@@ -792,10 +792,10 @@ function WhyTwoPounds() {
             The honest answer
           </p>
           <h2 data-reveal data-d="1" style={{ fontSize: "clamp(26px, 3.2vw, 36px)", fontWeight: "900", margin: "0 0 20px", letterSpacing: "-0.025em", lineHeight: 1.1 }}>
-            Why do we charge £2?
+            Why do we charge £5?
           </h2>
           <p data-reveal data-d="2" style={{ color: TEXT_MUT, fontSize: "15px", lineHeight: 1.75, margin: "0 0 16px" }}>
-            The £2/month Explorer Plan keeps the platform running — servers, development, maintenance — without ads or selling your data.
+            The £5/month Explorer Plan keeps the platform running — servers, development, maintenance — without ads or selling your data.
           </p>
           <p data-reveal data-d="3" style={{ color: TEXT_MUT, fontSize: "15px", lineHeight: 1.75, margin: "0 0 28px" }}>
             Half of every subscription goes directly to UNICEF's education programmes. You learn. Kids worldwide get access to learning too.
@@ -827,7 +827,7 @@ function WhyTwoPounds() {
             }} />
           ))}
 
-          {/* Center star — coral £2 */}
+          {/* Center star — coral £5 */}
           <div style={{
             position: "absolute", width: "72px", height: "72px", borderRadius: "50%",
             background: `radial-gradient(circle at 35% 35%, ${CORAL}cc, ${CORAL}88)`,
@@ -836,7 +836,7 @@ function WhyTwoPounds() {
             animation: "solarPulse 3s ease-in-out infinite",
             boxShadow: `0 0 0 0 ${CORAL}40, 0 0 40px ${CORAL}22`,
           }}>
-            <span style={{ fontSize: "22px", fontWeight: "900", color: "white", letterSpacing: "-0.04em", lineHeight: 1 }}>£2</span>
+            <span style={{ fontSize: "22px", fontWeight: "900", color: "white", letterSpacing: "-0.04em", lineHeight: 1 }}>£5</span>
             <span style={{ fontSize: "7px", fontWeight: "800", color: "rgba(255,255,255,0.75)", letterSpacing: "0.08em", marginTop: "1px" }}>/MO</span>
           </div>
 
@@ -1166,9 +1166,9 @@ export default function Home() {
                 <div style={{ marginBottom: "14px", background: `${CORAL}22`, color: CORAL, fontSize: "9px", fontWeight: "800", padding: "3px 8px", borderRadius: "20px", letterSpacing: "0.06em", display: "inline-block" }}>
                   EXPLORER PLAN
                 </div>
-                <div style={{ fontSize: "26px", fontWeight: "900", letterSpacing: "-0.04em", color: TEXT, marginBottom: "6px" }}>£2 / mo</div>
+                <div style={{ fontSize: "26px", fontWeight: "900", letterSpacing: "-0.04em", color: TEXT, marginBottom: "6px" }}>£5 / mo</div>
                 <p style={{ fontSize: "12px", color: TEXT_MUT, lineHeight: 1.6, margin: 0 }}>
-                  Unlock all Explorer features for less than a coffee a month.
+                  Unlock the forum, study notes, study rooms and live classes. Cancel anytime.
                 </p>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "5px", color: CORAL, fontSize: "12px", fontWeight: 700 }}>
@@ -1184,8 +1184,8 @@ export default function Home() {
       <div id="pricing" />
       <PricingSection />
 
-      {/* ── WHY £2 ──────────────────────────────────────────────────────────── */}
-      <WhyTwoPounds />
+      {/* ── WHY £5 ──────────────────────────────────────────────────────────── */}
+      <WhyFivePounds />
 
       {/* ── WHY TUTOR WITH US ────────────────────────────────────────────────── */}
       <section style={{ padding: "100px 24px", borderTop: `1px solid ${BORDER}`, position: "relative", overflow: "hidden" }}>

@@ -160,7 +160,7 @@ export default function SpotlightTour({ steps, onDone }) {
         style={{
           ...tooltipStyle(),
           zIndex: OVERLAY_Z + 2,
-          background: 'var(--card-bg, #1e2d45)',
+          background: 'var(--elevated)',
           border: `1px solid rgba(255,114,94,0.25)`,
           borderRadius: '16px',
           padding: '20px',
@@ -182,7 +182,7 @@ export default function SpotlightTour({ steps, onDone }) {
                   width: i === idx ? '18px' : '6px',
                   height: '6px',
                   borderRadius: '3px',
-                  background: i === idx ? CORAL : 'rgba(255,255,255,0.20)',
+                  background: i === idx ? CORAL : 'rgb(var(--fg) / 0.20)',
                   transition: 'width 0.25s ease, background 0.25s ease',
                 }}
               />
@@ -192,7 +192,7 @@ export default function SpotlightTour({ steps, onDone }) {
             onClick={done}
             style={{
               background: 'none', border: 'none', cursor: 'pointer', padding: '2px',
-              color: 'rgba(255,255,255,0.30)', fontSize: '18px', lineHeight: 1,
+              color: 'rgb(var(--fg) / 0.30)', fontSize: '18px', lineHeight: 1,
             }}
             title="Skip tour"
           >
@@ -202,13 +202,13 @@ export default function SpotlightTour({ steps, onDone }) {
 
         {/* Content */}
         <h3 style={{
-          fontSize: '16px', fontWeight: '800', color: 'white',
+          fontSize: '16px', fontWeight: '800', color: 'var(--text)',
           marginBottom: '8px', lineHeight: 1.25, letterSpacing: '-0.2px',
         }}>
           {step.title}
         </h3>
         <p style={{
-          fontSize: '13px', color: 'rgba(255,255,255,0.60)',
+          fontSize: '13px', color: 'rgb(var(--fg) / 0.60)',
           lineHeight: 1.6, marginBottom: '18px',
         }}>
           {step.body}
@@ -221,9 +221,9 @@ export default function SpotlightTour({ steps, onDone }) {
               onClick={back}
               style={{
                 padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
-                border: '1px solid rgba(255,255,255,0.14)',
-                background: 'rgba(255,255,255,0.06)',
-                color: 'rgba(255,255,255,0.60)', cursor: 'pointer',
+                border: '1px solid rgb(var(--fg) / 0.14)',
+                background: 'rgb(var(--fg) / 0.06)',
+                color: 'rgb(var(--fg) / 0.60)', cursor: 'pointer',
               }}
             >
               ← Back
@@ -234,7 +234,7 @@ export default function SpotlightTour({ steps, onDone }) {
             style={{
               flex: 1, padding: '9px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '700',
               background: `linear-gradient(135deg, ${CORAL}, #e05a48)`,
-              border: 'none', color: 'white', cursor: 'pointer',
+              border: 'none', color: '#fff', cursor: 'pointer',
               boxShadow: `0 4px 14px rgba(255,114,94,0.35)`,
             }}
           >

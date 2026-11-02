@@ -1,3 +1,4 @@
+import os
 from flask import Flask, redirect, render_template, request, session, jsonify, flash, request, abort
 import mysql.connector
 from mysql.connector import Error
@@ -68,7 +69,7 @@ def signup():
             connection = mysql.connector.connect(
                 host='localhost',          # e.g., 'localhost' or an IP address
                 user='root',      # your database username
-                password='Kikidi25',  # your database password
+                password=os.environ.get('DB_PASSWORD', ''),  # your database password
                 database='users_tutoring'   # the name of your database
             )
             
@@ -117,7 +118,7 @@ def login():
             connection = mysql.connector.connect(
                 host='localhost',          # e.g., 'localhost' or an IP address
                 user='root',      # your database username
-                password='Kikidi25',  # your database password
+                password=os.environ.get('DB_PASSWORD', ''),  # your database password
                 database='users_tutoring'   # the name of your database
             )
             
@@ -194,7 +195,7 @@ def tutor_profile():
                 connection = mysql.connector.connect(
                     host='localhost',          # e.g., 'localhost' or an IP address
                     user='root',      # your database username
-                    password='Kikidi25',  # your database password
+                    password=os.environ.get('DB_PASSWORD', ''),  # your database password
                     database='users_tutoring'   # the name of your database
                 )
                 
@@ -249,7 +250,7 @@ def find_tutors():
                     connection = mysql.connector.connect(
                         host='localhost',          # e.g., 'localhost' or an IP address
                         user='root',      # your database username
-                        password='Kikidi25',  # your database password
+                        password=os.environ.get('DB_PASSWORD', ''),  # your database password
                         database='users_tutoring'   # the name of your database
                     )
                     
@@ -303,7 +304,7 @@ def find_tutor_ajax():
         connection = mysql.connector.connect(
             host='localhost',
             user='root',
-            password='Kikidi25',
+            password=os.environ.get('DB_PASSWORD', ''),
             database='users_tutoring'
         )
 
@@ -359,7 +360,7 @@ def like_tutor():
         connection = mysql.connector.connect(
             host='localhost',
             user='root',
-            password='Kikidi25',
+            password=os.environ.get('DB_PASSWORD', ''),
             database='users_tutoring'
         )
 
@@ -403,7 +404,7 @@ def tutor_info():
         connection = mysql.connector.connect(
             host='localhost',          # e.g., 'localhost' or an IP address
             user='root',      # your database username
-            password='Kikidi25',  # your database password
+            password=os.environ.get('DB_PASSWORD', ''),  # your database password
             database='users_tutoring'   # the name of your database
         )
         
@@ -447,7 +448,7 @@ def make_tutor_active():
         connection = mysql.connector.connect(
             host="localhost",
             user="root",
-            password="Kikidi25",
+            password=os.environ.get('DB_PASSWORD', ''),
             database="users_tutoring"
         )
         cursor = connection.cursor()
@@ -494,7 +495,7 @@ def active_tutors_page():
         connection = mysql.connector.connect(
             host="localhost",
             user="root",
-            password="Kikidi25",
+            password=os.environ.get('DB_PASSWORD', ''),
             database="users_tutoring"
         )
         cursor = connection.cursor(dictionary=True)
@@ -557,7 +558,7 @@ def update_event_status():
 
     try:
         conn = mysql.connector.connect(
-            host="localhost", user="root", password="Kikidi25", database="users_tutoring"
+            host="localhost", user="root", password=os.environ.get('DB_PASSWORD', ''), database="users_tutoring"
         )
         cursor = conn.cursor()
         cursor.execute("""
@@ -589,7 +590,7 @@ def active_students():
         connection = mysql.connector.connect(
             host="localhost",
             user="root",
-            password="Kikidi25",
+            password=os.environ.get('DB_PASSWORD', ''),
             database="users_tutoring"
         )
         cursor = connection.cursor(dictionary=True)
@@ -653,7 +654,7 @@ def add_active_student():
         connection = mysql.connector.connect(
             host="localhost",
             user="root",
-            password="Kikidi25",
+            password=os.environ.get('DB_PASSWORD', ''),
             database="users_tutoring"
         )
         cursor = connection.cursor()
@@ -715,7 +716,7 @@ def schedule_session():
         connection = mysql.connector.connect(
             host="localhost",
             user="root",
-            password="Kikidi25",
+            password=os.environ.get('DB_PASSWORD', ''),
             database="users_tutoring"
         )
         cursor = connection.cursor()
@@ -758,7 +759,7 @@ def messages():
             connection = mysql.connector.connect(
                 host='localhost',          # e.g., 'localhost' or an IP address
                 user='root',      # your database username
-                password='Kikidi25',  # your database password
+                password=os.environ.get('DB_PASSWORD', ''),  # your database password
                 database='users_tutoring'   # the name of your database
             )
             
@@ -814,7 +815,7 @@ def messages():
             connection = mysql.connector.connect(
                 host='localhost',
                 user='root',
-                password='Kikidi25',
+                password=os.environ.get('DB_PASSWORD', ''),
                 database='users_tutoring'
             )
 
@@ -868,7 +869,7 @@ def send_message():
             connection = mysql.connector.connect(
                 host='localhost',          # e.g., 'localhost' or an IP address
                 user='root',      # your database username
-                password='Kikidi25',  # your database password
+                password=os.environ.get('DB_PASSWORD', ''),  # your database password
                 database='users_tutoring'   # the name of your database
             )
             
@@ -899,7 +900,7 @@ def send_message():
             connection = mysql.connector.connect(
                 host='localhost',
                 user='root',
-                password='Kikidi25',
+                password=os.environ.get('DB_PASSWORD', ''),
                 database='users_tutoring'
             )
 
@@ -940,7 +941,7 @@ def routelikedtutors():
         connection = mysql.connector.connect(
             host="localhost",
             user="root",
-            password="Kikidi25",
+            password=os.environ.get('DB_PASSWORD', ''),
             database="users_tutoring"   # ✅ make sure this is correct
         )
 
@@ -1001,7 +1002,7 @@ def calendar_page_tutor():
     connection = mysql.connector.connect(
         host="localhost",
         user="root",
-        password="Kikidi25",
+        password=os.environ.get('DB_PASSWORD', ''),
         database="users_tutoring"
     )
     cursor = connection.cursor(dictionary=True)
@@ -1094,7 +1095,7 @@ def calendar_page_student():
     connection = mysql.connector.connect(
         host="localhost",
         user="root",
-        password="Kikidi25",
+        password=os.environ.get('DB_PASSWORD', ''),
         database="users_tutoring"
     )
     cursor = connection.cursor(dictionary=True)
@@ -1187,7 +1188,7 @@ def create_event(data):
         connection = mysql.connector.connect(
             host='localhost',
             user='root',
-            password='Kikidi25',
+            password=os.environ.get('DB_PASSWORD', ''),
             database='users_tutoring'
         )
 
@@ -1227,7 +1228,7 @@ def get_db_connection():
     return mysql.connector.connect(
         host="localhost",
         user="root",
-        password="Kikidi25",
+        password=os.environ.get('DB_PASSWORD', ''),
         database="users_tutoring"
     )
 

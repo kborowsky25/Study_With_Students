@@ -2,76 +2,116 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── CSS Custom Properties ───────────────────────────────────────────────── */
+/* ── Design tokens ───────────────────────────────────────────────────────────
+   Study With Students colours: navy #1b263b, coral #ff725e, slate #b0bec5.
+   Components read only these variables, so every page follows the dark/light
+   toggle (ThemeContext → html.dark/.light). `--fg` is an RGB channel for
+   neutral tints: rgb(var(--fg) / 0.06).                                     */
 
 :root,
 html.dark {
+  color-scheme: dark;
+  --fg:                  176 190 197;
+  --navy:                #1b263b;
+  --slate:               #b0bec5;
+  --slate-light:         #cfd8dc;
   --bg:                  #1b263b;
-  --bg-secondary:        #161f30;
-  --bg-card:             rgba(255, 255, 255, 0.06);
-  --border:              rgba(255, 255, 255, 0.10);
+  --bg-secondary:        #18223a;
+  --bg-sunken:           #18223a;
+  --bg-card:             rgba(176, 190, 197, 0.07);
+  --surface:             rgba(176, 190, 197, 0.07);
+  --surface-hover:       rgba(176, 190, 197, 0.11);
+  --elevated:            #233149;
+  --border:              rgba(176, 190, 197, 0.16);
+  --border-strong:       rgba(176, 190, 197, 0.30);
   --text:                #ffffff;
-  --text-muted:          rgba(255, 255, 255, 0.50);
-  --text-faint:          rgba(255, 255, 255, 0.25);
-  --sidebar-bg:          #161f30;
-  --sidebar-border:      rgba(255, 255, 255, 0.07);
-  --sidebar-muted:       rgba(255, 255, 255, 0.45);
-  --topbar-bg:           rgba(22, 31, 48, 0.96);
+  --text-muted:          #b0bec5;
+  --text-faint:          #8392a8;
+  --sidebar-bg:          #18223a;
+  --sidebar-border:      rgba(176, 190, 197, 0.12);
+  --sidebar-muted:       #cfd8dc;
+  --topbar-bg:           #1b263b;
   --accent:              #ff725e;
-  --accent-blue:         #60a5fa;
-  /* Component-level theming */
-  --glass-hover-bg:      rgba(255, 255, 255, 0.10);
-  --glass-hover-border:  rgba(255, 255, 255, 0.20);
-  --btn-secondary-bg:    rgba(255, 255, 255, 0.09);
-  --btn-secondary-hover: rgba(255, 255, 255, 0.16);
-  --input-bg:            rgba(255, 255, 255, 0.06);
-  --topbar-hover:        rgba(255, 255, 255, 0.08);
-  --shadow-card:         0 4px 24px rgba(0, 0, 0, 0.20);
-  --shadow-hover:        0 12px 36px rgba(0, 0, 0, 0.28);
+  --coral:               #ff725e;
+  --coral-hover:         #ff5d47;
+  --coral-soft:          rgba(255, 114, 94, 0.14);
+  --coral-line:          rgba(255, 114, 94, 0.55);
+  --tag-strong-bg:       #ffffff;
+  --tag-strong-text:     #1b263b;
+  --accent-blue:         #b0bec5;
+  --green:               #7fd1a8;
+  --amber:               #f3c26b;
+  --red:                 #ff8a7a;
+  --blue:                #b0bec5;
+  --violet:              #b0bec5;
+  --glass-hover-bg:      rgba(176, 190, 197, 0.11);
+  --glass-hover-border:  rgba(176, 190, 197, 0.30);
+  --btn-secondary-bg:    #b0bec5;
+  --btn-secondary-hover: #cfd8dc;
+  --input-bg:            rgba(176, 190, 197, 0.08);
+  --topbar-hover:        rgba(176, 190, 197, 0.10);
+  --shadow-card:         none;
+  --shadow-hover:        none;
+  --shadow-pop:          0 18px 44px rgba(5, 10, 20, 0.45);
+  --overlay:             rgba(10, 15, 26, 0.6);
+  --radius-sm:           8px;
+  --radius:              12px;
+  --radius-lg:           16px;
 }
-
-/* ── Light Mode — White + Blue + Orange ──────────────────────────────────── */
 
 html.light {
+  color-scheme: light;
+  --fg:                  27 38 59;
+  --navy:                #1b263b;
+  --slate:               #b0bec5;
+  --slate-light:         #cfd8dc;
   --bg:                  #ffffff;
-  --bg-secondary:        #f0f5ff;
-  --bg-card:             #ffffff;
-  --border:              rgba(37, 99, 235, 0.14);
+  --bg-secondary:        #f2f5f7;
+  --bg-sunken:           #f2f5f7;
+  --bg-card:             #f2f5f7;
+  --surface:             #f2f5f7;
+  --surface-hover:       #e9eef1;
+  --elevated:            #ffffff;
+  --border:              rgba(27, 38, 59, 0.12);
+  --border-strong:       rgba(27, 38, 59, 0.24);
   --text:                #1b263b;
-  --text-muted:          rgba(27, 38, 59, 0.60);
-  --text-faint:          rgba(27, 38, 59, 0.35);
+  --text-muted:          #4f5f74;
+  --text-faint:          #7a8899;
   --sidebar-bg:          #1b263b;
-  --sidebar-border:      rgba(255, 255, 255, 0.07);
-  --sidebar-muted:       rgba(255, 255, 255, 0.50);
-  --topbar-bg:           rgba(255, 255, 255, 0.96);
+  --sidebar-border:      rgba(176, 190, 197, 0.12);
+  --sidebar-muted:       #cfd8dc;
+  --topbar-bg:           #ffffff;
   --accent:              #ff725e;
-  --accent-blue:         #2563eb;
-  /* Component-level theming */
-  --glass-hover-bg:      rgba(37, 99, 235, 0.05);
-  --glass-hover-border:  rgba(37, 99, 235, 0.22);
-  --btn-secondary-bg:    rgba(37, 99, 235, 0.08);
-  --btn-secondary-hover: rgba(37, 99, 235, 0.15);
-  --input-bg:            #f8faff;
-  --topbar-hover:        rgba(37, 99, 235, 0.06);
-  --shadow-card:         0 2px 16px rgba(37, 99, 235, 0.08);
-  --shadow-hover:        0 8px 32px rgba(37, 99, 235, 0.16);
+  --coral:               #ff725e;
+  --coral-hover:         #f2553f;
+  --coral-soft:          rgba(255, 114, 94, 0.12);
+  --coral-line:          rgba(255, 114, 94, 0.6);
+  --tag-strong-bg:       #1b263b;
+  --tag-strong-text:     #ffffff;
+  --accent-blue:         #4f5f74;
+  --green:               #2e8b62;
+  --amber:               #a8751c;
+  --red:                 #d4503d;
+  --blue:                #4f5f74;
+  --violet:              #4f5f74;
+  --glass-hover-bg:      #e9eef1;
+  --glass-hover-border:  rgba(27, 38, 59, 0.24);
+  --btn-secondary-bg:    #b0bec5;
+  --btn-secondary-hover: #cfd8dc;
+  --input-bg:            #ffffff;
+  --topbar-hover:        rgba(27, 38, 59, 0.06);
+  --shadow-card:         none;
+  --shadow-hover:        none;
+  --shadow-pop:          0 16px 40px rgba(27, 38, 59, 0.16);
+  --overlay:             rgba(27, 38, 59, 0.35);
+  --radius-sm:           8px;
+  --radius:              12px;
+  --radius-lg:           16px;
 }
 
-/* ── Light mode card elevation ─────────────────────────────────────────── */
-
-html.light .glass,
-html.light .glass-hover {
-  box-shadow: var(--shadow-card);
-}
-
-html.light .glass-hover:hover {
-  box-shadow: var(--shadow-hover);
-}
-
-/* Light mode scrollbar */
-html.light ::-webkit-scrollbar        { width: 6px; }
-html.light ::-webkit-scrollbar-track  { background: #f0f5ff; }
-html.light ::-webkit-scrollbar-thumb  { background: rgba(37,99,235,0.20); border-radius: 3px; }
+html.light ::-webkit-scrollbar        { width: 8px; height: 8px; }
+html.light ::-webkit-scrollbar-track  { background: transparent; }
+html.light ::-webkit-scrollbar-thumb  { background: rgba(27, 38, 59, 0.16); border-radius: 4px; }
 
 /* ── Material Symbols font-variation-settings (required for icons to render) */
 
@@ -323,7 +363,7 @@ html.light ::-webkit-scrollbar-thumb  { background: rgba(37,99,235,0.20); border
 .skeleton {
   background: linear-gradient(90deg,
     var(--border) 25%,
-    rgba(255,255,255,0.06) 50%,
+    rgb(var(--fg) / 0.06) 50%,
     var(--border) 75%
   );
   background-size: 400px 100%;
@@ -333,9 +373,9 @@ html.light ::-webkit-scrollbar-thumb  { background: rgba(37,99,235,0.20); border
 
 html.light .skeleton {
   background: linear-gradient(90deg,
-    rgba(37,99,235,0.06) 25%,
-    rgba(37,99,235,0.02) 50%,
-    rgba(37,99,235,0.06) 75%
+    rgba(27,38,59,0.06) 25%,
+    rgba(27,38,59,0.02) 50%,
+    rgba(27,38,59,0.06) 75%
   );
   background-size: 400px 100%;
   animation: shimmer 1.4s ease-in-out infinite;
@@ -545,10 +585,6 @@ html.light .skeleton {
     box-shadow: 0 0 0 3px rgba(255, 114, 94, 0.15);
   }
 
-  .card {
-    @apply glass;
-    padding: 1.5rem;
-  }
 
   .section-title {
     font-size: clamp(28px, 4vw, 42px);

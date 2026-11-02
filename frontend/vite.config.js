@@ -11,15 +11,9 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // The Flask API (see /api.py) runs on 5001 — macOS reserves 5000 for AirPlay
     proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:5001',
-        changeOrigin: true,
-      },
-      '/static': {
-        target: 'http://127.0.0.1:5001',
-        changeOrigin: true,
-      },
+      '/api': { target: 'http://127.0.0.1:5001', changeOrigin: true },
     },
   },
 })

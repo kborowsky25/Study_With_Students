@@ -55,9 +55,9 @@ function OTPInput({ onChange, disabled }) {
           style={{
             width: '46px', height: '56px', textAlign: 'center',
             fontSize: '24px', fontWeight: '900', borderRadius: '12px',
-            border: `2px solid ${d ? TEAL : 'rgba(255,255,255,0.14)'}`,
-            background: d ? `${TEAL}14` : 'rgba(255,255,255,0.04)',
-            color: d ? TEAL : 'rgba(255,255,255,0.5)', outline: 'none',
+            border: `2px solid ${d ? TEAL : 'rgb(var(--fg) / 0.14)'}`,
+            background: d ? `${TEAL}14` : 'rgb(var(--fg) / 0.04)',
+            color: d ? TEAL : 'rgb(var(--fg) / 0.5)', outline: 'none',
             transition: 'all 0.15s', caretColor: TEAL,
             opacity: disabled ? 0.5 : 1,
           }}
@@ -75,8 +75,8 @@ function Steps({ current }) {
       {steps.map((label, i) => {
         const done    = i < current
         const active  = i === current
-        const color   = done ? TEAL : active ? CORAL : 'rgba(255,255,255,0.20)'
-        const bgColor = done ? TEAL : active ? CORAL : 'rgba(255,255,255,0.08)'
+        const color   = done ? TEAL : active ? CORAL : 'rgb(var(--fg) / 0.20)'
+        const bgColor = done ? TEAL : active ? CORAL : 'rgb(var(--fg) / 0.08)'
         return (
           <div key={i} style={{ display: 'flex', alignItems: 'center', flex: i < steps.length - 1 ? 1 : 'none' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
@@ -88,8 +88,8 @@ function Steps({ current }) {
                 transition: 'all 0.25s',
               }}>
                 {done
-                  ? <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'white', fontVariationSettings: '"FILL" 1' }}>check</span>
-                  : <span style={{ fontSize: '12px', fontWeight: '800', color: active ? 'white' : 'rgba(255,255,255,0.35)' }}>{i + 1}</span>
+                  ? <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#fff', fontVariationSettings: '"FILL" 1' }}>check</span>
+                  : <span style={{ fontSize: '12px', fontWeight: '800', color: active ? 'white' : 'rgb(var(--fg) / 0.35)' }}>{i + 1}</span>
                 }
               </div>
               <span style={{ fontSize: '10px', fontWeight: '600', color, whiteSpace: 'nowrap' }}>{label}</span>
@@ -97,7 +97,7 @@ function Steps({ current }) {
             {i < steps.length - 1 && (
               <div style={{
                 flex: 1, height: '2px', margin: '0 6px', marginBottom: '20px',
-                background: done ? TEAL : 'rgba(255,255,255,0.10)',
+                background: done ? TEAL : 'rgb(var(--fg) / 0.10)',
                 transition: 'background 0.25s',
               }} />
             )}
@@ -165,9 +165,11 @@ export default function TutorScreening() {
     if (!uniEmail.trim()) return
     setSubmitting(true)
     try {
-      await sendUniCode(uniEmail.trim())
+      const { data } = await sendUniCode(uniEmail.trim())
       setCodeSent(true)
-      toast.success('Verification code sent to your university email!')
+      toast.success(data.dev_code
+        ? `Dev mode — your code is ${data.dev_code}`
+        : 'Verification code sent to your university email!', { duration: data.dev_code ? 8000 : 3500 })
     } catch (err) {
       toast.error(err.response?.data?.error ?? 'Could not send code')
     } finally {
@@ -232,19 +234,19 @@ export default function TutorScreening() {
   }
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#1b263b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <span className="material-symbols-outlined" style={{ fontSize: '36px', color: TEAL, animation: 'spin 1s linear infinite' }}>progress_activity</span>
     </div>
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: '#1b263b', display: 'flex', fontFamily: '"Noto Sans JP", sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', fontFamily: '"Noto Sans JP", sans-serif' }}>
 
       {/* Left — form panel */}
       <div className="animate-slide-in-left" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4vw' }}>
 
         <Link to="/" style={{ textDecoration: 'none', marginBottom: '32px' }}>
-          <span style={{ fontSize: '22px', fontWeight: '900', color: 'white' }}>
+          <span style={{ fontSize: '22px', fontWeight: '900', color: 'var(--text)' }}>
             Study<span style={{ color: CORAL }}>WithStudents</span>
           </span>
         </Link>
@@ -266,17 +268,17 @@ export default function TutorScreening() {
                 </div>
               )}
 
-              <h1 style={{ fontSize: '26px', fontWeight: '900', color: 'white', marginBottom: '6px', letterSpacing: '-0.3px' }}>
+              <h1 style={{ fontSize: '26px', fontWeight: '900', color: 'var(--text)', marginBottom: '6px', letterSpacing: '-0.3px' }}>
                 Verify your university email
               </h1>
-              <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: '14px', lineHeight: 1.65, marginBottom: '28px' }}>
+              <p style={{ color: 'rgb(var(--fg) / 0.50)', fontSize: '14px', lineHeight: 1.65, marginBottom: '28px' }}>
                 We need to confirm you're a current university student before you can start tutoring.
               </p>
 
               {!codeSent ? (
                 <form onSubmit={handleSendCode} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: '700', color: 'rgba(255,255,255,0.45)', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: '700', color: 'rgb(var(--fg) / 0.45)', letterSpacing: '0.06em', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
                       University email address
                     </label>
                     <input
@@ -285,7 +287,7 @@ export default function TutorScreening() {
                       placeholder="you@university.ac.uk"
                       className="input-field"
                     />
-                    <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.30)', marginTop: '5px', lineHeight: 1.4 }}>
+                    <p style={{ fontSize: '11px', color: 'rgb(var(--fg) / 0.30)', marginTop: '5px', lineHeight: 1.4 }}>
                       Use your .ac.uk, .edu, or equivalent institutional email
                     </p>
                   </div>
@@ -300,8 +302,8 @@ export default function TutorScreening() {
                 </form>
               ) : (
                 <form onSubmit={handleVerifyEmail} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '14px', lineHeight: 1.6, margin: 0 }}>
-                    Code sent to <strong style={{ color: 'white' }}>{uniEmail}</strong>
+                  <p style={{ color: 'rgb(var(--fg) / 0.55)', fontSize: '14px', lineHeight: 1.6, margin: 0 }}>
+                    Code sent to <strong style={{ color: 'var(--text)' }}>{uniEmail}</strong>
                   </p>
                   <OTPInput onChange={setOtp} disabled={submitting} />
                   <button
@@ -322,7 +324,7 @@ export default function TutorScreening() {
                     </button>
                     <button
                       type="button" onClick={() => { setCodeSent(false); setOtp('') }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.35)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--fg) / 0.35)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
                     >
                       <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>arrow_back</span>
                       Change email
@@ -336,10 +338,10 @@ export default function TutorScreening() {
           {/* ── Step 1: Upload proof ─────────────────────────────────────────── */}
           {step === 1 && (
             <>
-              <h1 style={{ fontSize: '26px', fontWeight: '900', color: 'white', marginBottom: '6px', letterSpacing: '-0.3px' }}>
+              <h1 style={{ fontSize: '26px', fontWeight: '900', color: 'var(--text)', marginBottom: '6px', letterSpacing: '-0.3px' }}>
                 Upload proof of enrolment
               </h1>
-              <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: '14px', lineHeight: 1.65, marginBottom: '24px' }}>
+              <p style={{ color: 'rgb(var(--fg) / 0.50)', fontSize: '14px', lineHeight: 1.65, marginBottom: '24px' }}>
                 Please attach your current Certificate of Enrolment or Student ID card. Accepted: PNG, JPG, PDF (max 10 MB).
               </p>
 
@@ -351,12 +353,12 @@ export default function TutorScreening() {
                   onDrop={handleFileDrop}
                   onClick={() => fileRef.current?.click()}
                   style={{
-                    border: `2px dashed ${dragOver ? TEAL : file ? TEAL : 'rgba(255,255,255,0.15)'}`,
+                    border: `2px dashed ${dragOver ? TEAL : file ? TEAL : 'rgb(var(--fg) / 0.15)'}`,
                     borderRadius: '14px',
                     padding: '32px 20px',
                     textAlign: 'center',
                     cursor: 'pointer',
-                    background: dragOver ? `${TEAL}0a` : file ? `${TEAL}08` : 'rgba(255,255,255,0.03)',
+                    background: dragOver ? `${TEAL}0a` : file ? `${TEAL}08` : 'rgb(var(--fg) / 0.03)',
                     transition: 'all 0.2s ease',
                   }}
                 >
@@ -370,14 +372,14 @@ export default function TutorScreening() {
                       <span className="material-symbols-outlined" style={{ fontSize: '36px', color: TEAL, display: 'block', marginBottom: '8px', fontVariationSettings: '"FILL" 1' }}>
                         {file.name.endsWith('.pdf') ? 'picture_as_pdf' : 'image'}
                       </span>
-                      <p style={{ color: 'white', fontWeight: '700', fontSize: '14px', marginBottom: '4px' }}>{file.name}</p>
-                      <p style={{ color: 'rgba(255,255,255,0.40)', fontSize: '12px' }}>{(file.size / 1024).toFixed(0)} KB · Click to replace</p>
+                      <p style={{ color: 'var(--text)', fontWeight: '700', fontSize: '14px', marginBottom: '4px' }}>{file.name}</p>
+                      <p style={{ color: 'rgb(var(--fg) / 0.40)', fontSize: '12px' }}>{(file.size / 1024).toFixed(0)} KB · Click to replace</p>
                     </>
                   ) : (
                     <>
-                      <span className="material-symbols-outlined" style={{ fontSize: '36px', color: 'rgba(255,255,255,0.25)', display: 'block', marginBottom: '8px' }}>upload_file</span>
-                      <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: '14px', marginBottom: '4px' }}>Drop your file here or <span style={{ color: TEAL, fontWeight: '600' }}>browse</span></p>
-                      <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '12px' }}>PNG, JPG, PDF · Max 10 MB</p>
+                      <span className="material-symbols-outlined" style={{ fontSize: '36px', color: 'rgb(var(--fg) / 0.25)', display: 'block', marginBottom: '8px' }}>upload_file</span>
+                      <p style={{ color: 'rgb(var(--fg) / 0.50)', fontSize: '14px', marginBottom: '4px' }}>Drop your file here or <span style={{ color: TEAL, fontWeight: '600' }}>browse</span></p>
+                      <p style={{ color: 'rgb(var(--fg) / 0.25)', fontSize: '12px' }}>PNG, JPG, PDF · Max 10 MB</p>
                     </>
                   )}
                 </div>
@@ -386,8 +388,8 @@ export default function TutorScreening() {
                   type="submit" disabled={submitting || !file}
                   style={{
                     padding: '13px', borderRadius: '12px', fontSize: '15px', fontWeight: '700',
-                    background: !file ? 'rgba(255,255,255,0.08)' : `linear-gradient(135deg, ${TEAL}, #0d9488)`,
-                    border: 'none', color: !file ? 'rgba(255,255,255,0.25)' : 'white',
+                    background: !file ? 'rgb(var(--fg) / 0.08)' : `linear-gradient(135deg, ${TEAL}, #0d9488)`,
+                    border: 'none', color: !file ? 'rgb(var(--fg) / 0.25)' : 'white',
                     cursor: (submitting || !file) ? 'not-allowed' : 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                     transition: 'all 0.2s',
@@ -413,19 +415,19 @@ export default function TutorScreening() {
                   pending
                 </span>
               </div>
-              <h1 style={{ fontSize: '26px', fontWeight: '900', color: 'white', marginBottom: '10px' }}>
+              <h1 style={{ fontSize: '26px', fontWeight: '900', color: 'var(--text)', marginBottom: '10px' }}>
                 Under Review
               </h1>
-              <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: '14px', lineHeight: 1.7, marginBottom: '28px', maxWidth: '340px', margin: '0 auto 28px' }}>
-                We've received your documents and will review your tutor application within <strong style={{ color: 'white' }}>24 hours</strong>. You'll receive an email once approved.
+              <p style={{ color: 'rgb(var(--fg) / 0.50)', fontSize: '14px', lineHeight: 1.7, marginBottom: '28px', maxWidth: '340px', margin: '0 auto 28px' }}>
+                We've received your documents and will review your tutor application within <strong style={{ color: 'var(--text)' }}>24 hours</strong>. You'll receive an email once approved.
               </p>
               <div style={{
                 padding: '14px 18px', borderRadius: '12px', marginBottom: '24px',
-                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                background: 'rgb(var(--fg) / 0.04)', border: '1px solid rgb(var(--fg) / 0.08)',
                 textAlign: 'left',
               }}>
-                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', margin: 0, lineHeight: 1.6 }}>
-                  While you wait, you can continue using the platform as a <strong style={{ color: 'white' }}>student</strong>. Your tutor hub will unlock automatically once approved.
+                <p style={{ fontSize: '12px', color: 'rgb(var(--fg) / 0.45)', margin: 0, lineHeight: 1.6 }}>
+                  While you wait, you can continue using the platform as a <strong style={{ color: 'var(--text)' }}>student</strong>. Your tutor hub will unlock automatically once approved.
                 </p>
               </div>
               <Link
@@ -445,10 +447,10 @@ export default function TutorScreening() {
       <div className="animate-slide-in-right" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4vw', gap: '24px' }}>
         <div style={{
           padding: '28px', borderRadius: '20px',
-          background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)',
+          background: 'rgb(var(--fg) / 0.04)', border: '1px solid rgb(var(--fg) / 0.07)',
           maxWidth: '340px', width: '100%',
         }}>
-          <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'white', marginBottom: '16px' }}>Why do we verify tutors?</h3>
+          <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text)', marginBottom: '16px' }}>Why do we verify tutors?</h3>
           {[
             { icon: 'verified_user',  title: 'Trust & Safety',   body: 'Students deserve to learn from genuine, verified university peers.' },
             { icon: 'school',         title: 'Academic Credibility', body: 'Verified students have up-to-date knowledge in their courses.' },
@@ -459,13 +461,13 @@ export default function TutorScreening() {
                 <span className="material-symbols-outlined" style={{ fontSize: '18px', color: TEAL, fontVariationSettings: '"FILL" 1' }}>{icon}</span>
               </div>
               <div>
-                <p style={{ fontSize: '13px', fontWeight: '700', color: 'white', marginBottom: '2px' }}>{title}</p>
-                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', lineHeight: 1.5 }}>{body}</p>
+                <p style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)', marginBottom: '2px' }}>{title}</p>
+                <p style={{ fontSize: '12px', color: 'rgb(var(--fg) / 0.45)', lineHeight: 1.5 }}>{body}</p>
               </div>
             </div>
           ))}
         </div>
-        <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.25)', textAlign: 'center', maxWidth: '280px', lineHeight: 1.6 }}>
+        <p style={{ fontSize: '12px', color: 'rgb(var(--fg) / 0.25)', textAlign: 'center', maxWidth: '280px', lineHeight: 1.6 }}>
           Your documents are reviewed privately and never shared. We only confirm current enrolment status.
         </p>
       </div>

@@ -1,134 +1,51 @@
 # Study With Students — CLAUDE.md
 
-## Project Overview
-Peer tutoring platform with **0% commission**. React frontend + Flask REST API backend.
+Peer tutoring platform with **0% commission**. Revenue comes only from the
+**Explorer plan: £5/month**, which unlocks the forum, study notes (materials),
+study rooms and live classes. Verified tutors get those free. See README.md for
+setup and the project layout.
 
-## Branch Guide
-- `main` — Legacy Flask + Jinja template app (`app.py` + `templates/`)
-- `Secondary` — New React SPA (`frontend/`) + Flask REST API (`api.py`)
+## Running locally
+- API: `.venv/bin/python -m flask --app api/index.py run --debug --port 5001` (port 5000 is taken by macOS AirPlay)
+- Web: `cd frontend && npm run dev` → http://localhost:5173, proxies `/api` → :5001
+- Both are configured in `.claude/launch.json` as `api` and `web`.
+- Demo data: `.venv/bin/python -m db.seed` (logins in the docstring of db/seed.py)
+- Settings come from `.env` (copy `.env.example`). Never hard-code secrets.
 
-## Architecture (Secondary branch)
-```
-/
-├── api.py             Flask REST API (JWT-authenticated, CORS-enabled)
-├── requirements.txt   Python deps
-└── frontend/          React SPA
-    ├── src/
-    │   ├── api/       Axios API client layer
-    │   ├── context/   AuthContext (JWT storage)
-    │   ├── components/
-    │   │   ├── layout/  Navbar, Sidebar, HubLayout, Footer
-    │   │   └── features/ TutorCard, EventCard
-    │   └── pages/     One file per route
-    ├── tailwind.config.js
-    └── vite.config.js
-```
+## Backend (server/)
+- App factory in `server/__init__.py`; one blueprint per domain in `server/routes/`, all under `/api`.
+- `server/schema.py` runs on startup: applies `db/schema.sql` (CREATE IF NOT EXISTS) and adds
+  missing columns from `COLUMN_MIGRATIONS`. It must never drop or rewrite data — add new columns there.
+- Community endpoints use `@explorer_required` (server/permissions.py) → 402 `{code: 'explorer_required'}`.
+- Passwords are hashed with werkzeug; legacy plaintext rows are upgraded on next login.
+- JSON: datetimes serialise as ISO-8601 and decimals as numbers (server/json.py).
+- SQL must always be parameterised — never interpolate user input.
+- IDs: `events.tutor_id` → `tutor_profiles.id_tutor`, `events.student_id` → `student_profiles.id_student`
+  (not user ids). Join through the profile tables to reach `users`.
 
-## Running Locally
+## Session lifecycle
+request tutor → tutor accepts (active_tutors + active_students) → student books (`pending`,
+amount = hourly_rate × hours) → tutor confirms (`confirmed`) → student pays via Stripe (`paid`).
+Either side can cancel; only the tutor confirms; only verified Stripe checkouts mark `paid`.
 
-**Backend (Flask API):**
-```bash
-pip install -r requirements.txt
-python -m flask --app api run --debug
-# → http://localhost:5000
-```
+## Frontend (frontend/src)
+- All API calls go through `api/client.js` (JWT interceptor, 401 → login, 402 → Explorer toast).
+- `AuthContext.refreshSession()` re-issues the JWT with live claims — call it after plan/role changes.
+- Navigation lives in `lib/navigation.js` (sidebar, ⌘K palette and `g`+key shortcuts all read it).
+- Hub pages render inside `<HubLayout>` and set the header with `<PageTitle title icon />`.
+- Access rules: `lib/access.js` (`hasExplorerAccess`) mirrors the API.
+- Feedback via `react-hot-toast`.
 
-**Frontend (React):**
-```bash
-cd frontend
-npm install
-npm run dev
-# → http://localhost:5173
-# Vite proxies /api/* → localhost:5000
-```
+## Design system — keep the homepage's aesthetic
+- Navy `#1b263b`, coral `#ff725e`, Noto Sans JP, flat surfaces with 1px borders,
+  small uppercase coral eyebrows (`.eyebrow`), heavy tight headings.
+- Colours only through tokens in `index.css` (`--text`, `--text-muted`, `--surface`, `--border`,
+  `--coral`, …). For neutral tints use `rgb(var(--fg) / 0.06)` — never `rgba(255,255,255,…)`,
+  so light mode keeps working.
+- Reuse the classes in `styles/app.css` (card, row, btn, pill, stat, dialog, …) and the
+  components in `components/ui/`. No `onMouseEnter` style hacks — use CSS `:hover`.
+- Public marketing pages (Home, HowItWorks, AboutUs, BecomeATutor) handle the theme
+  with `useTheme()` ternaries; keep their structure when editing copy.
 
-## Tech Stack
-- **Frontend**: React 18, Vite 5, TanStack Router v1, Tailwind CSS 3, Axios, react-hot-toast
-- **Backend**: Flask 3, flask-jwt-extended, flask-cors, mysql-connector-python
-- **Database**: MySQL — `users_tutoring` on localhost
-- **Auth**: JWT (7-day tokens stored in localStorage under `sws_token`)
-
-## Design System
-- Primary dark background: `#1b263b` (navy-500 in Tailwind)
-- Primary accent: `#ff725e` (coral-400 in Tailwind)
-- Secondary: `#b0bec5` (slate)
-- Font: Noto Sans JP
-- Components: glassmorphism cards (`.glass`), dark sidebar, mobile bottom nav
-
-## Database Schema (key tables)
-```sql
-users            (id_user, name, email, password)
-tutor_profiles   (id_tutor, id_user, age, university, course, about_me, subjects, availability)
-student_profiles (id_student, id_user, stripe_customer_id)
-liked_tutors     (id_user, id_tutor, liked)
-active_tutors    (id_student, id_tutor)
-active_students  (id_tutor, id_student)
-events           (id_event, user_id, tutor_id, student_id, title, description, start_time, end_time, status, amount)
-messages         (id_message, id_sender, id_receiver, message, message_timestamp)
-forum_categories (id, name, description)
-forum_threads    (id, category_id, user_id, title, content, created_at)
-forum_posts      (id, thread_id, user_id, content, created_at)
-study_rooms      (id, tutor_id, subject, description, start_time, end_time, zoom_link)
-```
-
-## Auth Flow
-1. `POST /api/auth/register` → creates user + student_profile
-2. `POST /api/auth/login`    → returns `{ access_token, user: { id, name, email, is_tutor } }`
-3. React stores token in `localStorage['sws_token']`
-4. All API requests use `Authorization: Bearer <token>`
-5. 401 responses → auto-logout + redirect to `/login`
-
-## Role System
-- **Dual role**: A user can be both student AND tutor simultaneously
-- `is_tutor` = true if a `tutor_profiles` row exists for that user
-- `/hub` redirects: `is_tutor` → `/hub/tutor`, else → `/hub/student`
-- Hub has a "Switch to X view" toggle in the sidebar if `is_tutor`
-
-## API Endpoints
-All prefixed with `/api/`. All protected routes require `Authorization: Bearer <token>`.
-
-Auth: POST /auth/register, POST /auth/login, GET /auth/me
-Tutors: GET /tutors, GET /tutors/:id, POST /tutors/:id/like, POST|DELETE /tutors/:id/activate
-Tutor profile: GET|POST /tutor-profile
-Active: GET /liked-tutors, GET /active-tutors, GET /active-students
-Events: GET|POST /events, PUT /events/:id/status
-Messages: GET|POST /messages, GET /messages/:userId
-Forum: GET /forum/categories, GET|POST /forum/categories/:id/threads, GET|POST /forum/threads/:id/posts
-Study rooms: GET|POST /study-rooms, POST /study-rooms/:id/calendar
-Payments: GET /payments, POST /payments/setup
-
-## Frontend Routes
-Protected routes redirect to `/login` if no JWT found.
-
-Public: /, /login, /signup, /about, /how-it-works, /become-tutor
-Hub: /hub (redirect), /hub/student, /hub/tutor
-Tutors: /find-tutors, /tutor/:id, /tutor-profile, /active-tutors, /liked-tutors
-Students: /active-students, /dashboard
-Comms: /messages, /forum, /forum/category/:id, /forum/thread/:id, /forum/category/:id/new
-Study: /study-rooms/student, /study-rooms/tutor, /calendar/student, /calendar/tutor
-Other: /payments, /events
-
-## Conventions
-- All API calls go through `src/api/client.js` (axios with JWT interceptor)
-- 401 from API → auto-logout + redirect to `/login`
-- Pages use `HubLayout` for authenticated pages (includes Sidebar)
-- Public pages include `Navbar` + `Footer`
-- `toast.error/success` from `react-hot-toast` for all user feedback
-- Mobile: sidebar → bottom nav bar (5 primary links)
-- SQL must always be parameterized — never string-interpolate user input
-
-## Environment Variables (Flask)
-```bash
-SECRET_KEY=your-secret
-JWT_SECRET_KEY=your-jwt-secret
-DB_HOST=localhost
-DB_NAME=users_tutoring
-DB_USER=root
-DB_PASSWORD=yourpassword
-```
-Create a `.env` file (not committed) and load with python-dotenv if needed.
-
-## Stripe
-- Keys should be in environment variables (not committed)
-- See `/api/payments/setup` endpoint in api.py for integration point
-- Stripe.js not yet wired in frontend Payments.jsx — add when keys are ready
+## Legacy
+`legacy/` holds the original Jinja/Flask app and its templates. Nothing imports it.

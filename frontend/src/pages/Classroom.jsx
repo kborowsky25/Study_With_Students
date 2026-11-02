@@ -1,837 +1,605 @@
-import { useState, useEffect } from 'react'
-import { toast } from 'react-hot-toast'
-import HubLayout from '../components/layout/HubLayout'
-import { PageTitle } from '../context/PageTitleContext'
+import { useEffect, useState } from 'react'
+import { Link } from '@tanstack/react-router'
+import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
+import { PageTitle } from '../context/PageTitleContext'
+import HubLayout from '../components/layout/HubLayout'
+import { Avatar, DateChip, Icon, Pill, SkeletonRows } from '../components/ui'
 import {
-  getClassrooms, getMyClassrooms, createClassroom,
-  payAndEnroll, unenrollClassroom,
+  createClassroom, enrollClassroom, getClassrooms, getClassroomStudents, getMyClassrooms, unenrollClassroom,
 } from '../api/classroom'
+import { errorMessage } from '../api/client'
+import { isVerifiedTutor } from '../lib/access'
+import { formatDay, formatTime } from '../lib/format'
 
-const CORAL = '#ff725e'
-const GREEN = '#34d399'
-const AMBER = '#fbbf24'
-const BLUE  = '#60a5fa'
+const MAX_CLASS_SIZE = 20
+const JOIN_WINDOW = 15 * 60_000 // the join link shows from 15 minutes before the start
+const SUBJECTS = [
+  'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Computer Science', 'Economics', 'English',
+  'History', 'Law', 'Psychology', 'Engineering', 'Medicine', 'Statistics', 'Finance', 'Philosophy',
+]
 
-const SUBJECT_ICONS = {
-  math: 'calculate', maths: 'calculate', calculus: 'calculate', algebra: 'calculate',
-  chemistry: 'science', biology: 'biotech', physics: 'bolt',
-  english: 'edit_note', writing: 'edit_note', essay: 'edit_note',
-  history: 'history_edu', economics: 'trending_up', psychology: 'psychology',
-  programming: 'code', cs: 'code', coding: 'code', python: 'code',
+/** Classes store whatever the tutor typed — only http(s) links are rendered. */
+function meetingUrl(link) {
+  const s = (link || '').trim()
+  if (/^https?:\/\/\S+$/i.test(s)) return s
+  if (/^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(s)) return `https://${s}`
+  return null
 }
 
-function getSubjectIcon(subject = '') {
-  const s = subject.toLowerCase()
-  for (const [key, icon] of Object.entries(SUBJECT_ICONS)) {
-    if (s.includes(key)) return icon
+/** Accepts "zoom.us/j/123" as well as full URLs; null for anything that isn't http(s). */
+function normaliseLink(value) {
+  const s = value.trim()
+  if (!s) return null
+  try {
+    const url = new URL(/^[a-z][a-z\d+.-]*:\/\//i.test(s) ? s : `https://${s}`)
+    return /^https?:$/.test(url.protocol) && url.hostname.includes('.') ? url.href : null
+  } catch {
+    return null
   }
-  return 'school'
 }
 
-function formatDateTime(iso) {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleString('en-GB', {
-    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
-  })
+function phaseOf(c, now) {
+  if (!c.start_time) return 'upcoming'
+  const start = new Date(c.start_time).getTime()
+  const end = c.end_time ? new Date(c.end_time).getTime() : start + 3_600_000
+  if (now >= end) return 'past'
+  if (now >= start) return 'live'
+  return start - now <= JOIN_WINDOW ? 'soon' : 'upcoming'
 }
 
-function isLive(start, end) {
-  const now = new Date()
-  return start && end && new Date(start) <= now && new Date(end) >= now
+function useNow(every = 30_000) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), every)
+    return () => clearInterval(id)
+  }, [every])
+  return now
 }
 
-function isSoon(start) {
-  if (!start) return false
-  const diff = new Date(start) - new Date()
-  return diff > 0 && diff < 60 * 60 * 1000
+function useEscape(handler) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') handler() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [handler])
 }
 
-// ── Join modal ────────────────────────────────────────────────────────────────
-function JoinModal({ classroom, isPremium, freeUsed, onClose, onJoin }) {
-  const [loading, setLoading] = useState(false)
-  const canUseFree = isPremium && !freeUsed
+const pad = (n) => String(n).padStart(2, '0')
+const dateOnly = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+const localISO = (d) => `${dateOnly(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
 
-  async function handleJoin(useFree) {
-    setLoading(true)
-    try {
-      await onJoin(classroom.id, useFree)
-      onClose()
-    } catch {
-      /* error toasted in parent */
-    } finally {
-      setLoading(false)
-    }
+function classTime(c) {
+  if (!c.start_time) return 'Time to be confirmed'
+  const range = c.end_time ? `${formatTime(c.start_time)}–${formatTime(c.end_time)}` : formatTime(c.start_time)
+  return `${formatDay(c.start_time)}, ${range}`
+}
+
+const seats = (c) => ({
+  count: Number(c.enrolled_count) || 0,
+  capacity: Number(c.capacity) || MAX_CLASS_SIZE,
+})
+
+const Optional = () => <span style={{ color: 'var(--text-faint)', fontWeight: 500 }}>(optional)</span>
+
+function Section({ title, count, action, children }) {
+  return (
+    <section>
+      <header className="card-head">
+        <h3>{title}{count > 0 && <span className="count">{count}</span>}</h3>
+        {action}
+      </header>
+      {children}
+    </section>
+  )
+}
+
+function PastToggle({ open, onToggle }) {
+  return (
+    <button className="btn btn-quiet btn-sm" onClick={onToggle} aria-expanded={open}>
+      {open ? 'Hide' : 'Show'}
+    </button>
+  )
+}
+
+function ClassDate({ c }) {
+  return c.start_time ? <DateChip value={c.start_time} /> : (
+    <div className="date-chip" aria-hidden="true"><div className="m">TBC</div><div className="d">–</div></div>
+  )
+}
+
+function PhasePill({ c, phase, now }) {
+  if (phase === 'live') return <Pill tone="green" plain={false}>Live now</Pill>
+  if (phase === 'soon') {
+    const mins = Math.max(1, Math.ceil((new Date(c.start_time) - now) / 60_000))
+    return <Pill tone="amber">Starts in {mins} min</Pill>
   }
+  return null
+}
 
+function Capacity({ c }) {
+  const { count, capacity } = seats(c)
   return (
     <div
-      style={{
-        position: 'fixed', inset: 0,
-        background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(7px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 1000, padding: '20px',
-      }}
-      onClick={onClose}
+      className="hide-mobile"
+      style={{ width: 116, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}
+      title={`${count} of ${capacity} places taken`}
     >
-      <div
-        style={{
-          background: 'var(--bg-card)', border: '1px solid var(--border)',
-          borderRadius: '22px', padding: '28px 28px 24px',
-          maxWidth: '420px', width: '100%',
-          boxShadow: '0 28px 80px rgba(0,0,0,0.45)',
-        }}
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px' }}>
-          <div style={{
-            width: '48px', height: '48px', borderRadius: '14px',
-            background: `${CORAL}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '26px', color: CORAL }}>
-              {getSubjectIcon(classroom.subject)}
-            </span>
-          </div>
-          <div>
-            <h3 style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text)', margin: 0, lineHeight: 1.2 }}>
-              {classroom.title}
-            </h3>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '3px 0 0' }}>
-              {classroom.subject} · {classroom.tutor_name}
-            </p>
-          </div>
-        </div>
-
-        {/* Info row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '22px' }}>
-          {[
-            { icon: 'group', label: `${classroom.enrolled_count ?? 0} / ${classroom.capacity} students` },
-            { icon: 'schedule', label: formatDateTime(classroom.start_time) },
-          ].map(({ icon, label }) => (
-            <div key={icon} style={{
-              display: 'flex', alignItems: 'center', gap: '8px',
-              background: 'var(--bg-secondary)', border: '1px solid var(--border)',
-              borderRadius: '10px', padding: '10px 12px',
-            }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '15px', color: 'var(--text-muted)' }}>{icon}</span>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '500' }}>{label}</span>
-            </div>
-          ))}
-        </div>
-
-        <p style={{
-          fontSize: '10px', fontWeight: '700', color: 'var(--text-faint)',
-          textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px',
-        }}>
-          Choose payment
-        </p>
-
-        {canUseFree && (
-          <button
-            onClick={() => handleJoin(true)}
-            disabled={loading}
-            style={{
-              width: '100%', marginBottom: '10px',
-              padding: '13px 16px', borderRadius: '12px',
-              background: `${AMBER}14`, border: `1.5px solid ${AMBER}50`,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              transition: 'all 0.18s ease',
-            }}
-            onMouseEnter={e => { if (!loading) e.currentTarget.style.borderColor = AMBER }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = `${AMBER}50` }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '18px', color: AMBER }}>workspace_premium</span>
-              <div style={{ textAlign: 'left' }}>
-                <div style={{ fontSize: '13px', fontWeight: '700', color: AMBER }}>Use free credit</div>
-                <div style={{ fontSize: '10px', color: 'var(--text-faint)', marginTop: '1px' }}>1 free classroom / month with Explorer ✦</div>
-              </div>
-            </div>
-            <span style={{ fontSize: '14px', fontWeight: '900', color: AMBER }}>Free</span>
-          </button>
-        )}
-
-        <button
-          onClick={() => handleJoin(false)}
-          disabled={loading}
-          style={{
-            width: '100%',
-            padding: '13px 16px', borderRadius: '12px',
-            background: loading ? 'rgba(255,255,255,0.05)' : `${CORAL}14`,
-            border: `1.5px solid ${CORAL}35`,
-            cursor: loading ? 'not-allowed' : 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            transition: 'all 0.18s ease',
-          }}
-          onMouseEnter={e => { if (!loading) e.currentTarget.style.borderColor = CORAL }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = `${CORAL}35` }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '18px', color: CORAL }}>payments</span>
-            <div style={{ textAlign: 'left' }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: CORAL }}>Pay to join</div>
-              <div style={{ fontSize: '10px', color: 'var(--text-faint)', marginTop: '1px' }}>Simulation only · no real charge</div>
-            </div>
-          </div>
-          {loading
-            ? <span className="material-symbols-outlined" style={{ fontSize: '16px', color: CORAL, animation: 'spin 1s linear infinite' }}>progress_activity</span>
-            : <span style={{ fontSize: '14px', fontWeight: '900', color: CORAL }}>£2</span>
-          }
-        </button>
-
-        <button
-          onClick={onClose}
-          style={{
-            width: '100%', marginTop: '10px', padding: '10px',
-            background: 'transparent', border: '1px solid var(--border)',
-            borderRadius: '10px', cursor: 'pointer',
-            fontSize: '13px', color: 'var(--text-muted)',
-          }}
-        >
-          Cancel
-        </button>
+      <div className="progress" style={{ flex: 1 }}>
+        <i style={{ width: `${Math.min(100, (count / capacity) * 100)}%` }} />
       </div>
+      <span className="side">{count}/{capacity}</span>
     </div>
   )
 }
 
-// ── Create modal (tutor) ──────────────────────────────────────────────────────
-function CreateModal({ onClose, onCreate }) {
-  const [form, setForm] = useState({
-    title: '', subject: '', description: '',
-    start_time: '', end_time: '', zoom_link: '', capacity: 20,
-  })
-  const [loading, setLoading] = useState(false)
-  function set(k, v) { setForm(f => ({ ...f, [k]: v })) }
-
-  async function handleSubmit(e) {
-    e.preventDefault()
-    if (!form.title || !form.subject || !form.start_time) {
-      toast.error('Title, subject, and start time are required')
-      return
-    }
-    setLoading(true)
-    try {
-      await onCreate(form)
-      onClose()
-    } catch { /* toasted in parent */ } finally {
-      setLoading(false)
-    }
-  }
-
-  const inputStyle = {
-    width: '100%', padding: '9px 12px', borderRadius: '10px',
-    background: 'var(--bg-secondary)', border: '1px solid var(--border)',
-    color: 'var(--text)', fontSize: '13px', outline: 'none',
-    boxSizing: 'border-box',
-  }
-  const labelStyle = {
-    fontSize: '10px', fontWeight: '700', color: 'var(--text-faint)',
-    textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '5px', display: 'block',
-  }
-
+function ClassMain({ c, who }) {
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0,
-        background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(7px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 1000, padding: '20px',
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          background: 'var(--bg-card)', border: '1px solid var(--border)',
-          borderRadius: '22px', padding: '28px',
-          maxWidth: '500px', width: '100%',
-          boxShadow: '0 28px 80px rgba(0,0,0,0.45)',
-          maxHeight: '90vh', overflowY: 'auto',
-        }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{
-              width: '40px', height: '40px', borderRadius: '12px',
-              background: `${CORAL}18`, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '22px', color: CORAL }}>add_circle</span>
-            </div>
-            <div>
-              <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text)', margin: 0 }}>Create Classroom</h3>
-              <p style={{ fontSize: '11px', color: 'var(--text-faint)', margin: '2px 0 0' }}>Up to 20 students · students pay £2 to join</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', padding: '4px' }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>close</span>
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div>
-            <label style={labelStyle}>Session Title *</label>
-            <input style={inputStyle} value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Advanced Calculus — Chapter 5" required />
-          </div>
-          <div>
-            <label style={labelStyle}>Subject *</label>
-            <input style={inputStyle} value={form.subject} onChange={e => set('subject', e.target.value)} placeholder="e.g. Mathematics" required />
-          </div>
-          <div>
-            <label style={labelStyle}>Description</label>
-            <textarea
-              style={{ ...inputStyle, minHeight: '72px', resize: 'vertical' }}
-              value={form.description}
-              onChange={e => set('description', e.target.value)}
-              placeholder="What will students learn in this session?"
-            />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <div>
-              <label style={labelStyle}>Start *</label>
-              <input type="datetime-local" style={inputStyle} value={form.start_time} onChange={e => set('start_time', e.target.value)} required />
-            </div>
-            <div>
-              <label style={labelStyle}>End</label>
-              <input type="datetime-local" style={inputStyle} value={form.end_time} onChange={e => set('end_time', e.target.value)} />
-            </div>
-          </div>
-          <div>
-            <label style={labelStyle}>Zoom / Meeting Link</label>
-            <input style={inputStyle} value={form.zoom_link} onChange={e => set('zoom_link', e.target.value)} placeholder="https://zoom.us/j/..." />
-          </div>
-          <div>
-            <label style={labelStyle}>Max Students (1–20)</label>
-            <input
-              type="number" min="1" max="20" style={inputStyle}
-              value={form.capacity}
-              onChange={e => set('capacity', Math.min(20, Math.max(1, parseInt(e.target.value) || 1)))}
-            />
-          </div>
-          <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
-            <button
-              type="button" onClick={onClose}
-              style={{
-                flex: 1, padding: '11px', borderRadius: '11px',
-                background: 'transparent', border: '1px solid var(--border)',
-                cursor: 'pointer', fontSize: '13px', color: 'var(--text-muted)',
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit" disabled={loading}
-              className="btn-primary"
-              style={{
-                flex: 2, padding: '11px', fontSize: '14px', fontWeight: '700',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
-              }}
-            >
-              {loading
-                ? <span className="material-symbols-outlined" style={{ fontSize: '16px', animation: 'spin 1s linear infinite' }}>progress_activity</span>
-                : <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>add</span>
-              }
-              Create Classroom
-            </button>
-          </div>
-        </form>
+    <div className="main">
+      <div className="title">
+        {c.title}
+        {c.description && <span style={{ color: 'var(--text-faint)', fontWeight: 400, marginLeft: 8 }}>{c.description}</span>}
       </div>
+      <div className="meta">{[c.subject, who, classTime(c)].filter(Boolean).join(' · ')}</div>
     </div>
   )
 }
 
-// ── Classroom card ────────────────────────────────────────────────────────────
-function ClassroomCard({ room, onJoin, onUnenroll, isEnrolled, tutorView }) {
-  const [hovered, setHovered] = useState(false)
-  const live     = isLive(room.start_time, room.end_time)
-  const soon     = isSoon(room.start_time)
-  const fillPct  = ((room.enrolled_count ?? 0) / (room.capacity || 20)) * 100
-  const full     = (room.enrolled_count ?? 0) >= (room.capacity || 20)
+// ── Student view ──────────────────────────────────────────────────────────────
 
-  const statusColor = live ? GREEN : soon ? AMBER : BLUE
-  const statusLabel = live ? 'Live Now' : soon ? 'Starting soon' : formatDateTime(room.start_time)
+function StudentClassRow({ c, now, userId, busy, onJoin, onLeave }) {
+  const phase = phaseOf(c, now)
+  const { count, capacity } = seats(c)
+  const mine = c.tutor_user_id === userId
+  const url = meetingUrl(c.zoom_link)
+  const open = phase === 'live' || phase === 'soon'
 
-  return (
-    <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        background: 'var(--bg-card)',
-        border: `1px solid ${hovered ? CORAL + '55' : 'var(--border)'}`,
-        borderRadius: '16px', padding: '18px 20px',
-        backdropFilter: 'blur(12px)',
-        transition: 'all 0.2s ease',
-        transform: hovered ? 'translateY(-3px)' : 'translateY(0)',
-        boxShadow: hovered ? `0 8px 30px rgba(255,114,94,0.12)` : '0 2px 8px rgba(0,0,0,0.06)',
-        position: 'relative', overflow: 'hidden',
-      }}
-    >
-      {hovered && (
-        <div style={{
-          position: 'absolute', inset: 0, borderRadius: '16px',
-          background: `linear-gradient(135deg, ${CORAL}09 0%, transparent 60%)`,
-          pointerEvents: 'none',
-        }} />
-      )}
-
-      {/* Top row */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '14px', gap: '10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '42px', height: '42px', borderRadius: '12px',
-            background: `${CORAL}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '24px', color: CORAL }}>
-              {getSubjectIcon(room.subject)}
-            </span>
-          </div>
-          <div>
-            <div style={{ color: 'var(--text)', fontSize: '14px', fontWeight: '700', lineHeight: 1.2 }}>{room.title}</div>
-            <div style={{ color: 'var(--text-faint)', fontSize: '11px', marginTop: '2px' }}>
-              {tutorView ? room.subject : (
-                <>
-                  <span className="material-symbols-outlined" style={{ fontSize: '11px', verticalAlign: 'middle', marginRight: '3px' }}>person</span>
-                  {room.tutor_name}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <span style={{
-          background: `${statusColor}18`, color: statusColor,
-          border: `1px solid ${statusColor}35`,
-          fontSize: '10px', fontWeight: '700',
-          padding: '4px 10px', borderRadius: '20px',
-          flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px',
-        }}>
-          {live && (
-            <span style={{
-              width: '6px', height: '6px', borderRadius: '50%',
-              background: statusColor, display: 'inline-block',
-              animation: 'classroomPulse 1.5s infinite',
-            }} />
-          )}
-          {statusLabel}
-        </span>
-      </div>
-
-      {/* Capacity bar */}
-      <div style={{ marginBottom: '14px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>group</span>
-            {room.enrolled_count ?? 0} / {room.capacity} students
-          </span>
-          <span style={{ fontSize: '10px', color: full ? '#f87171' : 'var(--text-faint)' }}>
-            {full ? 'Full' : `${(room.capacity || 20) - (room.enrolled_count ?? 0)} spots left`}
-          </span>
-        </div>
-        <div style={{ height: '5px', background: 'var(--border)', borderRadius: '3px', overflow: 'hidden' }}>
-          <div style={{
-            height: '100%', width: `${fillPct}%`,
-            background: fillPct > 80
-              ? 'linear-gradient(90deg, #f87171, #ef4444)'
-              : fillPct > 50
-              ? 'linear-gradient(90deg, #fbbf24, #f59e0b)'
-              : `linear-gradient(90deg, ${CORAL}, #ff9a3c)`,
-            borderRadius: '3px', transition: 'width 0.6s ease',
-          }} />
-        </div>
-      </div>
-
-      {/* Student footer */}
-      {!tutorView && (
-        isEnrolled ? (
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {room.zoom_link ? (
-              <a href={room.zoom_link} target="_blank" rel="noopener noreferrer" style={{ flex: 2, textDecoration: 'none' }}>
-                <button
-                  className="btn-primary"
-                  style={{ width: '100%', fontSize: '13px', padding: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>videocam</span>
-                  Join Session
-                </button>
-              </a>
-            ) : (
-              <div style={{
-                flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                background: `${GREEN}14`, border: `1px solid ${GREEN}30`,
-                borderRadius: '10px', padding: '9px', fontSize: '12px', color: GREEN, fontWeight: '600',
-              }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>check_circle</span>
-                Enrolled
-              </div>
-            )}
-            <button
-              className="btn-secondary"
-              onClick={() => onUnenroll(room.id)}
-              style={{ flex: 1, fontSize: '12px', padding: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>logout</span>
-              Leave
-            </button>
-          </div>
-        ) : (
-          <button
-            className={full ? 'btn-secondary' : 'btn-primary'}
-            onClick={() => !full && onJoin(room)}
-            disabled={full}
-            style={{
-              width: '100%', fontSize: '13px', padding: '9px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-              opacity: full ? 0.5 : 1,
-            }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>{full ? 'block' : 'payments'}</span>
-            {full ? 'Classroom Full' : 'Join · £2'}
-          </button>
-        )
-      )}
-
-      {/* Tutor footer */}
-      {tutorView && (
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <div style={{
-            flex: 1, display: 'flex', alignItems: 'center', gap: '6px',
-            background: 'var(--bg-secondary)', border: '1px solid var(--border)',
-            borderRadius: '9px', padding: '8px 12px',
-          }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '14px', color: CORAL }}>group</span>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{room.enrolled_count ?? 0} enrolled</span>
-          </div>
-          {room.zoom_link && (
-            <a href={room.zoom_link} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-              <button
-                className="btn-primary"
-                style={{ fontSize: '12px', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '5px' }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>videocam</span>
-                Start
-              </button>
-            </a>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Main page ─────────────────────────────────────────────────────────────────
-export default function Classroom() {
-  const { isTutor, isPremium, user } = useAuth()
-  const mode = localStorage.getItem('sws_hub_mode') ?? (isTutor ? 'tutor' : 'student')
-  const isApproved = user?.screening_status === 'approved'
-
-  const [classrooms,   setClassrooms]   = useState([])
-  const [myClassrooms, setMyClassrooms] = useState([])
-  const [freeUsed,     setFreeUsed]     = useState(false)
-  const [loading,      setLoading]      = useState(true)
-  const [tab,          setTab]          = useState('browse')
-  const [joinTarget,   setJoinTarget]   = useState(null)
-  const [showCreate,   setShowCreate]   = useState(false)
-
-  async function loadData() {
-    setLoading(true)
-    try {
-      if (mode === 'tutor') {
-        const r = await getMyClassrooms()
-        setMyClassrooms(r.data.classrooms ?? [])
-      } else {
-        const r = await getClassrooms()
-        setClassrooms(r.data.classrooms ?? [])
-        setFreeUsed(r.data.free_classroom_used ?? false)
-      }
-    } catch { /* ignore */ } finally {
-      setLoading(false)
+  let status = <PhasePill c={c} phase={phase} now={now} />
+  let action = null
+  if (phase === 'past') {
+    status = null
+  } else if (mine) {
+    status = <Pill>Hosting</Pill>
+  } else if (c.enrolled) {
+    if (open && url) {
+      action = (
+        <a className="btn btn-coral btn-sm" href={url} target="_blank" rel="noopener noreferrer">
+          <Icon name="videocam" />Join class
+        </a>
+      )
+    } else {
+      if (!open) status = <Pill tone="green">Joined</Pill>
+      action = phase !== 'live' && (
+        <button className="btn btn-quiet btn-sm" onClick={() => onLeave(c)} disabled={busy}>Leave</button>
+      )
     }
-  }
-
-  useEffect(() => { loadData() }, [mode])
-
-  async function handleJoin(classroomId, useFree) {
-    await payAndEnroll(classroomId, { use_free: useFree })
-    toast.success(useFree ? 'Free credit used — enrolled! ✨' : 'Payment simulated — enrolled! 🎉')
-    if (useFree) setFreeUsed(true)
-    setClassrooms(prev => prev.map(c =>
-      c.id === classroomId
-        ? { ...c, enrolled: true, enrolled_count: (c.enrolled_count ?? 0) + 1 }
-        : c
-    ))
-  }
-
-  async function handleUnenroll(classroomId) {
-    try {
-      await unenrollClassroom(classroomId)
-      toast.success('Left classroom')
-      setClassrooms(prev => prev.map(c =>
-        c.id === classroomId
-          ? { ...c, enrolled: false, enrolled_count: Math.max(0, (c.enrolled_count ?? 1) - 1) }
-          : c
-      ))
-    } catch {
-      toast.error('Could not leave — try again')
-    }
-  }
-
-  async function handleCreate(formData) {
-    await createClassroom({ ...formData, capacity: Math.min(20, parseInt(formData.capacity) || 20) })
-    toast.success('Classroom created!')
-    loadData()
-  }
-
-  const enrolledClassrooms = classrooms.filter(c => c.enrolled)
-  const browseClassrooms   = classrooms.filter(c => !c.enrolled)
-
-  // ── Tutor view ──────────────────────────────────────────────────────────────
-  if (mode === 'tutor') {
-    const totalEnrolled = myClassrooms.reduce((s, c) => s + (c.enrolled_count ?? 0), 0)
-    const upcoming      = myClassrooms.filter(c => !isLive(c.start_time, c.end_time))
-
-    return (
-      <HubLayout mode="tutor">
-        <PageTitle title="Classroom" icon="school" />
-        <div style={{ width: '100%' }}>
-
-          {/* Pending approval banner */}
-          {!isApproved && (
-            <div style={{
-              marginBottom: '20px', padding: '14px 18px', borderRadius: '14px',
-              background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)',
-              display: 'flex', alignItems: 'center', gap: '12px',
-            }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '20px', color: AMBER, flexShrink: 0 }}>lock</span>
-              <p style={{ fontSize: '13px', color: AMBER, margin: 0, lineHeight: 1.5 }}>
-                <strong>Pending approval</strong> — you can browse classrooms, but creating sessions is locked until your tutor profile is approved.
-              </p>
-            </div>
-          )}
-
-          {/* Top action row */}
-          <div className="animate-slide-up" style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            gap: '12px', flexWrap: 'wrap', marginBottom: '20px',
-          }}>
-            <p style={{ fontSize: '12px', color: 'var(--text-faint)' }}>
-              Create and manage group sessions · students pay £2 to join
-            </p>
-            <button
-              className="btn-primary"
-              onClick={() => isApproved && setShowCreate(true)}
-              disabled={!isApproved}
-              title={!isApproved ? 'Available once your profile is approved' : undefined}
-              style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '13px', padding: '9px 18px', flexShrink: 0, opacity: isApproved ? 1 : 0.45, cursor: isApproved ? 'pointer' : 'not-allowed' }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>{isApproved ? 'add' : 'lock'}</span>
-              Create Classroom
-            </button>
-          </div>
-
-          {/* Stats row */}
-          <div className="animate-slide-up delay-100" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '28px' }}>
-            {[
-              { icon: 'school',           label: 'Total Classrooms', value: myClassrooms.length, color: CORAL },
-              { icon: 'group',            label: 'Total Enrolled',   value: totalEnrolled,        color: GREEN },
-              { icon: 'pending_actions',  label: 'Upcoming',         value: upcoming.length,      color: BLUE  },
-            ].map(({ icon, label, value, color }) => (
-              <div key={icon} style={{
-                background: 'var(--bg-card)', border: '1px solid var(--border)',
-                borderRadius: '14px', padding: '16px 18px',
-                display: 'flex', alignItems: 'center', gap: '12px',
-              }}>
-                <div style={{ width: '38px', height: '38px', borderRadius: '11px', background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '20px', color }}>{icon}</span>
-                </div>
-                <div>
-                  <div style={{ fontSize: '22px', fontWeight: '900', color: 'var(--text)', lineHeight: 1 }}>{value}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-faint)', marginTop: '2px' }}>{label}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Classrooms grid */}
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-faint)' }}>Loading…</div>
-          ) : myClassrooms.length === 0 ? (
-            <EmptyState
-              icon="school"
-              title="No classrooms yet"
-              desc="Create your first group session to get started"
-              action={<button className="btn-primary" onClick={() => setShowCreate(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', fontSize: '13px' }}><span className="material-symbols-outlined" style={{ fontSize: '16px' }}>add</span>Create First Classroom</button>}
-            />
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
-              {myClassrooms.map(room => (
-                <ClassroomCard key={room.id} room={room} tutorView />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {showCreate && <CreateModal onClose={() => setShowCreate(false)} onCreate={handleCreate} />}
-        <Styles />
-      </HubLayout>
+  } else if (count >= capacity) {
+    action = <button className="btn btn-ghost btn-sm" disabled>Full</button>
+  } else {
+    action = (
+      <button className="btn btn-coral btn-sm" onClick={() => onJoin(c)} disabled={busy}>
+        {busy ? 'Joining…' : 'Join'}
+      </button>
     )
   }
 
-  // ── Student view ────────────────────────────────────────────────────────────
   return (
-    <HubLayout>
-      <PageTitle title="Classroom" icon="school" />
-      <div style={{ width: '100%' }}>
-
-        {/* Top action row */}
-        <div className="animate-slide-up" style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          gap: '12px', flexWrap: 'wrap', marginBottom: '18px',
-        }}>
-          <p style={{ fontSize: '12px', color: 'var(--text-faint)' }}>
-            Live group sessions · up to 20 students · £2 to join
-          </p>
-          {/* Free credit indicator */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '7px',
-            background: isPremium && !freeUsed ? `${AMBER}12` : 'transparent',
-            border: `1px solid ${isPremium && !freeUsed ? AMBER + '35' : 'transparent'}`,
-            borderRadius: '10px', padding: isPremium ? '5px 11px' : '0', flexShrink: 0,
-          }}>
-            {isPremium && (
-              <>
-                <span className="material-symbols-outlined" style={{ fontSize: '14px', color: freeUsed ? 'var(--text-faint)' : AMBER }}>workspace_premium</span>
-                <span style={{ fontSize: '11px', fontWeight: '600', color: freeUsed ? 'var(--text-faint)' : AMBER }}>
-                  {freeUsed ? 'Credit used' : 'Free credit available'}
-                </span>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="animate-slide-up delay-100" style={{ display: 'flex', gap: '6px', marginBottom: '20px' }}>
-          {[
-            { id: 'browse',   label: 'Browse',        icon: 'explore', count: browseClassrooms.length },
-            { id: 'enrolled', label: 'My Classrooms',  icon: 'school',  count: enrolledClassrooms.length },
-          ].map(({ id, label, icon, count }) => (
-            <button
-              key={id}
-              onClick={() => setTab(id)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '7px',
-                padding: '9px 16px', borderRadius: '11px',
-                background: tab === id ? `${CORAL}18` : 'transparent',
-                border: `1px solid ${tab === id ? CORAL + '40' : 'var(--border)'}`,
-                cursor: 'pointer', fontSize: '13px',
-                fontWeight: tab === id ? '700' : '500',
-                color: tab === id ? CORAL : 'var(--text-muted)',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>{icon}</span>
-              {label}
-              <span style={{
-                background: tab === id ? CORAL : 'var(--bg-secondary)',
-                color: tab === id ? 'white' : 'var(--text-faint)',
-                borderRadius: '20px', padding: '1px 7px', fontSize: '10px', fontWeight: '700',
-              }}>
-                {count}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {/* Content */}
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-faint)' }}>Loading…</div>
-        ) : tab === 'browse' ? (
-          browseClassrooms.length === 0 ? (
-            <EmptyState
-              icon="school"
-              title="No classrooms available yet"
-              desc="Check back soon — tutors will be posting sessions here."
-            />
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
-              {browseClassrooms.map(room => (
-                <ClassroomCard
-                  key={room.id} room={room}
-                  isEnrolled={false} onJoin={setJoinTarget} onUnenroll={handleUnenroll}
-                />
-              ))}
-            </div>
-          )
-        ) : (
-          enrolledClassrooms.length === 0 ? (
-            <EmptyState
-              icon="school"
-              title="You haven't joined any classrooms yet"
-              desc="Browse available sessions and join one for just £2."
-              action={
-                <button className="btn-primary" onClick={() => setTab('browse')} style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', fontSize: '13px' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>explore</span>
-                  Browse Classrooms
-                </button>
-              }
-            />
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
-              {enrolledClassrooms.map(room => (
-                <ClassroomCard
-                  key={room.id} room={room}
-                  isEnrolled onJoin={setJoinTarget} onUnenroll={handleUnenroll}
-                />
-              ))}
-            </div>
-          )
-        )}
-      </div>
-
-      {joinTarget && (
-        <JoinModal
-          classroom={joinTarget}
-          isPremium={isPremium}
-          freeUsed={freeUsed}
-          onClose={() => setJoinTarget(null)}
-          onJoin={handleJoin}
-        />
-      )}
-      <Styles />
-    </HubLayout>
-  )
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function EmptyState({ icon, title, desc, action }) {
-  return (
-    <div className="animate-slide-up delay-200" style={{
-      background: 'var(--bg-card)', border: '1px solid var(--border)',
-      borderRadius: '18px', padding: '52px 32px', textAlign: 'center',
-    }}>
-      <div style={{
-        width: '64px', height: '64px', borderRadius: '18px',
-        background: `${CORAL}14`, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        margin: '0 auto 16px',
-      }}>
-        <span className="material-symbols-outlined" style={{ fontSize: '34px', color: `${CORAL}80` }}>{icon}</span>
-      </div>
-      <p style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text)', marginBottom: '6px' }}>{title}</p>
-      <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: action ? '20px' : 0 }}>{desc}</p>
-      {action}
+    <div className="row">
+      <ClassDate c={c} />
+      <ClassMain c={c} who={mine ? 'You' : c.tutor_name} />
+      {status}
+      <Capacity c={c} />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', minWidth: 72, flexShrink: 0 }}>{action}</div>
     </div>
   )
 }
 
-function Styles() {
+function StudentClasses({ user }) {
+  const now = useNow()
+  const [classes, setClasses] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
+  const [tab, setTab] = useState('all')
+  const [busy, setBusy] = useState(null)
+  const [showPast, setShowPast] = useState(false)
+
+  function load() {
+    setLoading(true)
+    getClassrooms()
+      .then(({ data }) => { setClasses(data.classrooms ?? []); setFailed(false) })
+      .catch((err) => { setFailed(true); toast.error(errorMessage(err, 'Could not load classes')) })
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { load() }, [])
+
+  const patch = (id, change) => setClasses((list) => list.map((x) => (x.id === id ? { ...x, ...change(x) } : x)))
+
+  async function join(c) {
+    setBusy(c.id)
+    try {
+      await enrollClassroom(c.id)
+      patch(c.id, (x) => ({ enrolled: true, enrolled_count: seats(x).count + 1 }))
+      toast.success(`Joined ${c.title}`)
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not join this class'))
+      if (err?.response?.status === 409) load() // filled up meanwhile: refresh the counts
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function leave(c) {
+    setBusy(c.id)
+    try {
+      await unenrollClassroom(c.id)
+      patch(c.id, (x) => ({ enrolled: false, enrolled_count: Math.max(0, seats(x).count - 1) }))
+      toast.success(`Left ${c.title}`)
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not leave this class'))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const active = classes.filter((c) => phaseOf(c, now) !== 'past')
+  const joined = active.filter((c) => c.enrolled)
+  const joinedPast = classes.filter((c) => c.enrolled && phaseOf(c, now) === 'past').reverse()
+  const shown = tab === 'joined' ? joined : active
+
+  const row = (c) => (
+    <StudentClassRow key={c.id} c={c} now={now} userId={user?.id} busy={busy === c.id} onJoin={join} onLeave={leave} />
+  )
+
   return (
-    <style>{`
-      @keyframes spin { to { transform: rotate(360deg); } }
-      @keyframes classroomPulse { 0%,100% { opacity:1 } 50% { opacity:0.35 } }
-    `}</style>
+    <>
+      <div className="dash-head">
+        <h1>Classes</h1>
+        <div className="mode-switch" role="tablist" aria-label="Classes" style={{ minWidth: 240 }}>
+          <button role="tab" aria-selected={tab === 'all'} className={tab === 'all' ? 'on' : ''} onClick={() => setTab('all')}>
+            All classes{!loading && <span style={{ color: 'var(--text-faint)' }}>{active.length}</span>}
+          </button>
+          <button role="tab" aria-selected={tab === 'joined'} className={tab === 'joined' ? 'on' : ''} onClick={() => setTab('joined')}>
+            Joined{!loading && <span style={{ color: 'var(--text-faint)' }}>{joined.length}</span>}
+          </button>
+        </div>
+      </div>
+
+      <div className="dash-col">
+        <Section title="Upcoming" count={shown.length}>
+          {loading ? <SkeletonRows rows={3} /> : shown.length ? (
+            <div className="row-list">{shown.map(row)}</div>
+          ) : failed ? (
+            <div className="empty">
+              <p>Couldn’t load classes</p>
+              <button className="btn btn-ghost btn-sm" onClick={load}>Try again</button>
+            </div>
+          ) : tab === 'joined' ? (
+            <div className="empty">
+              <p>You haven’t joined any classes</p>
+              <button className="btn btn-ghost btn-sm" onClick={() => setTab('all')}>Browse classes</button>
+            </div>
+          ) : (
+            <div className="empty"><p>No classes scheduled</p></div>
+          )}
+        </Section>
+
+        {tab === 'joined' && joinedPast.length > 0 && (
+          <Section title="Past" count={joinedPast.length} action={<PastToggle open={showPast} onToggle={() => setShowPast((v) => !v)} />}>
+            {showPast && <div className="row-list">{joinedPast.slice(0, 20).map(row)}</div>}
+          </Section>
+        )}
+      </div>
+    </>
+  )
+}
+
+// ── Tutor view ────────────────────────────────────────────────────────────────
+
+function HostedClassRow({ c, now, onRoster }) {
+  const phase = phaseOf(c, now)
+  const url = meetingUrl(c.zoom_link)
+  const open = phase === 'live' || phase === 'soon'
+
+  return (
+    <div className="row">
+      <ClassDate c={c} />
+      <ClassMain c={c} />
+      <PhasePill c={c} phase={phase} now={now} />
+      {phase !== 'past' && !url && <Pill tone="amber">No link</Pill>}
+      <Capacity c={c} />
+      <button className="btn btn-ghost btn-sm" onClick={() => onRoster(c)}>
+        <Icon name="group" />Students
+      </button>
+      {open && url && (
+        <a className="btn btn-coral btn-sm" href={url} target="_blank" rel="noopener noreferrer">
+          <Icon name="videocam" />Start
+        </a>
+      )}
+    </div>
+  )
+}
+
+function NewClassDialog({ onClose, onCreated }) {
+  const [form, setForm] = useState(() => ({
+    title: '', subject: '', description: '', capacity: String(MAX_CLASS_SIZE),
+    date: dateOnly(new Date(Date.now() + 86_400_000)), start: '18:00', end: '19:00', link: '',
+  }))
+  const [saving, setSaving] = useState(false)
+  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
+  useEscape(onClose)
+
+  async function submit(e) {
+    e.preventDefault()
+    const title = form.title.trim()
+    const subject = form.subject.trim()
+    const capacity = Number(form.capacity)
+    const start = new Date(`${form.date}T${form.start}`)
+    const end = new Date(`${form.date}T${form.end}`)
+    const link = normaliseLink(form.link)
+
+    if (!title) { toast.error('Add a title'); return }
+    if (!subject) { toast.error('Add a subject'); return }
+    if (!Number.isInteger(capacity) || capacity < 1 || capacity > MAX_CLASS_SIZE) {
+      toast.error(`Classes can have 1 to ${MAX_CLASS_SIZE} students`)
+      return
+    }
+    if (Number.isNaN(start.getTime()) || !(end > start)) { toast.error('The end time must be after the start'); return }
+    if (end <= new Date()) { toast.error('Pick a time in the future'); return }
+    if (!link) { toast.error('Add a valid meeting link'); return }
+
+    setSaving(true)
+    try {
+      await createClassroom({
+        title,
+        subject,
+        description: form.description.trim(),
+        capacity,
+        start_time: localISO(start),
+        end_time: localISO(end),
+        zoom_link: link,
+      })
+      toast.success('Class scheduled')
+      onCreated()
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not schedule the class'))
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="overlay center" onMouseDown={onClose}>
+      <form
+        className="dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-class-title"
+        onMouseDown={(e) => e.stopPropagation()}
+        onSubmit={submit}
+      >
+        <div className="dialog-head">
+          <h2 id="new-class-title" style={{ flex: 1 }}>New class</h2>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="close" /></button>
+        </div>
+
+        <div className="dialog-body">
+          <label className="field">
+            <span>Title</span>
+            <input className="input" value={form.title} onChange={set('title')} maxLength={255} required autoFocus />
+          </label>
+          <div className="field-row">
+            <label className="field">
+              <span>Subject</span>
+              <input className="input" value={form.subject} onChange={set('subject')} list="class-subjects" maxLength={100} required />
+              <datalist id="class-subjects">
+                {SUBJECTS.map((s) => <option key={s} value={s} />)}
+              </datalist>
+            </label>
+            <label className="field">
+              <span>Places</span>
+              <input
+                className="input"
+                type="number"
+                min={1}
+                max={MAX_CLASS_SIZE}
+                step={1}
+                value={form.capacity}
+                onChange={set('capacity')}
+                required
+              />
+            </label>
+          </div>
+          <label className="field">
+            <span>Description <Optional /></span>
+            <textarea className="input" value={form.description} onChange={set('description')} maxLength={2000} />
+          </label>
+          <label className="field">
+            <span>Date</span>
+            <input className="input" type="date" value={form.date} min={dateOnly(new Date())} onChange={set('date')} required />
+          </label>
+          <div className="field-row">
+            <label className="field">
+              <span>Start</span>
+              <input className="input" type="time" value={form.start} onChange={set('start')} required />
+            </label>
+            <label className="field">
+              <span>End</span>
+              <input className="input" type="time" value={form.end} onChange={set('end')} required />
+            </label>
+          </div>
+          <label className="field">
+            <span>Meeting link</span>
+            <input
+              className="input"
+              value={form.link}
+              onChange={set('link')}
+              placeholder="https://"
+              inputMode="url"
+              autoComplete="off"
+              spellCheck={false}
+              required
+            />
+          </label>
+        </div>
+
+        <div className="dialog-foot">
+          <button type="button" className="btn btn-quiet" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn btn-coral" disabled={saving}>
+            {saving ? 'Scheduling…' : 'Schedule class'}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+function RosterDialog({ classroom, onClose }) {
+  const [students, setStudents] = useState(null)
+  const { count, capacity } = seats(classroom)
+  useEscape(onClose)
+
+  useEffect(() => {
+    let live = true
+    getClassroomStudents(classroom.id)
+      .then(({ data }) => { if (live) setStudents(data.students ?? []) })
+      .catch((err) => {
+        if (!live) return
+        setStudents([])
+        toast.error(errorMessage(err, 'Could not load the class list'))
+      })
+    return () => { live = false }
+  }, [classroom.id])
+
+  async function copyEmails() {
+    try {
+      await navigator.clipboard.writeText(students.map((s) => s.email).join(', '))
+      toast.success('Emails copied')
+    } catch {
+      toast.error('Could not copy the emails')
+    }
+  }
+
+  return (
+    <div className="overlay center" onMouseDown={onClose}>
+      <div
+        className="dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="roster-title"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className="dialog-head" style={{ paddingBottom: 14 }}>
+          <h2 id="roster-title" style={{ flex: 1, minWidth: 0 }}>
+            {classroom.title} <span style={{ color: 'var(--text-faint)', fontWeight: 500 }}>{count}/{capacity}</span>
+          </h2>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="close" /></button>
+        </div>
+
+        {students === null ? <SkeletonRows rows={3} /> : students.length ? (
+          <div className="row-list" style={{ borderTop: '1px solid var(--border)' }}>
+            {students.map((s) => (
+              <div className="row" key={s.id_user}>
+                <Avatar name={s.name} size={28} />
+                <div className="main">
+                  <div className="title">{s.name}</div>
+                  <div className="meta">{s.email}</div>
+                </div>
+                <Link to="/messages" search={{ user: s.id_user }} className="icon-btn" aria-label={`Message ${s.name}`}>
+                  <Icon name="chat" />
+                </Link>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty"><p>No students yet</p></div>
+        )}
+
+        <div className="dialog-foot">
+          {students?.length > 0 && (
+            <button type="button" className="btn btn-ghost" onClick={copyEmails}><Icon name="content_copy" />Copy emails</button>
+          )}
+          <button type="button" className="btn btn-quiet" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TutorClasses({ user }) {
+  const verified = isVerifiedTutor(user)
+  const now = useNow()
+  const [classes, setClasses] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [roster, setRoster] = useState(null)
+  const [showPast, setShowPast] = useState(false)
+
+  function load() {
+    setLoading(true)
+    getMyClassrooms()
+      .then(({ data }) => { setClasses(data.classrooms ?? []); setFailed(false) })
+      .catch((err) => { setFailed(true); toast.error(errorMessage(err, 'Could not load your classes')) })
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { load() }, [])
+
+  const upcoming = classes.filter((c) => phaseOf(c, now) !== 'past')
+  const past = classes.filter((c) => phaseOf(c, now) === 'past').reverse()
+  const row = (c) => <HostedClassRow key={c.id} c={c} now={now} onRoster={setRoster} />
+
+  return (
+    <>
+      <div className="dash-head">
+        <h1>Classes</h1>
+        <div className="dash-actions">
+          {verified ? (
+            <button className="btn btn-coral" onClick={() => setCreating(true)}><Icon name="add" />New class</button>
+          ) : (
+            <Link to="/tutor-screening" className="btn btn-ghost">Get verified to host classes</Link>
+          )}
+        </div>
+      </div>
+
+      <div className="dash-col">
+        <Section title="Upcoming" count={upcoming.length}>
+          {loading ? <SkeletonRows rows={2} /> : upcoming.length ? (
+            <div className="row-list">{upcoming.map(row)}</div>
+          ) : failed ? (
+            <div className="empty">
+              <p>Couldn’t load your classes</p>
+              <button className="btn btn-ghost btn-sm" onClick={load}>Try again</button>
+            </div>
+          ) : (
+            <div className="empty"><p>No classes scheduled</p></div>
+          )}
+        </Section>
+
+        {past.length > 0 && (
+          <Section title="Past" count={past.length} action={<PastToggle open={showPast} onToggle={() => setShowPast((v) => !v)} />}>
+            {showPast && <div className="row-list">{past.slice(0, 20).map(row)}</div>}
+          </Section>
+        )}
+      </div>
+
+      {creating && (
+        <NewClassDialog onClose={() => setCreating(false)} onCreated={() => { setCreating(false); load() }} />
+      )}
+      {roster && <RosterDialog classroom={roster} onClose={() => setRoster(null)} />}
+    </>
+  )
+}
+
+export default function Classroom() {
+  const { user } = useAuth()
+  // Same rule as the sidebar: tutors see the page in whichever view they last chose.
+  const tutorView = Boolean(user?.is_tutor) && localStorage.getItem('sws_hub_mode') === 'tutor'
+
+  return (
+    <HubLayout initialMode={tutorView ? 'tutor' : 'student'}>
+      <PageTitle title="Classes" icon="school" />
+      {tutorView ? <TutorClasses user={user} /> : <StudentClasses user={user} />}
+    </HubLayout>
   )
 }

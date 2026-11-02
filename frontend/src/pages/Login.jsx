@@ -27,7 +27,7 @@ export default function Login() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#1b263b', display: 'flex', fontFamily: '"Noto Sans JP", sans-serif' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', display: 'flex', fontFamily: '"Noto Sans JP", sans-serif' }}>
 
       {/* Left — illustration */}
       <div className="animate-slide-in-left" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4vw' }}>
@@ -44,13 +44,13 @@ export default function Login() {
 
         {/* Logo */}
         <Link to="/" style={{ textDecoration: 'none', marginBottom: '3vh' }}>
-          <span style={{ fontSize: '22px', fontWeight: '900', color: 'white' }}>
+          <span style={{ fontSize: '22px', fontWeight: '900', color: 'var(--text)' }}>
             Study<span style={{ color: '#ff725e' }}>WithStudents</span>
           </span>
         </Link>
 
         <div style={{ width: '100%', maxWidth: '420px' }}>
-          <h1 style={{ fontSize: '32px', fontWeight: '900', color: 'white', marginBottom: '4px', letterSpacing: '-0.5px' }}>
+          <h1 style={{ fontSize: '32px', fontWeight: '900', color: 'var(--text)', marginBottom: '4px', letterSpacing: '-0.5px' }}>
             LOG IN
           </h1>
           <p style={{ color: '#b0bec5', marginBottom: '32px', fontSize: '15px' }}>

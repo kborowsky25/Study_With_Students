@@ -895,7 +895,7 @@ export default function AboutUs() {
               maxWidth: "520px",
             }}
           >
-            We take just £2/month from students who want community features.
+            We take just £5/month from students who want community features.
             Half funds the platform — half goes to UNICEF. That's it.
           </p>
 
@@ -951,18 +951,18 @@ export default function AboutUs() {
                 </div>
                 <div style={{ textAlign: "center" }}>
                   <span className="material-symbols-outlined" style={{ fontSize: "20px", color: dark ? "rgba(255,255,255,0.30)" : "rgba(27,38,59,0.32)" }}>arrow_forward</span>
-                  <div style={{ fontSize: "10px", color: TEXT_MUT, fontWeight: 700, marginTop: "4px" }}>£2/mo</div>
+                  <div style={{ fontSize: "10px", color: TEXT_MUT, fontWeight: 700, marginTop: "4px" }}>£5/mo</div>
                 </div>
                 <div style={{ background: "rgba(1,102,172,0.06)", border: "1px solid rgba(1,152,218,0.18)", borderRadius: "14px", padding: "16px 14px" }}>
                   <div style={{ fontSize: "10px", fontWeight: 700, color: TEXT_DIM3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "10px", textAlign: "center" }}>Explorer Plan split</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 10px", background: dark ? "rgba(255,255,255,0.04)" : "rgba(27,38,59,0.04)", borderRadius: "7px", border: `1px solid ${BORDER}` }}>
                       <span style={{ fontSize: "12px", fontWeight: 700 }}>Platform</span>
-                      <span style={{ fontSize: "13px", fontWeight: 900, color: dark ? "rgba(255,255,255,0.60)" : "rgba(27,38,59,0.58)" }}>£1</span>
+                      <span style={{ fontSize: "13px", fontWeight: 900, color: dark ? "rgba(255,255,255,0.60)" : "rgba(27,38,59,0.58)" }}>£2.50</span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 10px", background: "rgba(1,102,172,0.10)", borderRadius: "7px", border: "1px solid rgba(1,152,218,0.25)" }}>
                       <span style={{ fontSize: "12px", fontWeight: 700 }}>🌍 UNICEF</span>
-                      <span style={{ fontSize: "13px", fontWeight: 900, color: "rgba(1,200,255,0.85)" }}>£1</span>
+                      <span style={{ fontSize: "13px", fontWeight: 900, color: "rgba(1,200,255,0.85)" }}>£2.50</span>
                     </div>
                   </div>
                 </div>
@@ -995,7 +995,7 @@ export default function AboutUs() {
                 icon: "volunteer_activism",
                 color: "rgba(1,200,255,0.90)",
                 title: "UNICEF funded",
-                desc: "£1 from every Explorer subscription goes directly to global education programmes.",
+                desc: "Half of every Explorer subscription goes directly to global education programmes.",
               },
             ].map((p, i) => (
               <div
@@ -1104,7 +1104,7 @@ export default function AboutUs() {
               maxWidth: "480px",
             }}
           >
-            £1 of every Explorer subscription funds UNICEF's global education
+            Half of every Explorer subscription funds UNICEF's global education
             programmes. Over 190 countries. Education for every child — not just
             the privileged.
           </p>
@@ -1197,7 +1197,7 @@ export default function AboutUs() {
               {[
                 { n: "190+", l: "Countries", c: "rgba(1,200,255,0.85)" },
                 { n: "1B+", l: "Children", c: "rgba(1,200,255,0.85)" },
-                { n: "£1", l: "Per subscriber / mo", c: CORAL },
+                { n: "£2.50", l: "Per subscriber / mo", c: CORAL },
               ].map((s) => (
                 <div
                   key={s.l}

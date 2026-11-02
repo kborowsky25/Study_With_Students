@@ -1,907 +1,259 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
+import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
-import { getActiveStudents, getTutorRequestsRec, respondTutorRequest } from '../api/tutors'
+import { Avatar, Card, CardLink, DateChip, EmptyState, Icon, SkeletonRows, Stat, StatusPill } from '../components/ui'
+import { getActiveStudents, getTutorProfile, getTutorRequestsRec, respondTutorRequest } from '../api/tutors'
 import { getEvents, updateStatus } from '../api/events'
 import { getConversations } from '../api/messages'
 import { getStudyRooms } from '../api/studyrooms'
-import toast from 'react-hot-toast'
-import SpotlightTour from '../components/features/SpotlightTour'
+import { errorMessage } from '../api/client'
+import { firstName, formatMoney, formatTime, formatWhen, greeting, timeAgo, weekBuckets } from '../lib/format'
 
-const TUTOR_TOUR_STEPS = [
-  { target: null,                            position: 'center', title: 'Welcome to your Tutor Hub! 🎓', body: "You're all set as a tutor. Here's a quick walkthrough of the key tools at your disposal." },
-  { target: '[data-tour="my-students"]',     position: 'right',  title: 'My Students',   body: 'Review and accept student requests here. Once accepted, students appear in your active list.' },
-  { target: '[data-tour="calendar-tutor"]',  position: 'right',  title: 'Calendar',       body: 'Schedule and manage your sessions. Students can book directly and you can confirm or decline.' },
-  { target: '[data-tour="messages-tutor"]',  position: 'right',  title: 'Messages',       body: 'Communicate with your students directly — no middleman involved.' },
-  { target: '[data-tour="study-rooms-tutor"]', position: 'right', title: 'Study Rooms',  body: 'Host group virtual study sessions for multiple students at once.' },
-  { target: '[data-tour="earnings"]',        position: 'right',  title: 'Earnings',       body: 'Track your earnings and session history. Every penny students pay comes directly to you.' },
-  { target: null,                            position: 'center', title: "You're ready to start tutoring! 🚀", body: 'Complete your profile from the sidebar to start appearing in student searches.' },
-]
-
-const WHITE  = 'rgba(255,255,255,0.82)'   // primary accent — prestigious white
-const ORANGE = '#fb923c'                   // positive/confirmed — replaces green
-const AMBER  = '#fbbf24'                   // pending/warning — unchanged
-const SILVER = '#94a3b8'                   // secondary — replaces soft rose
-const TEAL   = 'rgba(255,255,255,0.82)'    // used in graph — same as WHITE
-
-// ── CountUp hook ─────────────────────────────────────────────────────────────
-function useCountUp(target, duration = 750) {
-  const [val, setVal] = useState(0)
-  useEffect(() => {
-    if (!target) { setVal(target ?? 0); return }
-    const start = performance.now()
-    let raf
-    const step = (now) => {
-      const t = Math.min((now - start) / duration, 1)
-      const eased = 1 - Math.pow(1 - t, 3)
-      setVal(Math.round(target * eased))
-      if (t < 1) raf = requestAnimationFrame(step)
-    }
-    raf = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(raf)
-  }, [target, duration])
-  return val
-}
-
-function fmt(iso) {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-}
-
-function fmtShort(iso) {
-  if (!iso) return null
-  const d   = new Date(iso)
-  const now = new Date()
-  const diff = Math.round((d - now) / 60000)
-  if (diff < 60)  return `in ${diff}m`
-  if (diff < 1440) return `in ${Math.round(diff / 60)}h`
-  return d.toLocaleDateString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' })
-}
-
-// ── Earnings Donut ──────────────────────────────────────────────────────────
-function EarningsDonut({ thisMonth, goal = 200 }) {
-  const r       = 44
-  const circum  = 2 * Math.PI * r
-  const pct     = Math.min(thisMonth / goal, 1)
-  const [offset, setOffset] = useState(circum)
-
-  useEffect(() => {
-    const t = setTimeout(() => setOffset(circum - pct * circum), 250)
-    return () => clearTimeout(t)
-  }, [pct, circum])
+function EarningsChart({ events }) {
+  const weeks = useMemo(() => weekBuckets(8).map((b) => ({
+    ...b,
+    amount: events
+      .filter((e) => e.status === 'paid')
+      .filter((e) => { const t = new Date(e.start_time); return t >= b.start && t < b.end })
+      .reduce((s, e) => s + Number(e.amount || 0), 0),
+  })), [events])
+  const max = Math.max(1, ...weeks.map((w) => w.amount))
+  const total = weeks.reduce((s, w) => s + w.amount, 0)
 
   return (
-    <div style={{ position: 'relative', width: '108px', height: '108px', flexShrink: 0 }}>
-      <svg width="108" height="108" viewBox="0 0 108 108">
-        <defs>
-          <linearGradient id="earningsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%"   stopColor={ORANGE} />
-            <stop offset="100%" stopColor={WHITE} />
-          </linearGradient>
-        </defs>
-        {/* Track */}
-        <circle cx="54" cy="54" r={r} fill="none"
-          stroke="rgba(255,255,255,0.07)" strokeWidth="9" />
-        {/* Progress */}
-        <circle cx="54" cy="54" r={r} fill="none"
-          stroke="url(#earningsGrad)" strokeWidth="9"
-          strokeLinecap="round"
-          strokeDasharray={circum}
-          strokeDashoffset={offset}
-          transform="rotate(-90 54 54)"
-          style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(.22,.68,0,1.0)' }}
-        />
-      </svg>
-      {/* Centre label */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <span style={{ fontSize: '14px', fontWeight: '900', color: ORANGE, lineHeight: 1 }}>
-          £{thisMonth.toFixed(0)}
-        </span>
-        <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.38)', marginTop: '2px' }}>
-          / £{goal} goal
-        </span>
+    <Card title="Earnings" icon="account_balance" action={<span className="count">{formatMoney(total)} · 8 weeks</span>}>
+      <div style={{ padding: '14px 18px 16px' }}>
+        <div className="bars">
+          {weeks.map((w, i) => (
+            <div className={`bar ${i === weeks.length - 1 ? 'hot' : ''}`} key={w.label} title={`${formatMoney(w.amount)} · week of ${w.label}`}>
+              <i style={{ height: `${(w.amount / max) * 100}%`, animationDelay: `${i * 40}ms` }} />
+              <span>{w.label.split(' ')[0]}</span>
+            </div>
+          ))}
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Icon name="verified" size={15} style={{ color: 'var(--green)' }} />
+          You keep 100% — Study With Students takes no commission.
+        </p>
       </div>
+    </Card>
+  )
+}
+
+function AttentionRow({ icon, title, meta, children }) {
+  return (
+    <div className="row">
+      <span className="avatar" style={{ width: 32, height: 32, background: 'var(--coral-soft)', color: 'var(--coral)' }}>
+        <Icon name={icon} size={17} />
+      </span>
+      <div className="main">
+        <div className="title">{title}</div>
+        <div className="meta">{meta}</div>
+      </div>
+      <div style={{ display: 'flex', gap: 6 }}>{children}</div>
     </div>
   )
 }
 
-// ── Main Component ──────────────────────────────────────────────────────────
 export default function HubTutor() {
   const { user } = useAuth()
+  const [data, setData] = useState({ events: [], students: [], conversations: [], rooms: [], invites: [], profile: null })
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(null)
 
-  const [students,      setStudents]      = useState([])
-  const [events,        setEvents]        = useState([])
-  const [conversations, setConversations] = useState([])
-  const [rooms,         setRooms]         = useState([])
-  const [invites,       setInvites]       = useState([])  // pending student → tutor requests
-  const [loading,       setLoading]       = useState(true)
-  const [mounted,       setMounted]       = useState(false)
-  const [showTour,      setShowTour]      = useState(false)
+  function load() {
+    return Promise.allSettled([
+      getEvents(), getActiveStudents(), getConversations(), getStudyRooms(), getTutorRequestsRec(), getTutorProfile(),
+    ]).then(([ev, st, conv, rooms, inv, prof]) => {
+      const ok = (r, key) => (r.status === 'fulfilled' ? r.value.data[key] ?? [] : [])
+      setData({
+        events: ok(ev, 'events').filter((e) => e.role === 'tutor'),
+        students: ok(st, 'students'),
+        conversations: ok(conv, 'conversations'),
+        rooms: ok(rooms, 'rooms').filter((r) => r.creator_user_id === user?.id && new Date(r.end_time) > new Date()),
+        invites: ok(inv, 'requests'),
+        profile: prof.status === 'fulfilled' ? prof.value.data.profile : null,
+      })
+      setLoading(false)
+    })
+  }
 
-  useEffect(() => {
-    Promise.allSettled([
-      getActiveStudents().then(r   => setStudents(r.data.students ?? [])),
-      getEvents().then(r           => setEvents(r.data.events ?? [])),
-      getConversations().then(r    => setConversations(r.data.conversations ?? [])),
-      getStudyRooms().then(r       => setRooms(r.data.rooms ?? [])),
-      getTutorRequestsRec().then(r => setInvites(r.data.requests ?? [])),
-    ]).finally(() => setLoading(false))
-    // Trigger entrance animations on next frame
-    requestAnimationFrame(() => setMounted(true))
+  useEffect(() => { load() }, [])
 
-    // First-time tutor tour
-    const tourKey = `sws_tour_tutor_${user?.id}`
-    if (!localStorage.getItem(tourKey)) {
-      const t = setTimeout(() => setShowTour(true), 800)
-      return () => clearTimeout(t)
-    }
-  }, [])
+  async function act(key, fn, success) {
+    setBusy(key)
+    try { await fn(); toast.success(success); await load() }
+    catch (err) { toast.error(errorMessage(err)) }
+    finally { setBusy(null) }
+  }
 
-  const name     = user?.name?.split(' ')[0] ?? 'Tutor'
-  const hour     = new Date().getHours()
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
-
-  const pending   = events.filter(e => e.status === 'pending')
-  const confirmed = events.filter(e => e.status === 'confirmed')
-  const paid      = events.filter(e => e.status === 'paid')
-
-  // Earnings calculations — only count sessions the student has actually paid
-  const now        = new Date()
+  const { events, students, conversations, rooms, invites, profile } = data
+  const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-  const thisMonthEarnings = paid
-    .filter(e => e.amount && new Date(e.start_time) >= monthStart)
-    .reduce((sum, e) => sum + Number(e.amount || 0), 0)
-  const totalEarnings = paid
-    .reduce((sum, e) => sum + Number(e.amount || 0), 0)
+  const weekEnd = new Date(now.getTime() + 7 * 86_400_000)
 
-  // Sessions this week
-  const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay())
-  const thisWeekSessions = confirmed.filter(e => new Date(e.start_time) >= weekStart).length
-
-  const nextEvent = confirmed.find(e => new Date(e.start_time) > now)
-  const nextRoom  = rooms.find(r => new Date(r.start_time) > now)
-
-  async function handleStatus(eventId, status) {
-    try {
-      await updateStatus(eventId, status)
-      setEvents(prev => prev.map(e => e.id_event === eventId ? { ...e, status } : e))
-      toast.success(status === 'confirmed' ? 'Session confirmed! 🎉' : 'Session declined')
-    } catch {
-      toast.error('Failed to update status')
-    }
-  }
-
-  async function handleInvite(requestId, action) {
-    try {
-      await respondTutorRequest(requestId, action)
-      setInvites(prev => prev.filter(r => r.id !== requestId))
-      if (action === 'accepted') {
-        toast.success('Student added to your active students! 🎉')
-        // Refresh students list
-        getActiveStudents().then(r => setStudents(r.data.students ?? []))
-      } else {
-        toast.success('Request declined')
-      }
-    } catch {
-      toast.error('Failed to respond to request')
-    }
-  }
-
-  function doneTour() {
-    localStorage.setItem(`sws_tour_tutor_${user?.id}`, 'done')
-    setShowTour(false)
-  }
+  const pending = events.filter((e) => e.status === 'pending' && new Date(e.start_time) > now)
+  const upcoming = events
+    .filter((e) => ['confirmed', 'paid'].includes(e.status) && new Date(e.end_time) > now)
+    .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+  const earnedThisMonth = events
+    .filter((e) => e.status === 'paid' && new Date(e.start_time) >= monthStart)
+    .reduce((s, e) => s + Number(e.amount || 0), 0)
+  const owed = events.filter((e) => e.status === 'confirmed').reduce((s, e) => s + Number(e.amount || 0), 0)
+  const thisWeek = upcoming.filter((e) => new Date(e.start_time) < weekEnd).length
+  const unread = conversations.reduce((s, c) => s + Number(c.unread || 0), 0)
+  const attention = pending.length + invites.length
 
   return (
-    <HubLayout initialMode="tutor" noScroll>
-      {showTour && <SpotlightTour steps={TUTOR_TOUR_STEPS} onDone={doneTour} />}
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '14px' }}>
+    <HubLayout initialMode="tutor">
+      <PageTitle title="Home" icon="space_dashboard" />
 
-        {/* ── Welcome banner ────────────────────────────────────────────── */}
-        <div
-          className={mounted ? 'animate-slide-up' : ''}
-          style={{
-            flexShrink: 0,
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.02) 55%, rgba(255,255,255,0.02) 100%)',
-            border: '1px solid rgba(255,255,255,0.10)',
-            borderRadius: '16px',
-            padding: '20px 24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '16px',
-            position: 'relative',
-            overflow: 'hidden',
-          }}
-        >
+      <div className="dash-head">
+        <div>
+          <div className="eyebrow">Tutor workspace</div>
+          <h1 style={{ marginTop: 6 }}>{greeting()}, <em>{firstName(user?.name)}</em></h1>
+          <p>
+            {loading ? 'Loading your week…' : [
+              attention ? `${attention} thing${attention > 1 ? 's' : ''} need${attention > 1 ? '' : 's'} your answer` : 'You’re all caught up',
+              `${thisWeek} session${thisWeek === 1 ? '' : 's'} this week`,
+              unread ? `${unread} unread` : null,
+            ].filter(Boolean).join(' · ')}
+          </p>
+        </div>
+        <div className="dash-actions">
+          {profile && <Link to="/tutor/$tutorId" params={{ tutorId: String(profile.id_tutor) }} className="btn btn-ghost"><Icon name="visibility" />Public profile</Link>}
+          <Link to="/calendar/tutor" className="btn btn-coral"><Icon name="calendar_month" />Open schedule</Link>
+        </div>
+      </div>
 
-          {/* Left: text + chips */}
-          <div style={{ flex: 1, minWidth: 0, zIndex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'var(--text-muted)' }}>waving_hand</span>
-              <p style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: '500' }}>{greeting}</p>
-            </div>
-            <h1 style={{ fontSize: '22px', fontWeight: '900', color: 'var(--text)', marginBottom: '6px', lineHeight: 1.2 }}>
-              {pending.length > 0
-                ? <>You have <span style={{ color: AMBER }}>{pending.length} new request{pending.length > 1 ? 's' : ''}</span>, {name}!</>
-                : `Welcome back, ${name}! 🎓`}
-            </h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginBottom: '12px' }}>
-              {loading
-                ? 'Loading your dashboard…'
-                : thisMonthEarnings > 0
-                ? `You've earned £${thisMonthEarnings.toFixed(2)} this month · ${thisWeekSessions} session${thisWeekSessions !== 1 ? 's' : ''} this week`
-                : nextRoom
-                ? `Next study room: "${nextRoom.subject}" starting ${fmtShort(nextRoom.start_time)}`
-                : 'All caught up — update your profile to attract more students'}
-            </p>
-            {/* Quick chips */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              {nextEvent && (
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '5px',
-                  background: 'rgba(251,146,60,0.12)', border: '1px solid rgba(251,146,60,0.25)',
-                  borderRadius: '20px', padding: '4px 10px', fontSize: '11px', fontWeight: '600', color: ORANGE,
-                }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>event</span>
-                  Next: {fmt(nextEvent.start_time)}
-                </span>
-              )}
-              {students.length > 0 && (
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '5px',
-                  background: 'rgba(148,163,184,0.12)', border: '1px solid rgba(148,163,184,0.20)',
-                  borderRadius: '20px', padding: '4px 10px', fontSize: '11px', fontWeight: '600', color: SILVER,
-                }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>people</span>
-                  {students.length} active student{students.length !== 1 ? 's' : ''}
-                </span>
-              )}
-              {conversations.length > 0 && (
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '5px',
-                  background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.20)',
-                  borderRadius: '20px', padding: '4px 10px', fontSize: '11px', fontWeight: '600', color: AMBER,
-                }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>message</span>
-                  {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
-                </span>
-              )}
-            </div>
-          </div>
+      <section className="card stat-grid">
+        <Stat icon="payments" label="Earned this month" value={formatMoney(earnedThisMonth)}
+          note={owed ? `${formatMoney(owed)} awaiting payment` : '100% yours — 0% commission'} trend={owed ? undefined : 'up'} />
+        <Stat icon="event_upcoming" label="This week" value={thisWeek}
+          note={upcoming[0] ? `Next: ${formatWhen(upcoming[0].start_time)}` : 'No sessions booked'} />
+        <Stat icon="groups_2" label="Students" value={students.length}
+          note={invites.length ? `${invites.length} new request${invites.length > 1 ? 's' : ''}` : 'Active students'} />
+        <Stat icon="sell" label="Your rate" value={formatMoney(profile?.hourly_rate ?? 20)} unit="/hr"
+          note={<Link to="/tutor-profile" className="card-link" style={{ fontSize: 11.5 }}>Edit rate</Link>} />
+      </section>
 
-          {/* Centre: earnings donut */}
-          <div style={{ zIndex: 1, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-            {loading
-              ? <div style={{ width: '108px', height: '108px', borderRadius: '50%' }} className="skeleton" />
-              : <EarningsDonut thisMonth={thisMonthEarnings} goal={200} />
-            }
-            <span style={{ fontSize: '10px', color: 'var(--text-faint)', fontWeight: '600', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-              Monthly Goal
-            </span>
-          </div>
+      <div className="dash-grid">
+        <div className="dash-col">
+          <Card title="Needs your answer" icon="notifications_active" count={attention || null}>
+            {loading ? <SkeletonRows rows={2} /> : attention ? (
+              <div className="row-list">
+                {invites.map((r) => (
+                  <AttentionRow key={`r${r.id}`} icon="person_add" title={`${r.student_name} wants you as their tutor`} meta={`Request · ${timeAgo(r.created_at)}`}>
+                    <button className="btn btn-quiet btn-sm" disabled={busy === `r${r.id}`}
+                      onClick={() => act(`r${r.id}`, () => respondTutorRequest(r.id, 'declined'), 'Request declined')}>Decline</button>
+                    <button className="btn btn-coral btn-sm" disabled={busy === `r${r.id}`}
+                      onClick={() => act(`r${r.id}`, () => respondTutorRequest(r.id, 'accepted'), `${firstName(r.student_name)} is now your student`)}>Accept</button>
+                  </AttentionRow>
+                ))}
+                {pending.map((e) => (
+                  <AttentionRow key={`e${e.id_event}`} icon="event" title={`${e.title} · ${e.student_name}`}
+                    meta={`${formatWhen(e.start_time)}–${formatTime(e.end_time)} · ${formatMoney(e.amount)}`}>
+                    <button className="btn btn-quiet btn-sm" disabled={busy === `e${e.id_event}`}
+                      onClick={() => act(`e${e.id_event}`, () => updateStatus(e.id_event, 'canceled'), 'Session declined')}>Decline</button>
+                    <button className="btn btn-coral btn-sm" disabled={busy === `e${e.id_event}`}
+                      onClick={() => act(`e${e.id_event}`, () => updateStatus(e.id_event, 'confirmed'), 'Session confirmed')}>Confirm</button>
+                  </AttentionRow>
+                ))}
+              </div>
+            ) : (
+              <EmptyState icon="task_alt" title="All caught up">New student requests and session bookings show up here.</EmptyState>
+            )}
+          </Card>
 
-          {/* Right: CTA buttons */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0, zIndex: 1 }}>
-            <Link to="/tutor-profile" className="btn-primary" style={{ fontSize: '12px', padding: '9px 18px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>edit</span>
-              Edit Profile
-            </Link>
-            <Link to="/study-rooms/tutor" className="btn-secondary" style={{ fontSize: '12px', padding: '9px 18px', display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none', justifyContent: 'center' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>groups</span>
-              Study Rooms
-            </Link>
-          </div>
+          <Card title="Upcoming sessions" icon="event" count={upcoming.length || null} action={<CardLink to="/calendar/tutor">Schedule</CardLink>}>
+            {loading ? <SkeletonRows /> : upcoming.length ? (
+              <div className="row-list">
+                {upcoming.slice(0, 6).map((e) => (
+                  <div key={e.id_event} className="row">
+                    <DateChip value={e.start_time} />
+                    <div className="main">
+                      <div className="title">{e.title || 'Tutoring session'}</div>
+                      <div className="meta">{e.student_name} · {formatTime(e.start_time)}–{formatTime(e.end_time)}</div>
+                    </div>
+                    <span className="side hide-mobile">{formatMoney(e.amount)}</span>
+                    <StatusPill status={e.status} label={e.status === 'confirmed' ? 'Unpaid' : undefined} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState icon="event_available" title="Nothing scheduled">Confirmed bookings from your students appear here.</EmptyState>
+            )}
+          </Card>
+
+          <EarningsChart events={events} />
         </div>
 
-        {/* ── Stats row ─────────────────────────────────────────────────── */}
-        <div
-          className={mounted ? 'animate-slide-up delay-100' : ''}
-          style={{ flexShrink: 0, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}
-        >
-          <StatCard
-            icon="payments"
-            label="This Month"
-            value={loading ? null : `£${thisMonthEarnings.toFixed(2)}`}
-            to="/earnings"
-            accent={ORANGE}
-          />
-          <StatCard
-            icon="savings"
-            label="Total Earned"
-            value={loading ? null : `£${totalEarnings.toFixed(2)}`}
-            to="/earnings"
-            accent={WHITE}
-          />
-          <StatCard
-            icon="hourglass_top"
-            label="Pending"
-            value={loading ? null : pending.length}
-            to="/events"
-            accent={AMBER}
-            highlight={pending.length > 0}
-          />
-          <StatCard
-            icon="people"
-            label="Active Students"
-            value={loading ? null : students.length}
-            to="/active-students"
-            accent={SILVER}
-          />
-        </div>
+        <div className="dash-col">
+          <Card title="Messages" icon="chat" count={unread ? `${unread} new` : null} action={<CardLink to="/messages">Inbox</CardLink>}>
+            {loading ? <SkeletonRows rows={2} /> : conversations.length ? (
+              <div className="row-list">
+                {conversations.slice(0, 4).map((c) => (
+                  <Link key={c.user_id} to="/messages" search={{ user: c.user_id }} className="row">
+                    <Avatar name={c.name} size={32} />
+                    <div className="main">
+                      <div className="title" style={{ fontWeight: c.unread ? 800 : 600 }}>{c.name}</div>
+                      <div className="meta">{c.last_from_me ? 'You: ' : ''}{c.last_message}</div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                      <span className="side">{timeAgo(c.last_ts)}</span>
+                      {c.unread > 0 && <span className="nav-badge">{c.unread}</span>}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <EmptyState icon="forum" title="No conversations yet">Students can message you from your profile.</EmptyState>
+            )}
+          </Card>
 
-        {/* ── Main content: 3 columns ─────────────────────────────────── */}
-        <div
-          className={mounted ? 'animate-slide-up delay-200' : ''}
-          style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}
-        >
+          <Card title="My students" icon="groups_2" count={students.length || null} action={<CardLink to="/active-students" />}>
+            {loading ? <SkeletonRows rows={2} /> : students.length ? (
+              <div className="row-list">
+                {students.slice(0, 5).map((s) => (
+                  <div key={s.id_student} className="row">
+                    <Avatar name={s.name} size={32} />
+                    <Link to="/student/$userId" params={{ userId: String(s.user_id) }} className="main" style={{ color: 'inherit' }}>
+                      <div className="title">{s.name}</div>
+                      <div className="meta">{events.filter((e) => e.student_id === s.id_student && e.status !== 'canceled').length} sessions</div>
+                    </Link>
+                    <Link to="/messages" search={{ user: s.user_id }} className="icon-btn" aria-label={`Message ${s.name}`}><Icon name="chat" /></Link>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState icon="group_add" title="No students yet">Accept a request and they’ll appear here.</EmptyState>
+            )}
+          </Card>
 
-          {/* Col 1 — Student Invites + Session Requests */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0 }}>
-
-            {/* Student Invites (tutor_requests) */}
-            <Panel
-              icon="person_add"
-              title="Student Invites"
-              extra={
-                invites.length > 0 ? (
-                  <span style={{ background: 'rgba(255,255,255,0.88)', color: '#1b263b', fontSize: '9px', fontWeight: '800', padding: '2px 7px', borderRadius: '9px' }}>
-                    {invites.length} NEW
-                  </span>
-                ) : null
-              }
-              style={{ flexShrink: 0 }}
-            >
-              {loading ? <SkeletonRows rows={2} /> : invites.length === 0 ? (
-                <EmptyState icon="group_add" text="No student invites yet" />
-              ) : (
-                invites.slice(0, 3).map(req => (
-                  <InviteRow key={req.id} invite={req} onAction={handleInvite} />
-                ))
-              )}
-            </Panel>
-
-            {/* Session Requests */}
-            <Panel
-              icon="hourglass_top"
-              title="Session Requests"
-              extra={
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {pending.length > 0 && (
-                    <span style={{ background: AMBER, color: '#1b263b', fontSize: '9px', fontWeight: '800', padding: '2px 7px', borderRadius: '9px' }}>
-                      {pending.length} NEW
-                    </span>
-                  )}
-                  <Link to="/events" style={{ color: 'rgba(255,255,255,0.50)', fontSize: '12px', fontWeight: '600' }}>View all →</Link>
-                </div>
-              }
-              style={{ flex: 1, minHeight: 0 }}
-            >
-              {loading ? <SkeletonRows rows={3} /> : pending.length === 0 ? (
-                <EmptyState icon="hourglass_empty" text="No pending requests" action={{ to: '/tutor-profile', label: 'Update your profile' }} />
-              ) : (
-                pending.slice(0, 4).map(ev => (
-                  <PendingRow key={ev.id_event} event={ev} onAction={handleStatus} />
-                ))
-              )}
-            </Panel>
-          </div>
-
-          {/* Col 2 — Active Students + Confirmed Sessions */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0 }}>
-            <Panel
-              icon="people"
-              title="Active Students"
-              extra={<Link to="/active-students" style={{ color: 'rgba(255,255,255,0.50)', fontSize: '12px', fontWeight: '600' }}>View all →</Link>}
-              style={{ flex: 1, minHeight: 0 }}
-            >
-              {loading ? <SkeletonRows rows={3} /> : students.length === 0 ? (
-                <EmptyState icon="group" text="No active students yet" />
-              ) : (
-                students.slice(0, 4).map(s => <StudentRow key={s.id_student} student={s} />)
-              )}
-            </Panel>
-
-            <Panel
-              icon="check_circle"
-              title="Confirmed Sessions"
-              extra={<Link to="/calendar/tutor" style={{ color: 'rgba(255,255,255,0.50)', fontSize: '12px', fontWeight: '600' }}>Calendar →</Link>}
-              style={{ flex: 1, minHeight: 0 }}
-            >
-              {loading ? <SkeletonRows rows={2} /> : confirmed.length === 0 ? (
-                <EmptyState icon="event_available" text="No confirmed sessions" />
-              ) : (
-                confirmed.slice(0, 3).map(ev => <SessionRow key={ev.id_event} event={ev} />)
-              )}
-            </Panel>
-          </div>
-
-          {/* Col 3 — Earnings Graph + Messages */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0 }}>
-            <Panel
-              icon="bar_chart"
-              title="Earnings"
-              extra={<Link to="/earnings" style={{ color: 'rgba(255,255,255,0.50)', fontSize: '12px', fontWeight: '600' }}>Details →</Link>}
-              style={{ flexShrink: 0 }}
-            >
-              <EarningsGraph
-                events={events}
-                loading={loading}
-                thisMonth={thisMonthEarnings}
-                total={totalEarnings}
-                thisWeek={thisWeekSessions}
-              />
-            </Panel>
-
-            <Panel
-              icon="message"
-              title="Messages"
-              extra={<Link to="/messages" style={{ color: 'rgba(255,255,255,0.50)', fontSize: '12px', fontWeight: '600' }}>Open →</Link>}
-              style={{ flex: 1, minHeight: 0 }}
-            >
-              {loading ? <SkeletonRows rows={3} /> : conversations.length === 0 ? (
-                <EmptyState icon="chat_bubble_outline" text="No messages yet" />
-              ) : (
-                conversations.slice(0, 4).map((c, i) => (
-                  <ConvoRow key={i} convo={c} />
-                ))
-              )}
-            </Panel>
-          </div>
-
+          <Card title="Your study rooms" icon="groups" action={<CardLink to="/study-rooms/tutor">Manage</CardLink>}>
+            {loading ? <SkeletonRows rows={1} /> : rooms.length ? (
+              <div className="row-list">
+                {rooms.slice(0, 3).map((r) => (
+                  <div key={r.id} className="row">
+                    <DateChip value={r.start_time} />
+                    <div className="main">
+                      <div className="title">{r.subject}</div>
+                      <div className="meta">{formatWhen(r.start_time)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState icon="add_circle" title="Host a study room" action={<Link to="/study-rooms/tutor" className="btn btn-ghost btn-sm">Create one</Link>}>
+                Drop-in group sessions help Explorer students find you.
+              </EmptyState>
+            )}
+          </Card>
         </div>
       </div>
     </HubLayout>
-  )
-}
-
-// ── Sub-components ──────────────────────────────────────────────────────────
-
-function Panel({ icon, title, extra, children, style }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', ...style }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-          {icon && (
-            <div style={{
-              width: '22px', height: '22px', borderRadius: '6px',
-              background: 'rgba(255,255,255,0.09)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>{icon}</span>
-            </div>
-          )}
-          <h2 style={{ color: 'var(--text)', fontWeight: '800', fontSize: '13px', letterSpacing: '-0.01em' }}>{title}</h2>
-        </div>
-        {extra}
-      </div>
-      {/* Body */}
-      <div style={{
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border)',
-        borderRadius: '13px',
-        padding: '12px 14px',
-        backdropFilter: 'blur(10px)',
-        flex: 1,
-        minHeight: 0,
-        overflowY: 'auto',
-        boxShadow: 'var(--shadow-card)',
-      }}
-        className="scrollbar-hide"
-      >
-        {children}
-      </div>
-    </div>
-  )
-}
-
-function StatCard({ icon, label, value, to, accent = WHITE, highlight }) {
-  const isNum    = typeof value === 'number'
-  const animated = useCountUp(isNum ? value : 0, 800)
-  const display  = value === null ? null : isNum ? animated : value
-
-  return (
-    <Link to={to} style={{ textDecoration: 'none' }}>
-      <div
-        style={{
-          background: highlight ? `${accent}0d` : 'var(--bg-card)',
-          border: `1px solid ${highlight ? accent + '35' : 'var(--border)'}`,
-          borderRadius: '13px',
-          padding: '14px 16px',
-          backdropFilter: 'blur(10px)',
-          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          boxShadow: 'var(--shadow-card)',
-        }}
-        onMouseEnter={e => {
-          e.currentTarget.style.transform = 'translateY(-2px)'
-          e.currentTarget.style.boxShadow = 'var(--shadow-hover)'
-        }}
-        onMouseLeave={e => {
-          e.currentTarget.style.transform = 'translateY(0)'
-          e.currentTarget.style.boxShadow = 'var(--shadow-card)'
-        }}
-      >
-        <div style={{
-          width: '44px', height: '44px', borderRadius: '11px',
-          background: `${accent}1a`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        }}>
-          <span className="material-symbols-outlined" style={{ color: accent, fontSize: '22px' }}>{icon}</span>
-        </div>
-        <div>
-          {display === null
-            ? <div className="skeleton" style={{ width: '56px', height: '24px', marginBottom: '4px' }} />
-            : <div
-                key={value}
-                className="animate-number-pop"
-                style={{ fontSize: '24px', fontWeight: '900', color: 'var(--text)', lineHeight: 1 }}
-              >
-                {display}
-              </div>
-          }
-          <div style={{ color: 'var(--text-faint)', fontSize: '10px', marginTop: '3px', fontWeight: '600', letterSpacing: '0.03em' }}>
-            {label}
-          </div>
-        </div>
-      </div>
-    </Link>
-  )
-}
-
-function EarningsGraph({ events, loading, thisMonth, total, thisWeek }) {
-  if (loading) return <SkeletonRows rows={5} />
-
-  // Build last-6-months buckets
-  const now    = new Date()
-  const months = Array.from({ length: 6 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
-    return { year: d.getFullYear(), month: d.getMonth(), label: d.toLocaleDateString('en-GB', { month: 'short' }), total: 0 }
-  })
-  for (const ev of events) {
-    if (ev.status !== 'paid' || !ev.start_time) continue
-    const d = new Date(ev.start_time)
-    const bucket = months.find(m => m.year === d.getFullYear() && m.month === d.getMonth())
-    if (bucket) bucket.total += Number(ev.amount || 0)
-  }
-
-  const peak   = Math.max(...months.map(m => m.total), 0.01)
-  const CHART_H = 64
-  const BAR_W   = 28
-  const GAP     = 8
-  const totalW  = months.length * (BAR_W + GAP) - GAP
-
-  return (
-    <div>
-      {/* Bar chart */}
-      <div style={{ marginBottom: '12px' }}>
-        <svg viewBox={`0 0 ${totalW} ${CHART_H + 18}`} width="100%" style={{ overflow: 'visible' }}>
-          <defs>
-            <linearGradient id="barGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%"   stopColor={ORANGE} />
-              <stop offset="100%" stopColor={WHITE} />
-            </linearGradient>
-          </defs>
-          {months.map((m, i) => {
-            const barH  = Math.max(3, (m.total / peak) * CHART_H)
-            const x     = i * (BAR_W + GAP)
-            const y     = CHART_H - barH
-            const isCur = m.month === now.getMonth() && m.year === now.getFullYear()
-            const delay = i * 80
-            return (
-              <g key={i}>
-                <rect
-                  x={x} y={y} width={BAR_W} height={barH} rx={5}
-                  fill={isCur ? 'url(#barGrad)' : 'rgba(255,255,255,0.10)'}
-                  style={{
-                    transformOrigin: `${x + BAR_W/2}px ${CHART_H}px`,
-                    animation: `barGrow 0.65s cubic-bezier(.22,.68,0,1.0) ${delay}ms both`,
-                  }}
-                />
-                {isCur && m.total > 0 && (
-                  <text
-                    x={x + BAR_W / 2} y={y - 4}
-                    textAnchor="middle" fontSize="7" fontWeight="800"
-                    fill="rgba(255,255,255,0.80)"
-                  >
-                    £{m.total.toFixed(0)}
-                  </text>
-                )}
-                <text
-                  x={x + BAR_W / 2} y={CHART_H + 14}
-                  textAnchor="middle" fontSize="8"
-                  fill={isCur ? 'rgba(255,255,255,0.80)' : 'rgba(255,255,255,0.30)'}
-                  fontWeight={isCur ? '700' : '400'}
-                >
-                  {m.label}
-                </text>
-              </g>
-            )
-          })}
-          <line x1={0} y1={CHART_H} x2={totalW} y2={CHART_H} stroke="rgba(255,255,255,0.07)" strokeWidth={1} />
-        </svg>
-      </div>
-
-      {/* Summary rows */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        <EarningsRow label="This month"         value={`£${thisMonth.toFixed(2)}`} icon="calendar_month"  color={WHITE} />
-        <EarningsRow label="Total earned"       value={`£${total.toFixed(2)}`}     icon="savings"         color={ORANGE} />
-        <EarningsRow label="Sessions this week" value={String(thisWeek)}           icon="event_available" color={AMBER} />
-      </div>
-    </div>
-  )
-}
-
-function EarningsRow({ label, value, icon, color }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-      <span className="material-symbols-outlined" style={{ color, fontSize: '15px', flexShrink: 0 }}>{icon}</span>
-      <span style={{ flex: 1, color: 'var(--text-muted)', fontSize: '11px' }}>{label}</span>
-      <span style={{ color: 'var(--text)', fontSize: '13px', fontWeight: '800' }}>{value}</span>
-    </div>
-  )
-}
-
-function InviteRow({ invite, onAction }) {
-  const [acting, setActing] = useState(false)
-  const initials = invite.student_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() ?? '?'
-
-  async function act(action) {
-    setActing(true)
-    await onAction(invite.id, action)
-    setActing(false)
-  }
-
-  return (
-    <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '10px', marginBottom: '10px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '9px', marginBottom: '8px' }}>
-        <div style={{
-          width: '30px', height: '30px', borderRadius: '8px',
-          background: 'rgba(255,255,255,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'rgba(255,255,255,0.75)', fontSize: '11px', fontWeight: '800', flexShrink: 0,
-        }}>
-          {initials}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: 'var(--text)', fontSize: '12px', fontWeight: '700', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {invite.student_name}
-          </div>
-          <div style={{ color: 'var(--text-faint)', fontSize: '10px', marginTop: '1px' }}>
-            {invite.student_email} · wants you as their tutor
-          </div>
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: '6px', paddingLeft: '39px' }}>
-        <button
-          onClick={() => act('accepted')}
-          disabled={acting}
-          style={{
-            flex: 1, padding: '5px 0',
-            background: 'rgba(251,146,60,0.14)', color: ORANGE,
-            border: `1px solid rgba(251,146,60,0.28)`, borderRadius: '8px',
-            fontSize: '10px', fontWeight: '800', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px',
-            opacity: acting ? 0.6 : 1,
-          }}
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>check</span>
-          Accept
-        </button>
-        <button
-          onClick={() => act('declined')}
-          disabled={acting}
-          style={{
-            flex: 1, padding: '5px 0',
-            background: 'rgba(248,113,113,0.12)', color: '#f87171',
-            border: '1px solid rgba(248,113,113,0.25)', borderRadius: '8px',
-            fontSize: '10px', fontWeight: '800', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px',
-            opacity: acting ? 0.6 : 1,
-          }}
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>close</span>
-          Decline
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function PendingRow({ event, onAction }) {
-  const [acting, setActing] = useState(false)
-
-  async function act(status) {
-    setActing(true)
-    await onAction(event.id_event, status)
-    setActing(false)
-  }
-
-  return (
-    <div style={{
-      borderBottom: '1px solid var(--border)', paddingBottom: '10px', marginBottom: '10px',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '9px', marginBottom: '8px' }}>
-        <div style={{
-          width: '30px', height: '30px', borderRadius: '8px',
-          background: 'rgba(251,191,36,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        }}>
-          <span className="material-symbols-outlined" style={{ color: AMBER, fontSize: '16px' }}>pending</span>
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: 'var(--text)', fontSize: '12px', fontWeight: '700', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {event.title}
-          </div>
-          <div style={{ color: 'var(--text-faint)', fontSize: '10px', marginTop: '1px' }}>
-            {event.student_name ?? 'Student'} · {fmt(event.start_time)}
-            {event.amount ? ` · £${Number(event.amount).toFixed(2)}` : ''}
-          </div>
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: '6px', paddingLeft: '39px' }}>
-        <button
-          onClick={() => act('confirmed')}
-          disabled={acting}
-          style={{
-            flex: 1, padding: '5px 0',
-            background: 'rgba(52,211,153,0.14)', color: '#34d399',
-            border: `1px solid rgba(52,211,153,0.28)`, borderRadius: '8px',
-            fontSize: '10px', fontWeight: '800', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px',
-            opacity: acting ? 0.6 : 1,
-          }}
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>check</span>
-          Confirm
-        </button>
-        <button
-          onClick={() => act('canceled')}
-          disabled={acting}
-          style={{
-            flex: 1, padding: '5px 0',
-            background: 'rgba(248,113,113,0.12)', color: '#f87171',
-            border: '1px solid rgba(248,113,113,0.25)', borderRadius: '8px',
-            fontSize: '10px', fontWeight: '800', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px',
-            opacity: acting ? 0.6 : 1,
-          }}
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>close</span>
-          Decline
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function StudentRow({ student }) {
-  const initials = student.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-  const colors   = ['rgba(255,255,255,0.12)', 'rgba(167,139,250,0.20)', 'rgba(52,211,153,0.18)', 'rgba(251,191,36,0.20)']
-  const textCols = ['rgba(255,255,255,0.70)', '#a78bfa', '#34d399', AMBER]
-  const idx      = (student.id_student ?? 0) % colors.length
-  return (
-    <Link to="/messages" style={{ textDecoration: 'none' }}>
-      <div
-        style={{
-          display: 'flex', alignItems: 'center', gap: '9px',
-          padding: '7px 6px', borderBottom: '1px solid var(--border)',
-          borderRadius: '8px', transition: 'background 0.15s',
-        }}
-        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
-        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-      >
-        <div style={{
-          width: '32px', height: '32px', borderRadius: '9px',
-          background: colors[idx], display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: textCols[idx], fontSize: '11px', fontWeight: '800', flexShrink: 0,
-        }}>
-          {initials}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: 'var(--text)', fontSize: '12px', fontWeight: '600' }}>{student.name}</div>
-          <div style={{ color: 'var(--text-faint)', fontSize: '10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {student.email}
-          </div>
-        </div>
-        <span className="material-symbols-outlined" style={{ color: 'var(--text-faint)', fontSize: '14px' }}>chevron_right</span>
-      </div>
-    </Link>
-  )
-}
-
-function SessionRow({ event }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '9px', padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
-      <div style={{
-        width: '30px', height: '30px', borderRadius: '8px',
-        background: 'rgba(251,146,60,0.14)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-      }}>
-        <span className="material-symbols-outlined" style={{ color: ORANGE, fontSize: '15px' }}>check_circle</span>
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ color: 'var(--text)', fontSize: '12px', fontWeight: '700', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {event.title}
-        </div>
-        <div style={{ color: 'var(--text-faint)', fontSize: '10px', marginTop: '1px' }}>
-          {event.student_name ?? 'Student'} · {fmt(event.start_time)}
-          {event.amount ? ` · £${Number(event.amount).toFixed(2)}` : ''}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ConvoRow({ convo }) {
-  const initials = convo.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() ?? '?'
-  return (
-    <Link to="/messages" style={{ textDecoration: 'none' }}>
-      <div
-        style={{
-          display: 'flex', alignItems: 'center', gap: '9px',
-          padding: '7px 6px', borderBottom: '1px solid var(--border)',
-          borderRadius: '8px', transition: 'background 0.15s',
-        }}
-        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
-        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-      >
-        <div style={{
-          width: '32px', height: '32px', borderRadius: '9px',
-          background: 'rgba(255,255,255,0.10)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'rgba(255,255,255,0.75)', fontSize: '11px', fontWeight: '800', flexShrink: 0,
-          position: 'relative',
-        }}>
-          {initials}
-          <div style={{
-            position: 'absolute', bottom: '-1px', right: '-1px',
-            width: '9px', height: '9px', borderRadius: '50%',
-            background: ORANGE, border: '1.5px solid var(--bg-secondary)',
-          }} />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: 'var(--text)', fontSize: '12px', fontWeight: '700' }}>{convo.name}</div>
-          <div style={{ color: 'var(--text-faint)', fontSize: '10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {convo.last_message ?? 'No messages yet'}
-          </div>
-        </div>
-        <span className="material-symbols-outlined" style={{ color: 'var(--text-faint)', fontSize: '14px' }}>chevron_right</span>
-      </div>
-    </Link>
-  )
-}
-
-function EmptyState({ icon, text, action }) {
-  return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      height: '100%', minHeight: '80px', textAlign: 'center', gap: '6px',
-    }}>
-      <span className="material-symbols-outlined" style={{ fontSize: '28px', color: 'var(--text-faint)' }}>{icon}</span>
-      <p style={{ color: 'var(--text-faint)', fontSize: '12px' }}>{text}</p>
-      {action && (
-        <Link to={action.to} style={{ color: 'rgba(255,255,255,0.55)', fontSize: '11px', fontWeight: '700', textDecoration: 'none' }}>
-          {action.label} →
-        </Link>
-      )}
-    </div>
-  )
-}
-
-function SkeletonRows({ rows }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      {[...Array(rows)].map((_, i) => (
-        <div key={i} className="skeleton" style={{ height: '34px', borderRadius: '8px' }} />
-      ))}
-    </div>
   )
 }

@@ -1,260 +1,151 @@
-import { useState } from 'react'
+// Tutor pieces shared by the student-side tutoring pages: the directory row (Find tutors,
+// Saved tutors), subject pills, and the "Book a session" button that lets a student pick
+// which of their tutors to book.
+import { useEffect, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import { formatMoney } from '../../lib/format'
+import { Avatar, Icon, Pill, StatusPill } from '../ui'
+import BookSessionModal from './BookSessionModal'
 
-const CORAL  = '#ff725e'
-const GREEN  = '#34d399'
-const BLUE   = '#60a5fa'
-const AMBER  = '#fbbf24'
-const PURPLE = '#a78bfa'
+const ellipsis = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
 
-const TUTOR_GRADS = [
-  `linear-gradient(135deg, ${CORAL} 0%, #ff9a3c 100%)`,
-  'linear-gradient(135deg, #60a5fa 0%, #818cf8 100%)',
-  'linear-gradient(135deg, #34d399 0%, #059669 100%)',
-  'linear-gradient(135deg, #f472b6 0%, #ec4899 100%)',
-  'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
-  'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
-  'linear-gradient(135deg, #fb923c 0%, #ef4444 100%)',
-  'linear-gradient(135deg, #22d3ee 0%, #0284c7 100%)',
-]
+const splitSubjects = (value) =>
+  [...new Set(String(value ?? '').split(',').map((s) => s.trim()).filter(Boolean))]
 
-// Accent colours matching each gradient for hover glow
-const GRAD_GLOWS = [
-  CORAL, '#60a5fa', '#34d399', '#f472b6',
-  '#fbbf24', '#a78bfa', '#fb923c', '#22d3ee',
-]
+/** Comma-separated subjects as pills; subjects matching `highlight` turn coral. */
+export function SubjectPills({ subjects, highlight = '', max = Infinity }) {
+  const list = splitSubjects(subjects)
+  if (!list.length) return null
+  const query = highlight.trim().toLowerCase()
+  const shown = list.slice(0, max)
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+      {shown.map((s) => (
+        <Pill key={s} tone={query && s.toLowerCase().includes(query) ? 'coral' : undefined}>{s}</Pill>
+      ))}
+      {list.length > shown.length && <Pill>+{list.length - shown.length}</Pill>}
+    </div>
+  )
+}
 
-const SUBJECT_COLORS = [CORAL, BLUE, GREEN, PURPLE, AMBER, '#fb923c', '#22d3ee', '#f472b6']
+export const VerifiedPill = () => <Pill tone="green">Verified</Pill>
 
-export default function TutorCard({ tutor, onLike, liked = false, onActivate, activated = false, pending = false }) {
-  const [adding,   setAdding]   = useState(false)
-  const [likeAnim, setLikeAnim] = useState(false)
-  const [hovered,  setHovered]  = useState(false)
+/** Where the viewer stands with this tutor. */
+export function RelationPill({ status }) {
+  if (status === 'self') return <Pill tone="coral">You</Pill>
+  if (status === 'connected') return <StatusPill status="accepted" label="Your tutor" />
+  if (status === 'pending') return <StatusPill status="pending" label="Requested" />
+  return null
+}
 
-  const initials = tutor.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() ?? '??'
-  const subjects = tutor.subjects?.split(',').map(s => s.trim()).filter(Boolean) ?? []
-  const gradIdx  = (tutor.id_tutor ?? 0) % TUTOR_GRADS.length
-  const glow     = GRAD_GLOWS[gradIdx]
-
-  async function handleActivate(e) {
-    e.preventDefault()
-    if (activated || pending || adding || !onActivate) return
-    setAdding(true)
-    try { await onActivate(tutor.id_tutor) }
-    finally { setAdding(false) }
-  }
-
-  function handleLike(e) {
-    e.preventDefault()
-    if (!onLike) return
-    setLikeAnim(true)
-    setTimeout(() => setLikeAnim(false), 450)
-    onLike(tutor.id_tutor)
-  }
+/**
+ * One tutor as a list row (use inside a `.row-list`).
+ * status:  'self' | 'connected' | 'pending' | null
+ * actions: buttons on the right (defaults to "View profile")
+ */
+export default function TutorCard({ tutor, liked = false, onToggleLike, status, highlight, actions }) {
+  const profile = { to: '/tutor/$tutorId', params: { tutorId: String(tutor.id_tutor) } }
+  const place = [tutor.university, tutor.course].filter(Boolean).join(' · ')
 
   return (
-    <div
-      style={{
-        background: 'var(--bg-card)',
-        border: `1px solid ${hovered ? glow + '30' : 'var(--border)'}`,
-        borderRadius: '20px', overflow: 'hidden',
-        backdropFilter: 'blur(12px)',
-        boxShadow: hovered
-          ? `0 16px 48px rgba(0,0,0,0.35), 0 0 0 1px ${glow}18`
-          : 'var(--shadow-card)',
-        display: 'flex', flexDirection: 'column',
-        transition: 'transform 0.22s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.22s ease, border-color 0.22s ease',
-        transform: hovered ? 'translateY(-6px)' : 'translateY(0)',
-      }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      {/* ── Hero area ─────────────────────────────────────────────────────── */}
-      <div style={{ height: '148px', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
-        {/* Gradient background or photo */}
-        {tutor.image_url
-          ? <img src={tutor.image_url} alt={tutor.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-          : <div style={{ width: '100%', height: '100%', background: TUTOR_GRADS[gradIdx] }} />
-        }
+    <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-start', rowGap: 10, padding: '12px 18px' }}>
+      <div style={{ flex: '1 1 260px', minWidth: 0, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        <Avatar name={tutor.name || '?'} src={tutor.avatar_url} size={36} />
+        <div className="main">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            <Link {...profile} className="title" style={{ color: 'inherit', textDecoration: 'none', minWidth: 0 }}>
+              {tutor.name}
+            </Link>
+            {tutor.verified && <VerifiedPill />}
+            <RelationPill status={status} />
+          </div>
+          {place && <div className="meta">{place}</div>}
+          {tutor.subjects && (
+            <div style={{ marginTop: 8 }}>
+              <SubjectPills subjects={tutor.subjects} highlight={highlight} max={4} />
+            </div>
+          )}
+        </div>
+      </div>
 
-        {/* Bottom fade overlay */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0) 30%, rgba(0,0,0,0.50) 100%)',
-          pointerEvents: 'none',
-        }} />
-
-        {/* Like button — top right */}
-        {onLike && (
+      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap', marginRight: 4 }}>
+          {formatMoney(tutor.hourly_rate ?? 20)}<span style={{ fontWeight: 500, color: 'var(--text-faint)' }}>/hr</span>
+        </span>
+        {onToggleLike && status !== 'self' && (
           <button
-            onClick={handleLike}
-            style={{
-              position: 'absolute', top: '12px', right: '12px', zIndex: 2,
-              width: '34px', height: '34px', borderRadius: '10px',
-              background: liked ? 'rgba(239,68,68,0.80)' : 'rgba(0,0,0,0.35)',
-              backdropFilter: 'blur(8px)',
-              border: `1px solid ${liked ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.2)'}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer',
-              transform: likeAnim ? 'scale(1.35)' : 'scale(1)',
-              transition: 'transform 0.18s cubic-bezier(0.34,1.56,0.64,1), background 0.18s',
-            }}
-            title={liked ? 'Unlike' : 'Save tutor'}
+            type="button"
+            className="icon-btn"
+            onClick={() => onToggleLike(tutor)}
+            aria-pressed={liked}
+            aria-label={liked ? `Remove ${tutor.name} from saved tutors` : `Save ${tutor.name}`}
+            title={liked ? 'Saved' : 'Save'}
           >
-            <span
-              className="material-symbols-outlined"
-              style={{ fontSize: '16px', color: 'white', fontVariationSettings: liked ? '"FILL" 1' : '"FILL" 0' }}
-            >
-              favorite
-            </span>
+            <Icon name="favorite" fill={liked} style={liked ? { color: 'var(--coral)' } : undefined} />
           </button>
         )}
-
-        {/* Floating avatar — overlaps hero bottom */}
-        <div style={{
-          position: 'absolute', bottom: '-26px', left: '18px', zIndex: 2,
-          width: '58px', height: '58px', borderRadius: '16px',
-          background: tutor.image_url ? 'rgba(30,30,50,0.65)' : 'rgba(255,255,255,0.18)',
-          backdropFilter: 'blur(10px)',
-          border: '2.5px solid var(--bg-card)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'white', fontSize: '18px', fontWeight: '900',
-          boxShadow: '0 6px 20px rgba(0,0,0,0.35)',
-          letterSpacing: '-0.02em',
-        }}>
-          {initials}
-        </div>
-
-        {/* Price badge — bottom right of hero */}
-        {tutor.hourly_rate && (
-          <div style={{
-            position: 'absolute', bottom: '10px', right: '12px', zIndex: 2,
-            padding: '3px 9px', borderRadius: '20px',
-            background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(255,255,255,0.15)',
-          }}>
-            <span style={{ fontSize: '13px', fontWeight: '800', color: 'white' }}>
-              £{tutor.hourly_rate}<span style={{ fontSize: '10px', fontWeight: '500', opacity: 0.75 }}>/hr</span>
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* ── Content ───────────────────────────────────────────────────────── */}
-      <div style={{ padding: '34px 18px 18px', flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-
-        {/* Name + university */}
-        <div>
-          <h3 style={{
-            fontWeight: '800', color: 'var(--text)', fontSize: '16px',
-            margin: '0 0 3px', letterSpacing: '-0.02em', lineHeight: 1.2,
-          }}>
-            {tutor.name}
-          </h3>
-          {(tutor.university || tutor.course) && (
-            <p style={{ color: 'var(--text-faint)', fontSize: '12px', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '12px', flexShrink: 0 }}>school</span>
-              {[tutor.university, tutor.course].filter(Boolean).join(' · ')}
-            </p>
-          )}
-          {/* Star rating */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-            {[1, 2, 3, 4, 5].map(i => (
-              <span key={i} className="material-symbols-outlined" style={{ fontSize: '13px', color: AMBER, fontVariationSettings: '"FILL" 1' }}>star</span>
-            ))}
-            <span style={{ fontSize: '11px', color: 'var(--text-faint)', marginLeft: '3px' }}>New tutor</span>
-          </div>
-        </div>
-
-        {/* Subject pills */}
-        {subjects.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-            {subjects.slice(0, 3).map((s, i) => {
-              const c = SUBJECT_COLORS[i % SUBJECT_COLORS.length]
-              return (
-                <span key={s} style={{ fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: '20px', background: `${c}14`, color: c, border: `1px solid ${c}28` }}>
-                  {s}
-                </span>
-              )
-            })}
-            {subjects.length > 3 && (
-              <span style={{ fontSize: '11px', padding: '3px 9px', borderRadius: '20px', background: 'rgba(255,255,255,0.05)', color: 'var(--text-faint)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                +{subjects.length - 3}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Bio snippet */}
-        {tutor.about_me && (
-          <p style={{
-            fontSize: '12px', color: 'var(--text-faint)', lineHeight: 1.65, margin: 0,
-            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-            flex: 1,
-          }}>
-            {tutor.about_me}
-          </p>
-        )}
-
-        {/* Availability */}
-        {tutor.availability && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: 'auto' }}>
-            <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: GREEN, boxShadow: `0 0 6px ${GREEN}` }} />
-            <span style={{ fontSize: '11px', color: GREEN, fontWeight: '600' }}>
-              {tutor.availability}
-            </span>
-          </div>
-        )}
-
-        {/* Action buttons */}
-        <div style={{ display: 'flex', gap: '8px', marginTop: tutor.availability ? '0' : 'auto' }}>
-          <Link
-            to="/tutor/$tutorId"
-            params={{ tutorId: String(tutor.id_tutor) }}
-            style={{
-              flex: 1, textAlign: 'center', textDecoration: 'none',
-              padding: '10px 12px', borderRadius: '12px', fontSize: '13px', fontWeight: '700',
-              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)',
-              color: 'var(--text)', transition: 'all 0.15s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.11)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
-          >
-            View Profile
-          </Link>
-          {onActivate && (
-            <button
-              onClick={handleActivate}
-              disabled={activated || pending || adding}
-              style={{
-                flex: 1, padding: '10px 12px', borderRadius: '12px',
-                background: activated
-                  ? `${GREEN}20`
-                  : pending
-                  ? `${AMBER}20`
-                  : `linear-gradient(135deg, ${CORAL}, #ff9a3c)`,
-                color: activated ? GREEN : pending ? AMBER : 'white',
-                fontSize: '13px', fontWeight: '700',
-                cursor: (activated || pending || adding) ? 'default' : 'pointer',
-                border: activated
-                  ? `1px solid ${GREEN}35`
-                  : pending
-                  ? `1px solid ${AMBER}35`
-                  : 'none',
-                opacity: adding ? 0.75 : 1,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
-                transition: 'opacity 0.15s, transform 0.15s',
-                boxShadow: (activated || pending) ? 'none' : `0 4px 14px ${CORAL}40`,
-              }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>
-                {activated ? 'check_circle' : pending ? 'hourglass_top' : adding ? 'hourglass_empty' : 'person_add'}
-              </span>
-              {activated ? 'Added' : pending ? 'Pending…' : adding ? '…' : 'Request'}
-            </button>
-          )}
-        </div>
+        {actions ?? <Link {...profile} className="btn btn-ghost btn-sm">View profile</Link>}
       </div>
     </div>
+  )
+}
+
+/**
+ * Opens BookSessionModal. With one tutor it books them straight away; with several it first
+ * shows a menu to choose who. Disabled until the student has a connected tutor.
+ */
+export function BookSessionButton({ tutors, onBooked, label = 'Book a session', className = 'btn btn-coral', icon = 'add' }) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [tutor, setTutor] = useState(null)
+  const wrap = useRef(null)
+
+  useEffect(() => {
+    if (!menuOpen) return undefined
+    const onDown = (e) => { if (!wrap.current?.contains(e.target)) setMenuOpen(false) }
+    const onKey = (e) => { if (e.key === 'Escape') setMenuOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [menuOpen])
+
+  if (!tutors.length) {
+    return (
+      <button type="button" className={className} disabled title="Available once a tutor accepts your request">
+        <Icon name={icon} />{label}
+      </button>
+    )
+  }
+
+  const several = tutors.length > 1
+  return (
+    <span ref={wrap} style={{ position: 'relative', display: 'inline-flex' }}>
+      <button
+        type="button"
+        className={className}
+        aria-haspopup={several ? 'menu' : undefined}
+        aria-expanded={several ? menuOpen : undefined}
+        onClick={() => (several ? setMenuOpen((v) => !v) : setTutor(tutors[0]))}
+      >
+        <Icon name={icon} />{label}{several && <Icon name="expand_more" />}
+      </button>
+
+      {menuOpen && (
+        <div className="menu" role="menu" style={{ top: 'calc(100% + 6px)', right: 0 }}>
+          {tutors.map((t) => (
+            <button key={t.id_tutor} type="button" role="menuitem" className="menu-item"
+              onClick={() => { setMenuOpen(false); setTutor(t) }}>
+              <Avatar name={t.name} src={t.avatar_url} size={22} />
+              <span style={{ flex: 1, textAlign: 'left', ...ellipsis }}>{t.name}</span>
+              <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{formatMoney(t.hourly_rate ?? 20)}/hr</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {tutor && <BookSessionModal tutor={tutor} onClose={() => setTutor(null)} onBooked={onBooked} />}
+    </span>
   )
 }

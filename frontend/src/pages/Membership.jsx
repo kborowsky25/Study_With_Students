@@ -1,271 +1,391 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Link, useSearch } from '@tanstack/react-router'
-import { loadStripe } from '@stripe/stripe-js'
-import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js'
-import { useAuth } from '../context/AuthContext'
-import { createCheckoutSession, confirmCheckoutSession, refreshAuthToken } from '../api/membership'
-import HubLayout from '../components/layout/HubLayout'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate, useSearch } from '@tanstack/react-router'
+import { loadStripe } from '@stripe/stripe-js/pure'
+import { EmbeddedCheckout, EmbeddedCheckoutProvider } from '@stripe/react-stripe-js'
 import toast from 'react-hot-toast'
+import { useAuth } from '../context/AuthContext'
+import { PageTitle } from '../context/PageTitleContext'
+import HubLayout from '../components/layout/HubLayout'
+import { Card, EmptyState, Icon, Pill, SkeletonRows } from '../components/ui'
+import {
+  activateDemoMembership, cancelMembership, confirmCheckoutSession, createCheckoutSession, getMembershipStatus,
+} from '../api/membership'
+import { errorMessage } from '../api/client'
+import { formatDate, formatMoney } from '../lib/format'
 
-const STRIPE_PK = 'pk_test_51SKJFFF1jY7UrWMjwVDYHzGJIJn0ek6exLO2Cios5iPtsiGftjxkeCyHCe85dCP3cQVjmIX1WgiClR9r0uCnKuWR00XjNBMaVD'
-const stripePromise = loadStripe(STRIPE_PK)
+// Stripe.js is fetched only when checkout is opened (the /pure entry has no import side
+// effects), and checkout is only offered when the API has Stripe on and a publishable key is set.
+const STRIPE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
+let stripePromise = null
+function getStripe() {
+  stripePromise ??= loadStripe(STRIPE_KEY).catch((err) => { stripePromise = null; throw err })
+  return stripePromise
+}
 
-// ── Palette ──────────────────────────────────────────────────────────────────
-const CORAL  = '#ff725e'
-const AMBER  = '#fbbf24'
-const GREEN  = '#34d399'
+const FREE_FEATURES = ['Find tutors', 'Request and book sessions', 'Messaging', 'Calendar', 'Pay tutors directly, 0% commission']
+const EXPLORER_FEATURES = ['Everything in Free', 'Community forum', 'Study notes and materials', 'Study rooms', 'Live classes', 'Explorer badge']
 
-// ── Feature lists ─────────────────────────────────────────────────────────────
-const FREE_FEATURES = [
-  { icon: 'search',             label: 'Find & contact tutors',     ok: true  },
-  { icon: 'cast_for_education', label: 'Book 1-to-1 sessions',      ok: true  },
-  { icon: 'calendar_month',     label: 'Personal calendar',         ok: true  },
-  { icon: 'message',            label: 'Direct messaging',          ok: true  },
-  { icon: 'forum',              label: 'Community Forum',           ok: false },
-  { icon: 'groups',             label: 'Study Rooms',               ok: false },
-  { icon: 'school',             label: 'Classroom sessions',        ok: false },
-  { icon: 'military_tech',      label: 'Explorer Graduation',       ok: false },
+const unlockedLinks = (tutor) => [
+  { to: '/forum', icon: 'forum', label: 'Forum' },
+  { to: '/study-notes', icon: 'menu_book', label: 'Study notes' },
+  { to: tutor ? '/study-rooms/tutor' : '/study-rooms/student', icon: 'groups', label: 'Study rooms' },
+  { to: '/classroom', icon: 'school', label: 'Live classes' },
+  { to: '/xp', icon: 'military_tech', label: 'Graduation' },
 ]
 
-const EXPLORER_FEATURES = [
-  { icon: 'search',             label: 'Find & contact tutors',     ok: true  },
-  { icon: 'cast_for_education', label: 'Book 1-to-1 sessions',      ok: true  },
-  { icon: 'calendar_month',     label: 'Personal calendar',         ok: true  },
-  { icon: 'message',            label: 'Direct messaging',          ok: true  },
-  { icon: 'forum',              label: 'Community Forum',           ok: true  },
-  { icon: 'groups',             label: 'Study Rooms',               ok: true  },
-  { icon: 'school',             label: 'Classroom sessions',        ok: true  },
-  { icon: 'military_tech',      label: 'Explorer Graduation',       ok: true  },
+const faq = (price) => [
+  [`Why ${price} a month?`, 'It keeps the platform running, and half goes to UNICEF’s education programmes.'],
+  ['Do you take a cut of tutoring?', 'No. You pay tutors directly and they keep 100%.'],
+  ['Can I cancel anytime?', 'Yes, on this page. A paid plan stays active until the end of the month.'],
 ]
 
-// ── Check row ─────────────────────────────────────────────────────────────────
-function FeatureRow({ icon, label, ok }) {
+// The API sends naive UTC timestamps, e.g. "2026-12-03T11:02:15.123456".
+function parseUtc(value) {
+  const iso = String(value).replace(/(\.\d{3})\d+/, '$1')
+  return new Date(/(Z|[+-]\d{2}:?\d{2})$/.test(iso) ? iso : `${iso}Z`)
+}
+
+function useEscape(onClose) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+}
+
+// ── Pieces ────────────────────────────────────────────────────────────────────
+
+const Muted = ({ children }) => <span style={{ fontSize: 12.5, color: 'var(--text-faint)' }}>{children}</span>
+
+function Detail({ label, children }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-      <span className="material-symbols-outlined" style={{ fontSize: '15px', color: ok ? GREEN : 'var(--text-faint)', flexShrink: 0 }}>
-        {ok ? 'check_circle' : 'cancel'}
-      </span>
-      <span style={{ fontSize: '13px', color: ok ? 'var(--text)' : 'var(--text-faint)', fontWeight: ok ? '500' : '400' }}>
-        {label}
-      </span>
+    <div className="row">
+      <span style={{ width: 120, flexShrink: 0, fontSize: 13, color: 'var(--text-muted)' }}>{label}</span>
+      <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500 }}>{children}</span>
     </div>
   )
 }
 
-// ── Confetti burst ─────────────────────────────────────────────────────────────
-const CONFETTI_COLORS = [CORAL, AMBER, GREEN, '#60a5fa', '#a78bfa', '#f472b6']
-
-function ConfettiBurst() {
+function PlanColumn({ name, price, interval, features, children }) {
   return (
-    <div style={{ position: 'relative', width: '80px', height: '80px', margin: '0 auto 24px' }}>
-      <div style={{ width: '80px', height: '80px', borderRadius: '22px', background: `linear-gradient(135deg, ${AMBER}33, ${CORAL}22)`, border: `1.5px solid ${AMBER}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 32px ${AMBER}44` }}>
-        <span className="material-symbols-outlined" style={{ fontSize: '42px', color: AMBER }}>workspace_premium</span>
+    <div style={{
+      display: 'flex', flexDirection: 'column', gap: 16, padding: '20px 22px',
+      // Hairlines between the columns. The card clips the outer ones, so this is a vertical
+      // divider side by side and a horizontal one once the columns stack.
+      borderTop: '1px solid var(--border)', borderLeft: '1px solid var(--border)', margin: '-1px 0 0 -1px',
+    }}>
+      <div>
+        <h2 style={{ fontSize: 15, fontWeight: 600 }}>{name}</h2>
+        <div style={{ marginTop: 6, fontSize: 13, color: 'var(--text-muted)' }}>
+          <span style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text)' }}>{price}</span> / {interval}
+        </div>
       </div>
-      {CONFETTI_COLORS.map((c, i) => {
-        const angle = (i / CONFETTI_COLORS.length) * 360
-        const rad   = (angle * Math.PI) / 180
-        const r = 48
-        return (
-          <div key={i} style={{ position: 'absolute', left: 40 + r * Math.cos(rad) - 4, top: 40 + r * Math.sin(rad) - 4, width: '8px', height: '8px', borderRadius: '50%', background: c, opacity: 0.85 }} />
-        )
-      })}
+      <ul style={{ display: 'grid', gap: 9 }}>
+        {features.map((label) => (
+          <li key={label} style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.5 }}>
+            <Icon name="check" size={16} style={{ color: 'var(--text-muted)' }} />{label}
+          </li>
+        ))}
+      </ul>
+      <div style={{ marginTop: 'auto', minHeight: 34, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>{children}</div>
     </div>
   )
 }
 
-// ── Unlocked state ─────────────────────────────────────────────────────────────
-function UnlockedView() {
+function UpgradeAction({ status, price, interval, busy, onCheckout, onDemo }) {
+  const label = `Upgrade for ${price}/${interval}`
+  if (status.stripe_enabled && STRIPE_KEY) {
+    return <button className="btn btn-coral" onClick={onCheckout}>{label}</button>
+  }
+  if (status.stripe_enabled) {
+    return (
+      <>
+        <button className="btn btn-coral" disabled>{label}</button>
+        <Muted>Checkout needs the Stripe publishable key</Muted>
+      </>
+    )
+  }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px' }}>
-      <ConfettiBurst />
-      <div style={{ textAlign: 'center', maxWidth: '460px' }}>
-        <h2 style={{ fontSize: '22px', fontWeight: '900', color: AMBER, marginBottom: '8px' }}>You're an Explorer! ✦</h2>
-        <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.6 }}>All premium features are now unlocked. Dive in and make the most of your plan.</p>
-      </div>
+    <>
+      <button className="btn btn-coral" onClick={onDemo} disabled={busy}>{busy ? 'Activating…' : 'Activate Explorer'}</button>
+      <Muted>Demo mode — no card needed</Muted>
+    </>
+  )
+}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '14px', width: '100%', maxWidth: '700px' }}>
-        {[
-          { to: '/forum',               icon: 'forum',         label: 'Community Forum', color: '#60a5fa' },
-          { to: '/study-rooms/student', icon: 'groups',        label: 'Study Rooms',     color: '#a78bfa' },
-          { to: '/classroom',           icon: 'school',        label: 'Classroom',       color: GREEN     },
-          { to: '/xp',                  icon: 'military_tech', label: 'Graduation',      color: AMBER     },
-        ].map(({ to, icon, label, color }) => (
-          <Link key={to} to={to} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '20px 16px', borderRadius: '16px', background: 'var(--bg-card)', border: `1px solid ${color}33`, textDecoration: 'none', transition: 'all 0.18s ease' }}
-            onMouseEnter={e => { e.currentTarget.style.border = `1px solid ${color}66`; e.currentTarget.style.transform = 'translateY(-2px)' }}
-            onMouseLeave={e => { e.currentTarget.style.border = `1px solid ${color}33`; e.currentTarget.style.transform = 'translateY(0)' }}
-          >
-            <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: `${color}1a`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '22px', color }}>{icon}</span>
-            </div>
-            <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)' }}>{label}</span>
-            <span style={{ fontSize: '11px', color }}>Open →</span>
+function UnlockedCard({ tutor }) {
+  return (
+    <Card title="Unlocked">
+      <div className="row-list">
+        {unlockedLinks(tutor).map((l) => (
+          <Link key={l.to} to={l.to} className="row">
+            <Icon name={l.icon} size={18} style={{ color: 'var(--text-faint)' }} />
+            <div className="main"><div className="title">{l.label}</div></div>
+            <Icon name="chevron_right" size={18} style={{ color: 'var(--text-faint)' }} />
           </Link>
         ))}
       </div>
+    </Card>
+  )
+}
 
-      <div style={{ width: '100%', maxWidth: '420px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px 24px' }}>
-        <p style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '12px' }}>Your Plan</p>
-        {EXPLORER_FEATURES.map(f => <FeatureRow key={f.icon} {...f} />)}
-        <p style={{ fontSize: '11px', color: 'var(--text-faint)', marginTop: '12px' }}>£2 / month · Cancel anytime</p>
+function Faq({ price }) {
+  return (
+    <section style={{ marginTop: 28 }}>
+      <div className="section-head"><h2>Questions</h2></div>
+      {faq(price).map(([q, a]) => (
+        <div key={q} style={{ padding: '12px 0', borderTop: '1px solid var(--border)' }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600 }}>{q}</div>
+          <p style={{ marginTop: 3, fontSize: 13, lineHeight: 1.5, color: 'var(--text-muted)' }}>{a}</p>
+        </div>
+      ))}
+    </section>
+  )
+}
+
+// ── Dialogs ───────────────────────────────────────────────────────────────────
+
+function CheckoutDialog({ price, interval, onClose }) {
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
+  useEscape(onClose)
+
+  // Both must stay stable for the lifetime of the embedded checkout.
+  const stripe = useMemo(() => getStripe().catch(() => {
+    toast.error('Couldn’t load Stripe. Check your connection and try again.')
+    closeRef.current()
+    return null
+  }), [])
+  const options = useMemo(() => ({
+    fetchClientSecret: () => createCheckoutSession()
+      .then(({ data }) => data.client_secret)
+      .catch((err) => {
+        toast.error(errorMessage(err, 'Could not start checkout'))
+        closeRef.current()
+        throw err
+      }),
+  }), [])
+
+  return (
+    <div className="overlay center" onMouseDown={onClose}>
+      <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="checkout-title" style={{ maxWidth: 560 }}
+        onMouseDown={(e) => e.stopPropagation()}>
+        <div className="dialog-head">
+          <h2 id="checkout-title">Explorer · {price}/{interval}</h2>
+          <button className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="close" /></button>
+        </div>
+        <div className="dialog-body">
+          <div style={{ minHeight: 360 }}>
+            <EmbeddedCheckoutProvider stripe={stripe} options={options}>
+              <EmbeddedCheckout />
+            </EmbeddedCheckoutProvider>
+          </div>
+        </div>
       </div>
     </div>
   )
 }
 
-// ── Embedded checkout wrapper ──────────────────────────────────────────────────
-function CheckoutModal({ onClose }) {
-  const fetchClientSecret = useCallback(async () => {
-    const { data } = await createCheckoutSession()
-    return data.client_secret
+function CancelDialog({ status, until, busy, onConfirm, onClose }) {
+  useEscape(onClose)
+  const viaStripe = status.managed_by === 'stripe'
+  return (
+    <div className="overlay center" onMouseDown={onClose}>
+      <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="cancel-title" style={{ maxWidth: 420 }}
+        onMouseDown={(e) => e.stopPropagation()}>
+        <div className="dialog-head">
+          <h2 id="cancel-title">Cancel Explorer?</h2>
+        </div>
+        <div className="dialog-body" style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+          {viaStripe && until ? `You keep Explorer until ${until}.` : 'Explorer ends straight away.'}
+        </div>
+        <div className="dialog-foot">
+          <button className="btn btn-ghost" onClick={onClose}>Keep plan</button>
+          <button className="btn btn-danger" onClick={onConfirm} disabled={busy}>{busy ? 'Cancelling…' : 'Cancel plan'}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Views ─────────────────────────────────────────────────────────────────────
+
+function UpgradeView({ status, price, interval, busy, onCheckout, onDemo }) {
+  return (
+    <>
+      <section className="card" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', overflow: 'hidden' }}>
+        <PlanColumn name="Free" price="£0" interval={interval} features={FREE_FEATURES}>
+          <Muted>Current plan</Muted>
+        </PlanColumn>
+        <PlanColumn name="Explorer" price={price} interval={interval} features={EXPLORER_FEATURES}>
+          <UpgradeAction status={status} price={price} interval={interval} busy={busy} onCheckout={onCheckout} onDemo={onDemo} />
+        </PlanColumn>
+      </section>
+      <Faq price={price} />
+    </>
+  )
+}
+
+function ActiveView({ status, price, interval, until, cancelled, onCancel }) {
+  const demo = status.managed_by !== 'stripe'
+  return (
+    <>
+      <Card title="Explorer" style={{ marginBottom: 18 }}
+        action={!cancelled && <button className="btn btn-danger btn-sm" onClick={onCancel}>Cancel plan</button>}>
+        <div className="row-list">
+          <Detail label="Price">{price} / {interval}</Detail>
+          <Detail label="Status">
+            <Pill tone={cancelled ? 'amber' : 'green'} plain={false}>{cancelled ? 'Cancelled' : 'Active'}</Pill>
+          </Detail>
+          {until && <Detail label={demo ? 'Active until' : cancelled ? 'Ends' : 'Paid until'}>{until}</Detail>}
+          <Detail label="Billing">{demo ? 'Demo, no card' : 'Stripe, monthly'}</Detail>
+        </div>
+      </Card>
+      <UnlockedCard tutor={status.verified_tutor} />
+      <Faq price={price} />
+    </>
+  )
+}
+
+function TutorView() {
+  return (
+    <>
+      <Card title="Explorer" style={{ marginBottom: 18 }}>
+        <div className="row-list">
+          <Detail label="Price">Free</Detail>
+          <Detail label="Status"><Pill tone="green" plain={false}>Included</Pill></Detail>
+          <Detail label="Access">Verified tutor</Detail>
+        </div>
+      </Card>
+      <UnlockedCard tutor />
+    </>
+  )
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function Membership() {
+  const { refreshSession } = useAuth()
+  const search = useSearch({ strict: false })
+  const navigate = useNavigate()
+  const [status, setStatus] = useState(null)
+  const [phase, setPhase] = useState('loading') // loading | confirming | ready | error
+  const [busy, setBusy] = useState(null)        // 'activate' | 'cancel'
+  const [checkoutOpen, setCheckoutOpen] = useState(false)
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const [cancelled, setCancelled] = useState(false)
+  const started = useRef(false)
+
+  // The JWT carries is_premium: refresh it so the sidebar and route guards follow.
+  const syncSession = () => refreshSession().catch(() => {})
+
+  async function load() {
+    setPhase('loading')
+    try {
+      const { data } = await getMembershipStatus()
+      setStatus(data)
+      setPhase('ready')
+    } catch {
+      setPhase('error')
+    }
+  }
+
+  // Back from Stripe's embedded checkout: /membership?session_id=cs_…
+  useEffect(() => {
+    if (started.current) return
+    started.current = true
+    const sessionId = search?.session_id
+    if (!sessionId) { load(); return }
+
+    navigate({ to: '/membership', search: {}, replace: true })
+    setPhase('confirming')
+    confirmCheckoutSession(String(sessionId))
+      .then(async ({ data }) => {
+        setStatus(data)
+        setPhase('ready')
+        await syncSession()
+        toast.success('Welcome to Explorer')
+      })
+      .catch((err) => {
+        toast.error(errorMessage(err, 'We couldn’t confirm your payment. If you were charged, contact us.'))
+        load()
+      })
   }, [])
 
-  const options = { fetchClientSecret }
+  async function activateDemo() {
+    setBusy('activate')
+    try {
+      const { data } = await activateDemoMembership()
+      setStatus(data)
+      await syncSession()
+      toast.success('Explorer activated')
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not activate Explorer'))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function cancel() {
+    setBusy('cancel')
+    try {
+      const { data } = await cancelMembership()
+      setStatus(data)
+      setCancelled(Boolean(data.is_premium)) // Stripe plans run to the end of the paid period
+      setCancelOpen(false)
+      await syncSession()
+      toast.success(data.message || 'Membership cancelled')
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not cancel your plan'))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const price = formatMoney((status?.plan?.price_pence ?? 500) / 100)
+  const interval = status?.plan?.interval ?? 'month'
+  const until = status?.expires_at ? formatDate(parseUtc(status.expires_at), { year: 'numeric' }) : null
+
+  let body
+  if (phase === 'confirming') {
+    body = (
+      <Card>
+        <div className="row">
+          <Icon name="progress_activity" size={18} style={{ color: 'var(--text-faint)', animation: 'spin 1s linear infinite' }} />
+          <div className="main"><div className="title">Confirming your payment…</div></div>
+        </div>
+      </Card>
+    )
+  } else if (phase === 'loading') {
+    body = <div className="card"><SkeletonRows rows={4} /></div>
+  } else if (phase === 'error') {
+    body = (
+      <Card>
+        <EmptyState title="Couldn’t load your membership." action={<button className="btn btn-ghost btn-sm" onClick={load}>Try again</button>} />
+      </Card>
+    )
+  } else if (status.is_premium) {
+    body = <ActiveView status={status} price={price} interval={interval} until={until} cancelled={cancelled} onCancel={() => setCancelOpen(true)} />
+  } else if (status.verified_tutor) {
+    body = <TutorView />
+  } else {
+    body = (
+      <UpgradeView status={status} price={price} interval={interval} busy={busy === 'activate'}
+        onCheckout={() => setCheckoutOpen(true)} onDemo={activateDemo} />
+    )
+  }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div style={{ background: 'var(--bg-card)', borderRadius: '20px', width: '100%', maxWidth: '560px', maxHeight: '90vh', overflow: 'auto', position: 'relative', boxShadow: '0 32px 80px rgba(0,0,0,0.60)' }}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '20px', color: AMBER }}>workspace_premium</span>
-            <span style={{ fontWeight: '800', color: 'var(--text)', fontSize: '16px' }}>Explorer Plan — £2/mo</span>
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', display: 'flex' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>close</span>
-          </button>
-        </div>
-
-        {/* Stripe embedded form */}
-        <div style={{ padding: '16px' }}>
-          <EmbeddedCheckoutProvider stripe={stripePromise} options={options}>
-            <EmbeddedCheckout />
-          </EmbeddedCheckoutProvider>
-        </div>
+    <HubLayout>
+      <PageTitle title="Membership" icon="workspace_premium" />
+      <div style={{ maxWidth: 760 }}>
+        <div className="dash-head"><h1>Membership</h1></div>
+        {body}
       </div>
-    </div>
-  )
-}
-
-// ── Main page ─────────────────────────────────────────────────────────────────
-export default function Membership() {
-  const { isPremium, isTutor, updateUser } = useAuth()
-  const search = useSearch({ strict: false })
-  const [showCheckout, setShowCheckout] = useState(false)
-  const [confirming,   setConfirming]   = useState(false)
-  const [activated,    setActivated]    = useState(false)
-
-  const isUnlocked = isPremium || activated
-
-  // Handle return from Stripe — URL has ?success=true&session_id=...
-  useEffect(() => {
-    const sessionId = search?.session_id
-    if (!search?.success || !sessionId || isUnlocked) return
-
-    setConfirming(true)
-    confirmCheckoutSession(sessionId)
-      .then(({ data }) => {
-        updateUser({ is_premium: true, ...(data.user ?? {}) })
-        setActivated(true)
-        toast.success('🎉 Welcome to Explorer Plan!')
-      })
-      .catch(() => toast.error('Could not confirm payment — contact support if charged.'))
-      .finally(() => setConfirming(false))
-  }, [search?.success, search?.session_id])
-
-  const mode = isTutor ? 'tutor' : 'student'
-
-  return (
-    <HubLayout mode={mode}>
-      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '32px 20px' }}>
-
-        {/* Header */}
-        <div style={{ marginBottom: '32px' }}>
-          <h1 style={{ fontSize: '26px', fontWeight: '900', color: 'var(--text)', marginBottom: '6px' }}>Explorer Plan</h1>
-          <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-            Unlock the full Study With Students experience for just £2/month.
-          </p>
-        </div>
-
-        {confirming ? (
-          <div style={{ textAlign: 'center', padding: '80px 0' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '40px', color: AMBER, display: 'block', marginBottom: '16px', animation: 'spin 1s linear infinite' }}>progress_activity</span>
-            <p style={{ color: 'var(--text-muted)', fontSize: '15px' }}>Confirming your payment…</p>
-          </div>
-        ) : isUnlocked ? (
-          <UnlockedView />
-        ) : (
-          <div>
-            {/* Plan comparison */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
-
-              {/* Free card */}
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '18px', padding: '24px' }}>
-                <div style={{ marginBottom: '16px' }}>
-                  <p style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '6px' }}>Free Plan</p>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                    <span style={{ fontSize: '28px', fontWeight: '900', color: 'var(--text)' }}>£0</span>
-                    <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>/month</span>
-                  </div>
-                </div>
-                {FREE_FEATURES.map(f => <FeatureRow key={f.icon} {...f} />)}
-                <div style={{ marginTop: '20px', padding: '10px 16px', borderRadius: '10px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', fontSize: '12px', fontWeight: '600', color: 'var(--text-muted)', textAlign: 'center' }}>
-                  Current plan
-                </div>
-              </div>
-
-              {/* Explorer card */}
-              <div style={{ background: `linear-gradient(160deg, ${AMBER}0d, ${CORAL}0d)`, border: `1.5px solid ${AMBER}44`, borderRadius: '18px', padding: '24px', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', top: '16px', right: '16px', background: `linear-gradient(135deg, ${AMBER}, ${CORAL})`, borderRadius: '8px', padding: '3px 10px', fontSize: '10px', fontWeight: '800', color: 'white', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                  Best value
-                </div>
-
-                <div style={{ marginBottom: '16px' }}>
-                  <p style={{ fontSize: '11px', fontWeight: '800', color: AMBER, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '6px' }}>Explorer Plan ✦</p>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                    <span style={{ fontSize: '28px', fontWeight: '900', color: 'var(--text)' }}>£2</span>
-                    <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>/month</span>
-                  </div>
-                </div>
-                {EXPLORER_FEATURES.map(f => <FeatureRow key={f.icon} {...f} />)}
-
-                <button
-                  onClick={() => setShowCheckout(true)}
-                  style={{ marginTop: '20px', width: '100%', padding: '12px 20px', borderRadius: '11px', background: `linear-gradient(135deg, ${AMBER}, ${CORAL})`, border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: '800', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: `0 4px 20px ${CORAL}55`, transition: 'opacity 0.18s ease' }}
-                  onMouseEnter={e => { e.currentTarget.style.opacity = '0.88' }}
-                  onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>rocket_launch</span>
-                  Upgrade to Explorer — £2/mo
-                </button>
-                <p style={{ fontSize: '10px', color: 'var(--text-faint)', textAlign: 'center', marginTop: '8px' }}>
-                  Secure payment via Stripe · Cancel anytime
-                </p>
-              </div>
-            </div>
-
-            {/* FAQ strip */}
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
-              {[
-                { q: 'How do I cancel?',        a: 'Cancel anytime from the Stripe billing portal — no questions asked.' },
-                { q: "What's the commission?",  a: '0% commission on all 1-to-1 sessions. Always.' },
-                { q: 'Where does my £2 go?',    a: '50% funds education charities. 50% keeps the platform running.' },
-                { q: 'Can tutors upgrade too?', a: 'Yes! Tutors get the Graduation XP tracker and forum access.' },
-              ].map(({ q, a }) => (
-                <div key={q}>
-                  <p style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text)', marginBottom: '4px' }}>{q}</p>
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.5 }}>{a}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {showCheckout && <CheckoutModal onClose={() => setShowCheckout(false)} />}
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      {checkoutOpen && <CheckoutDialog price={price} interval={interval} onClose={() => setCheckoutOpen(false)} />}
+      {cancelOpen && status && (
+        <CancelDialog status={status} until={until} busy={busy === 'cancel'} onConfirm={cancel} onClose={() => setCancelOpen(false)} />
+      )}
     </HubLayout>
   )
 }

@@ -5,7 +5,7 @@ import Footer from '../components/layout/Footer'
 
 const BG     = '#1b263b'
 const CORAL  = '#ff725e'
-const BORDER = 'rgba(255,255,255,0.08)'
+const BORDER = 'rgb(var(--fg) / 0.08)'
 
 function useReveal() {
   useEffect(() => {
@@ -79,7 +79,7 @@ function TutorCard({ tutor, idx, delay }) {
       data-reveal
       data-d={delay}
       style={{
-        background: 'rgba(255,255,255,0.03)',
+        background: 'rgb(var(--fg) / 0.03)',
         border: `1px solid ${BORDER}`,
         borderRadius: '18px',
         padding: '28px',
@@ -98,7 +98,7 @@ function TutorCard({ tutor, idx, delay }) {
         </div>
         <div>
           <h3 style={{ fontSize: '16px', fontWeight: '800', margin: '0 0 3px', letterSpacing: '-0.01em' }}>{tutor.name}</h3>
-          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.45)', margin: 0 }}>{tutor.university}</p>
+          <p style={{ fontSize: '12px', color: 'rgb(var(--fg) / 0.45)', margin: 0 }}>{tutor.university}</p>
         </div>
       </div>
 
@@ -115,7 +115,7 @@ function TutorCard({ tutor, idx, delay }) {
       </div>
 
       {/* Bio */}
-      <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.48)', lineHeight: 1.65, margin: 0 }}>
+      <p style={{ fontSize: '13px', color: 'rgb(var(--fg) / 0.48)', lineHeight: 1.65, margin: 0 }}>
         {tutor.bio}
       </p>
 
@@ -132,7 +132,7 @@ export default function FoundingTutors() {
   useReveal()
 
   return (
-    <div style={{ background: BG, minHeight: '100vh', color: 'white', fontFamily: 'inherit' }}>
+    <div style={{ '--fg': '255 255 255', background: BG, minHeight: '100vh', color: 'white', fontFamily: 'inherit' }}>
       <style>{`
         [data-reveal] {
           opacity: 0; transform: translateY(20px);
@@ -154,7 +154,7 @@ export default function FoundingTutors() {
         <h1 style={{ fontSize: 'clamp(32px, 5vw, 52px)', fontWeight: '800', margin: '0 0 16px', letterSpacing: '-0.02em', position: 'relative', zIndex: 1 }}>
           Founding Tutors
         </h1>
-        <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '17px', maxWidth: '480px', margin: '0 auto', lineHeight: 1.65, position: 'relative', zIndex: 1 }}>
+        <p style={{ color: 'rgb(var(--fg) / 0.45)', fontSize: '17px', maxWidth: '480px', margin: '0 auto', lineHeight: 1.65, position: 'relative', zIndex: 1 }}>
           The brilliant people who believed in this platform from day one — and helped it become what it is.
         </p>
       </div>
@@ -168,17 +168,17 @@ export default function FoundingTutors() {
         </div>
 
         {/* CTA */}
-        <div data-reveal style={{ marginTop: '80px', padding: '48px', background: 'rgba(255,255,255,0.02)', border: `1px solid ${BORDER}`, borderRadius: '18px', textAlign: 'center' }}>
+        <div data-reveal style={{ marginTop: '80px', padding: '48px', background: 'rgb(var(--fg) / 0.02)', border: `1px solid ${BORDER}`, borderRadius: '18px', textAlign: 'center' }}>
           <h3 style={{ fontSize: '22px', fontWeight: '800', margin: '0 0 10px', letterSpacing: '-0.02em' }}>Want to tutor on the platform?</h3>
-          <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '15px', margin: '0 0 28px' }}>0% commission. Set your own rate. Teach when it suits you.</p>
+          <p style={{ color: 'rgb(var(--fg) / 0.45)', fontSize: '15px', margin: '0 0 28px' }}>0% commission. Set your own rate. Teach when it suits you.</p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link to="/become-tutor" style={{ background: CORAL, color: 'white', padding: '12px 26px', borderRadius: '10px', fontWeight: '700', fontSize: '14px', textDecoration: 'none', transition: 'opacity 0.15s' }}
               onMouseEnter={e => e.currentTarget.style.opacity = '0.88'}
               onMouseLeave={e => e.currentTarget.style.opacity = '1'}
             >Become a tutor</Link>
-            <Link to="/find-tutors" style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}`, color: 'rgba(255,255,255,0.75)', padding: '12px 26px', borderRadius: '10px', fontWeight: '600', fontSize: '14px', textDecoration: 'none', transition: 'background 0.15s' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.09)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+            <Link to="/find-tutors" style={{ background: 'rgb(var(--fg) / 0.05)', border: `1px solid ${BORDER}`, color: 'rgb(var(--fg) / 0.75)', padding: '12px 26px', borderRadius: '10px', fontWeight: '600', fontSize: '14px', textDecoration: 'none', transition: 'background 0.15s' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgb(var(--fg) / 0.09)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgb(var(--fg) / 0.05)'}
             >Browse all tutors</Link>
           </div>
         </div>

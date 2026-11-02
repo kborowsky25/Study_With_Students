@@ -1,64 +1,91 @@
-import {
-  createRouter,
-  createRoute,
-  createRootRoute,
-  redirect,
-  Outlet,
-} from '@tanstack/react-router'
-import { AuthProvider, useAuth } from './context/AuthContext'
+import { createRootRoute, createRoute, createRouter, Outlet, redirect } from '@tanstack/react-router'
+import { AuthProvider } from './context/AuthContext'
+import { hasExplorerAccess } from './lib/access'
 
-// Pages — public
-import Home          from './pages/Home'
-import Login         from './pages/Login'
-import Signup        from './pages/Signup'
-import AboutUs       from './pages/AboutUs'
-import HowItWorks    from './pages/HowItWorks'
-import BecomeATutor    from './pages/BecomeATutor'
-import FoundingTutors  from './pages/FoundingTutors'
+// Public
+import Home           from './pages/Home'
+import Login          from './pages/Login'
+import Signup         from './pages/Signup'
+import AboutUs        from './pages/AboutUs'
+import HowItWorks     from './pages/HowItWorks'
+import BecomeATutor   from './pages/BecomeATutor'
+import FoundingTutors from './pages/FoundingTutors'
 
-// Pages — hub
-import Hub           from './pages/Hub'
-import HubStudent    from './pages/HubStudent'
-import HubTutor      from './pages/HubTutor'
-
-// Pages — tutors
-import FindTutors    from './pages/FindTutors'
-import TutorInfo     from './pages/TutorInfo'
-import TutorProfile  from './pages/TutorProfile'
-import ActiveTutors  from './pages/ActiveTutors'
-import LikedTutors   from './pages/LikedTutors'
-
-// Pages — students
-import ActiveStudents from './pages/ActiveStudents'
-import Dashboard      from './pages/Dashboard'
-
-// Pages — comms & content
-import Messages        from './pages/Messages'
-import ForumHome       from './pages/ForumHome'
-import ForumCategory   from './pages/ForumCategory'
-import ForumThread     from './pages/ForumThread'
-import NewThread       from './pages/NewThread'
-
-// Pages — study & calendar
-import StudyRoomsStudent from './pages/StudyRoomsStudent'
-import StudyRoomsTutor   from './pages/StudyRoomsTutor'
+// Hub — student
+import HubStudent        from './pages/HubStudent'
+import FindTutors        from './pages/FindTutors'
+import TutorInfo         from './pages/TutorInfo'
+import ActiveTutors      from './pages/ActiveTutors'
+import LikedTutors       from './pages/LikedTutors'
 import CalendarStudent   from './pages/CalendarStudent'
-import CalendarTutor     from './pages/CalendarTutor'
+import Payments          from './pages/Payments'
+import StudyRoomsStudent from './pages/StudyRoomsStudent'
 
-// Pages — payments & events
-import Payments         from './pages/Payments'
-import Earnings         from './pages/Earnings'
-import Events           from './pages/Events'
-import Classroom        from './pages/Classroom'
-import XP               from './pages/XP'
-import Membership       from './pages/Membership'
-import TutorScreening   from './pages/TutorScreening'
-import AdminScreening   from './pages/AdminScreening'
-import SuperAdmin       from './pages/SuperAdmin'
-import StudyNotes       from './pages/StudyNotes'
-import StudentProfile   from './pages/StudentProfile'
+// Hub — tutor
+import HubTutor        from './pages/HubTutor'
+import TutorProfile    from './pages/TutorProfile'
+import TutorScreening  from './pages/TutorScreening'
+import ActiveStudents  from './pages/ActiveStudents'
+import CalendarTutor   from './pages/CalendarTutor'
+import Earnings        from './pages/Earnings'
+import StudyRoomsTutor from './pages/StudyRoomsTutor'
 
-// ─── Root ─────────────────────────────────────────────────────────────────────
+// Hub — shared
+import Messages       from './pages/Messages'
+import ForumHome      from './pages/ForumHome'
+import ForumCategory  from './pages/ForumCategory'
+import ForumThread    from './pages/ForumThread'
+import NewThread      from './pages/NewThread'
+import StudyNotes     from './pages/StudyNotes'
+import Classroom      from './pages/Classroom'
+import XP             from './pages/XP'
+import Membership     from './pages/Membership'
+import StudentProfile from './pages/StudentProfile'
+
+// Admin
+import AdminScreening from './pages/AdminScreening'
+import SuperAdmin     from './pages/SuperAdmin'
+
+// ── Guards (run before a route loads) ─────────────────────────────────────────
+
+function storedUser() {
+  if (!localStorage.getItem('sws_token')) return null
+  try { return JSON.parse(localStorage.getItem('sws_user')) } catch { return null }
+}
+
+function requireAuth() {
+  const user = storedUser()
+  if (!user) throw redirect({ to: '/login' })
+  return user
+}
+
+function requireVerifiedTutor() {
+  const user = requireAuth()
+  if (!user.is_tutor) throw redirect({ to: '/tutor-profile' })
+  if (user.screening_status !== 'approved') throw redirect({ to: '/tutor-screening' })
+}
+
+/** Community features: Explorer members (£5/month) and verified tutors. */
+function requireExplorer() {
+  const user = requireAuth()
+  if (!hasExplorerAccess(user)) throw redirect({ to: '/membership' })
+}
+
+function requireAdmin() {
+  const user = requireAuth()
+  if (!user.is_admin) throw redirect({ to: '/hub' })
+}
+
+/** /hub → the dashboard for the last-used view. */
+function redirectToHub() {
+  const user = requireAuth()
+  const tutorView = user.is_tutor && user.screening_status === 'approved' &&
+    localStorage.getItem('sws_hub_mode') === 'tutor'
+  throw redirect({ to: tutorView ? '/hub/tutor' : '/hub/student' })
+}
+
+// ── Route table ───────────────────────────────────────────────────────────────
+
 const rootRoute = createRootRoute({
   component: () => (
     <AuthProvider>
@@ -67,200 +94,58 @@ const rootRoute = createRootRoute({
   ),
 })
 
-// ─── Auth guard helper ────────────────────────────────────────────────────────
-function requireAuth() {
-  const token = localStorage.getItem('sws_token')
-  if (!token) {
-    throw redirect({ to: '/login' })
-  }
-}
+const page = (path, component, beforeLoad) =>
+  createRoute({ getParentRoute: () => rootRoute, path, component, beforeLoad })
 
-function requireTutor() {
-  const raw = localStorage.getItem('sws_user')
-  if (!raw) throw redirect({ to: '/login' })
-  const user = JSON.parse(raw)
-  if (!user.is_tutor) throw redirect({ to: '/hub' })
-}
-
-function requireAdmin() {
-  const token = localStorage.getItem('sws_token')
-  if (!token) throw redirect({ to: '/login' })
-  const raw = localStorage.getItem('sws_user')
-  if (!raw) throw redirect({ to: '/login' })
-  const user = JSON.parse(raw)
-  if (!user.is_admin) throw redirect({ to: '/hub' })
-}
-
-function requireTutorScreened() {
-  requireAuth()
-  const raw = localStorage.getItem('sws_user')
-  if (!raw) throw redirect({ to: '/login' })
-  const user = JSON.parse(raw)
-  if (!user.is_tutor) {
-    // Not a tutor yet — send them to set up their profile first
-    throw redirect({ to: '/tutor-profile' })
-  }
-  if (user.screening_status !== 'approved') {
-    // Profile exists but awaiting review — let them see screening status & finish profile
-    throw redirect({ to: '/tutor-screening' })
-  }
-}
-
-function requirePremium() {
-  requireAuth()
-  const raw = localStorage.getItem('sws_user')
-  if (!raw) throw redirect({ to: '/login' })
-  const user = JSON.parse(raw)
-  // Approved tutors get all features free
-  if (user.is_tutor && user.screening_status === 'approved') return
-  if (user.is_premium) return
-  throw redirect({ to: '/membership' })
-}
-
-// ─── Public routes ────────────────────────────────────────────────────────────
-const indexRoute      = createRoute({ getParentRoute: () => rootRoute, path: '/',            component: Home })
-const loginRoute      = createRoute({ getParentRoute: () => rootRoute, path: '/login',       component: Login })
-const signupRoute     = createRoute({ getParentRoute: () => rootRoute, path: '/signup',      component: Signup })
-const aboutRoute      = createRoute({ getParentRoute: () => rootRoute, path: '/about',       component: AboutUs })
-const howItWorksRoute = createRoute({ getParentRoute: () => rootRoute, path: '/how-it-works',component: HowItWorks })
-const becomeRoute          = createRoute({ getParentRoute: () => rootRoute, path: '/become-tutor',     component: BecomeATutor })
-const foundingTutorsRoute  = createRoute({ getParentRoute: () => rootRoute, path: '/founding-tutors', component: FoundingTutors })
-
-// ─── Protected routes ─────────────────────────────────────────────────────────
-const hubRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/hub',
-  beforeLoad: requireAuth, component: Hub,
-})
-const hubStudentRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/hub/student',
-  beforeLoad: requireAuth, component: HubStudent,
-})
-const hubTutorRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/hub/tutor',
-  beforeLoad: requireTutorScreened, component: HubTutor,
-})
-const findTutorsRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/find-tutors',
-  beforeLoad: requireAuth, component: FindTutors,
-})
-const tutorInfoRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/tutor/$tutorId',
-  beforeLoad: requireAuth, component: TutorInfo,
-})
-const tutorProfileRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/tutor-profile',
-  beforeLoad: requireAuth, component: TutorProfile,
-})
-const activeTutorsRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/active-tutors',
-  beforeLoad: requireAuth, component: ActiveTutors,
-})
-const likedTutorsRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/liked-tutors',
-  beforeLoad: requireAuth, component: LikedTutors,
-})
-const activeStudentsRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/active-students',
-  beforeLoad: requireTutorScreened, component: ActiveStudents,
-})
-const dashboardRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/dashboard',
-  beforeLoad: requireAuth, component: Dashboard,
-})
-const messagesRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/messages',
-  beforeLoad: requireAuth, component: Messages,
-})
-const forumHomeRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/forum',
-  beforeLoad: requirePremium, component: ForumHome,
-})
-const forumCategoryRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/forum/category/$categoryId',
-  beforeLoad: requirePremium, component: ForumCategory,
-})
-const forumThreadRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/forum/thread/$threadId',
-  beforeLoad: requirePremium, component: ForumThread,
-})
-const newThreadRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/forum/category/$categoryId/new',
-  beforeLoad: requirePremium, component: NewThread,
-})
-const studyRoomsStudentRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/study-rooms/student',
-  beforeLoad: requirePremium, component: StudyRoomsStudent,
-})
-const studyRoomsTutorRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/study-rooms/tutor',
-  beforeLoad: requireTutorScreened, component: StudyRoomsTutor,
-})
-const calendarStudentRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/calendar/student',
-  beforeLoad: requireAuth, component: CalendarStudent,
-})
-const calendarTutorRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/calendar/tutor',
-  beforeLoad: requireTutorScreened, component: CalendarTutor,
-})
-const paymentsRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/payments',
-  beforeLoad: requireAuth, component: Payments,
-})
-const earningsRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/earnings',
-  beforeLoad: requireTutorScreened, component: Earnings,
-})
-const eventsRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/events',
-  beforeLoad: requireAuth, component: Events,
-})
-const classroomRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/classroom',
-  beforeLoad: requirePremium, component: Classroom,
-})
-const xpRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/xp',
-  beforeLoad: requireAuth, component: XP,
-})
-const membershipRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/membership',
-  beforeLoad: requireAuth, component: Membership,
-})
-const tutorScreeningRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/tutor-screening',
-  beforeLoad: requireAuth, component: TutorScreening,
-})
-const adminScreeningRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/admin',
-  component: AdminScreening,
-})
-const superAdminRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/superadmin',
-  beforeLoad: requireAdmin, component: SuperAdmin,
-})
-const studyNotesRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/study-notes',
-  beforeLoad: requirePremium, component: StudyNotes,
-})
-const studentProfileRoute = createRoute({
-  getParentRoute: () => rootRoute, path: '/student/$userId',
-  beforeLoad: requireAuth, component: StudentProfile,
-})
-
-// ─── Build router ─────────────────────────────────────────────────────────────
 const routeTree = rootRoute.addChildren([
-  indexRoute, loginRoute, signupRoute, aboutRoute, howItWorksRoute, becomeRoute, foundingTutorsRoute,
-  hubRoute, hubStudentRoute, hubTutorRoute,
-  findTutorsRoute, tutorInfoRoute, tutorProfileRoute, activeTutorsRoute, likedTutorsRoute,
-  activeStudentsRoute, dashboardRoute,
-  messagesRoute,
-  forumHomeRoute, forumCategoryRoute, forumThreadRoute, newThreadRoute,
-  studyRoomsStudentRoute, studyRoomsTutorRoute,
-  calendarStudentRoute, calendarTutorRoute,
-  paymentsRoute, earningsRoute, eventsRoute, classroomRoute, xpRoute, membershipRoute,
-  tutorScreeningRoute, adminScreeningRoute, superAdminRoute, studyNotesRoute,
-  studentProfileRoute,
+  // Public
+  page('/',                Home),
+  page('/login',           Login),
+  page('/signup',          Signup),
+  page('/about',           AboutUs),
+  page('/how-it-works',    HowItWorks),
+  page('/become-tutor',    BecomeATutor),
+  page('/founding-tutors', FoundingTutors),
+
+  // Hub
+  page('/hub',             () => null, redirectToHub),
+  page('/hub/student',     HubStudent, requireAuth),
+  page('/hub/tutor',       HubTutor,   requireVerifiedTutor),
+
+  // Students
+  page('/find-tutors',      FindTutors,      requireAuth),
+  page('/tutor/$tutorId',   TutorInfo,       requireAuth),
+  page('/active-tutors',    ActiveTutors,    requireAuth),
+  page('/liked-tutors',     LikedTutors,     requireAuth),
+  page('/calendar/student', CalendarStudent, requireAuth),
+  page('/payments',         Payments,        requireAuth),
+  page('/student/$userId',  StudentProfile,  requireAuth),
+
+  // Tutors
+  page('/tutor-profile',     TutorProfile,    requireAuth),
+  page('/tutor-screening',   TutorScreening,  requireAuth),
+  page('/active-students',   ActiveStudents,  requireVerifiedTutor),
+  page('/calendar/tutor',    CalendarTutor,   requireVerifiedTutor),
+  page('/earnings',          Earnings,        requireVerifiedTutor),
+  page('/study-rooms/tutor', StudyRoomsTutor, requireVerifiedTutor),
+
+  // Shared
+  page('/messages',   Messages,   requireAuth),
+  page('/xp',         XP,         requireAuth),
+  page('/membership', Membership, requireAuth),
+
+  // Community (Explorer plan)
+  page('/forum',                            ForumHome,         requireExplorer),
+  page('/forum/category/$categoryId',       ForumCategory,     requireExplorer),
+  page('/forum/category/$categoryId/new',   NewThread,         requireExplorer),
+  page('/forum/thread/$threadId',           ForumThread,       requireExplorer),
+  page('/study-notes',                      StudyNotes,        requireExplorer),
+  page('/study-rooms/student',              StudyRoomsStudent, requireExplorer),
+  page('/classroom',                        Classroom,         requireExplorer),
+
+  // Admin
+  page('/admin',      AdminScreening),
+  page('/superadmin', SuperAdmin, requireAdmin),
 ])
 
 export const router = createRouter({ routeTree })

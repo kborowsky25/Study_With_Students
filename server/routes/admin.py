@@ -1,0 +1,203 @@
+"""Admin: tutor approval, screening queue, platform stats."""
+
+from flask import Blueprint, jsonify, request
+
+from ..permissions import check_admin
+from ..config import Config
+from ..db import get_db
+
+bp = Blueprint('admin', __name__, url_prefix='/api')
+
+# ── Admin — tutor approval ────────────────────────────────────────────────────
+# Protected by X-Admin-Secret header. Set ADMIN_SECRET env var in production.
+
+
+@bp.route('/admin/tutors', methods=['GET'])
+def admin_list_tutors():
+    if not check_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT tp.id_tutor, u.name, u.email, tp.university, tp.course,
+                   tp.subjects, tp.status, tp.age
+            FROM tutor_profiles tp
+            JOIN users u ON u.id_user = tp.id_user
+            ORDER BY tp.id_tutor DESC
+        """)
+        return jsonify({'tutors': cur.fetchall()})
+    finally:
+        cur.close(); conn.close()
+
+@bp.route('/admin/tutors/<int:tutor_id>/approve', methods=['POST'])
+def admin_approve_tutor(tutor_id):
+    if not check_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    conn = get_db(); cur = conn.cursor()
+    try:
+        cur.execute("UPDATE tutor_profiles SET status = 'approved' WHERE id_tutor = %s", (tutor_id,))
+        conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({'error': 'Tutor not found'}), 404
+        return jsonify({'message': f'Tutor {tutor_id} approved'})
+    finally:
+        cur.close(); conn.close()
+
+@bp.route('/admin/tutors/<int:tutor_id>/reject', methods=['POST'])
+def admin_reject_tutor(tutor_id):
+    if not check_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    conn = get_db(); cur = conn.cursor()
+    try:
+        cur.execute("UPDATE tutor_profiles SET status = 'rejected' WHERE id_tutor = %s", (tutor_id,))
+        conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({'error': 'Tutor not found'}), 404
+        return jsonify({'message': f'Tutor {tutor_id} rejected'})
+    finally:
+        cur.close(); conn.close()
+
+
+# ── Admin — screening queue ────────────────────────────────────────────────────
+
+@bp.route('/admin/screening-queue', methods=['GET'])
+def admin_screening_queue():
+    if not check_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT tp.id_tutor, u.name, u.email,
+                   tp.university, tp.course, tp.subjects,
+                   tp.screening_status, tp.screening_notes,
+                   tp.uni_email, tp.uni_email_verified,
+                   tp.proof_doc_path
+            FROM tutor_profiles tp
+            JOIN users u ON u.id_user = tp.id_user
+            ORDER BY tp.id_tutor DESC
+        """)
+        return jsonify({'queue': cur.fetchall()}), 200
+    finally:
+        cur.close(); conn.close()
+
+
+@bp.route('/admin/screening/<int:tutor_id>/approve', methods=['POST'])
+def admin_approve_screening(tutor_id):
+    if not check_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    conn = get_db(); cur = conn.cursor()
+    try:
+        cur.execute(
+            "UPDATE tutor_profiles SET screening_status = 'approved', screening_notes = NULL WHERE id_tutor = %s",
+            (tutor_id,)
+        )
+        conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({'error': 'Tutor not found'}), 404
+        return jsonify({'message': f'Tutor {tutor_id} approved'}), 200
+    finally:
+        cur.close(); conn.close()
+
+
+@bp.route('/admin/screening/<int:tutor_id>/reject', methods=['POST'])
+def admin_reject_screening(tutor_id):
+    if not check_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    data  = request.get_json(silent=True) or {}
+    notes = (data.get('notes') or '').strip()
+    conn = get_db(); cur = conn.cursor()
+    try:
+        cur.execute(
+            "UPDATE tutor_profiles SET screening_status = 'rejected', screening_notes = %s WHERE id_tutor = %s",
+            (notes or None, tutor_id)
+        )
+        conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({'error': 'Tutor not found'}), 404
+        return jsonify({'message': f'Tutor {tutor_id} rejected'}), 200
+    finally:
+        cur.close(); conn.close()
+
+
+# ── Admin — platform stats & user management ──────────────────────────────────
+
+@bp.route('/admin/stats', methods=['GET'])
+def admin_stats():
+    if not check_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT
+              (SELECT COUNT(*) FROM users)                                              AS total_users,
+              (SELECT COUNT(*) FROM tutor_profiles)                                     AS total_tutors,
+              (SELECT COUNT(*) FROM student_profiles)                                   AS total_students,
+              (SELECT COUNT(*) FROM tutor_profiles WHERE screening_status = 'pending')  AS pending_screenings,
+              (SELECT COUNT(*) FROM tutor_profiles WHERE screening_status = 'approved') AS approved_tutors,
+              (SELECT COUNT(*) FROM events WHERE status <> 'canceled')                  AS total_sessions,
+              (SELECT COUNT(*) FROM events WHERE status = 'paid')                       AS completed_sessions,
+              (SELECT COUNT(*) FROM users WHERE is_premium = 1
+                 AND (premium_expires_at IS NULL OR premium_expires_at > UTC_TIMESTAMP())) AS premium_users
+        """)
+        stats = {k: int(v or 0) for k, v in cur.fetchone().items()}
+        # The Explorer plan is the platform's only revenue (sessions carry 0% commission)
+        stats['monthly_recurring_revenue'] = stats['premium_users'] * Config.MEMBERSHIP_PRICE_PENCE / 100
+
+        cur.execute("""
+            SELECT DATE(created_at) AS day, COUNT(*) AS signups
+            FROM users
+            WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            GROUP BY DATE(created_at)
+            ORDER BY day ASC
+        """)
+        stats['signups_last_30d'] = cur.fetchall()
+        return jsonify({'stats': stats})
+    finally:
+        cur.close(); conn.close()
+
+
+@bp.route('/admin/users', methods=['GET'])
+def admin_users():
+    if not check_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT u.id_user, u.name, u.email,
+                   COALESCE(u.is_premium, 0) AS is_premium,
+                   (SELECT COUNT(*) FROM tutor_profiles tp WHERE tp.id_user = u.id_user) AS is_tutor,
+                   (SELECT tp.screening_status FROM tutor_profiles tp WHERE tp.id_user = u.id_user LIMIT 1) AS screening_status
+            FROM users u
+            ORDER BY u.id_user DESC
+            LIMIT 200
+        """)
+        rows = cur.fetchall()
+        for r in rows:
+            r['is_tutor'] = bool(r['is_tutor'])
+            r['is_premium'] = bool(r['is_premium'])
+        return jsonify({'users': rows}), 200
+    finally:
+        cur.close(); conn.close()
+
+
+@bp.route('/admin/recent-events', methods=['GET'])
+def admin_recent_events():
+    if not check_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("""
+            SELECT e.id_event, e.title, e.status, e.start_time, e.end_time, e.amount,
+                   s.name AS student_name, s.email AS student_email,
+                   t.name AS tutor_name
+            FROM events e
+            JOIN student_profiles sp ON sp.id_student = e.student_id
+            JOIN users s             ON s.id_user     = sp.id_user
+            JOIN tutor_profiles tp   ON tp.id_tutor   = e.tutor_id
+            JOIN users t             ON t.id_user     = tp.id_user
+            ORDER BY e.start_time DESC
+            LIMIT 50
+        """)
+        return jsonify({'events': cur.fetchall()})
+    finally:
+        cur.close(); conn.close()

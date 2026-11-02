@@ -143,7 +143,7 @@ export default function Navbar() {
 
           {isAuthenticated ? (
             <>
-              <Link to="/hub" className="btn-secondary" style={{ fontSize: '13px', padding: '6px 16px' }}>
+              <Link to="/hub" className="btn-secondary" style={{ fontSize: '13px', padding: '6px 16px', color: '#fff', background: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.14)' }}>
                 Dashboard
               </Link>
               <button onClick={handleLogout} className="btn-outline" style={{ fontSize: '13px', padding: '6px 16px' }}>

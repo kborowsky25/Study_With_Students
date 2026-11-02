@@ -4,7 +4,6 @@ export const getTutors      = (params)  => client.get('/tutors', { params })
 export const getTutor       = (id)      => client.get(`/tutors/${id}`)
 export const likeTutor      = (id)      => client.post(`/tutors/${id}/like`)
 export const getLikedTutors = ()        => client.get('/liked-tutors')
-export const activateTutor  = (id)      => client.post(`/tutors/${id}/activate`)
 export const deactivateTutor= (id)      => client.delete(`/tutors/${id}/activate`)
 export const getActiveTutors= ()        => client.get('/active-tutors')
 

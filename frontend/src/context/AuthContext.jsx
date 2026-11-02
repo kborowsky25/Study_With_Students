@@ -1,4 +1,6 @@
-import { createContext, useContext, useState, useCallback } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import client from '../api/client'
+import { clearQueries } from '../lib/query'
 
 const AuthContext = createContext(null)
 
@@ -20,6 +22,7 @@ export function AuthProvider({ children }) {
   const [user,  setUser]    = useState(getStoredUser)
 
   const login = useCallback((accessToken, userData) => {
+    if (userData?.id !== getStoredUser()?.id) clearQueries()
     localStorage.setItem(TOKEN_KEY, accessToken)
     localStorage.setItem(USER_KEY,  JSON.stringify(userData))
     setToken(accessToken)
@@ -27,6 +30,7 @@ export function AuthProvider({ children }) {
   }, [])
 
   const logout = useCallback(() => {
+    clearQueries()
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(USER_KEY)
     setToken(null)
@@ -41,12 +45,23 @@ export function AuthProvider({ children }) {
     })
   }, [])
 
+  // Exchange the stored JWT for fresh claims (plan, tutor approval) — on load and on demand.
+  const refreshSession = useCallback(async () => {
+    const { data } = await client.post('/auth/refresh')
+    login(data.access_token, data.user)
+    return data.user
+  }, [login])
+
+  useEffect(() => {
+    if (getStoredToken()) refreshSession().catch(() => {})
+  }, [refreshSession])
+
   const isAuthenticated = Boolean(token)
   const isTutor    = Boolean(user?.is_tutor)
   const isPremium  = Boolean(user?.is_premium)
 
   return (
-    <AuthContext.Provider value={{ token, user, isAuthenticated, isTutor, isPremium, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ token, user, isAuthenticated, isTutor, isPremium, login, logout, updateUser, refreshSession }}>
       {children}
     </AuthContext.Provider>
   )

@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast'
 import { ThemeProvider } from './context/ThemeContext'
 import { router } from './router'
 import './index.css'
+import './styles/app.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

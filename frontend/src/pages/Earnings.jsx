@@ -1,391 +1,182 @@
-import { useEffect, useRef, useState } from 'react'
-import { getPayments } from '../api/payments'
-import HubLayout from '../components/layout/HubLayout'
+import { useEffect, useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import { PageTitle } from '../context/PageTitleContext'
-import toast from 'react-hot-toast'
+import HubLayout from '../components/layout/HubLayout'
+import { Card, DateChip, EmptyState, Icon, SkeletonRows, Stat, StatusPill } from '../components/ui'
+import { getPayments } from '../api/payments'
+import { formatMoney, formatTime, weekBuckets } from '../lib/format'
 
-// ── CountUp hook ───────────────────────────────────────────────────────────────
-function useCountUp(target, { duration = 950, enabled = true } = {}) {
-  const [val, setVal] = useState(0)
-  const rafRef = useRef(null)
-  useEffect(() => {
-    if (!enabled) { setVal(target); return }
-    cancelAnimationFrame(rafRef.current)
-    const startTime = performance.now()
-    const tick = (now) => {
-      const t = Math.min((now - startTime) / duration, 1)
-      const ease = 1 - Math.pow(1 - t, 3)
-      setVal(ease * target)
-      if (t < 1) rafRef.current = requestAnimationFrame(tick)
-    }
-    rafRef.current = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [target, enabled])
-  return val
+const LIST_PREVIEW = 8
+
+// Status labels from the tutor's side of a session.
+const TUTOR_LABEL = { pending: 'To confirm', confirmed: 'Unpaid' }
+
+const FILTERS = [
+  ['all', 'All', () => true],
+  ['paid', 'Paid', (e) => e.status === 'paid'],
+  ['unpaid', 'Unpaid', (e) => e.status === 'confirmed'],
+]
+
+const sum = (list) => list.reduce((s, e) => s + Number(e.amount || 0), 0)
+const byStart = (a, b) => new Date(a.start_time) - new Date(b.start_time)
+const sameMonth = (value, now) => {
+  const d = new Date(value)
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
 }
 
-const RED = '#e53e3e'
-
-// ── Animated bar chart ────────────────────────────────────────────────────────
-function EarningsGraph({ events, loading }) {
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => {
-    if (!loading) setTimeout(() => setMounted(true), 60)
-  }, [loading])
-
-  const now = new Date()
-  const months = Array.from({ length: 6 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)
-    return { year: d.getFullYear(), month: d.getMonth(), label: d.toLocaleDateString('en-GB', { month: 'short' }), total: 0 }
-  })
-  if (!loading) {
-    events.filter(e => e.status === 'paid').forEach(e => {
-      const d = new Date(e.start_time)
-      const b = months.find(m => m.year === d.getFullYear() && m.month === d.getMonth())
-      if (b) b.total += Number(e.amount ?? 0)
-    })
-  }
-
-  const max = Math.max(...months.map(m => m.total), 1)
-  const CHART_H = 90
-  const isCurrent = m => m.year === now.getFullYear() && m.month === now.getMonth()
-
-  if (loading) return (
-    <div style={{ height: '130px', display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
-      {[...Array(6)].map((_, i) => (
-        <div key={i} className="skeleton" style={{ flex: 1, height: `${30 + i * 10}px`, borderRadius: '6px' }} />
-      ))}
-    </div>
-  )
+function EarningsChart({ paid }) {
+  const weeks = weekBuckets(8).map((b) => ({
+    ...b,
+    amount: sum(paid.filter((e) => { const t = new Date(e.start_time); return t >= b.start && t < b.end })),
+  }))
+  const max = Math.max(1, ...weeks.map((w) => w.amount))
 
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', userSelect: 'none' }}>
-      {months.map((m, i) => {
-        const barH = m.total > 0 ? Math.max((m.total / max) * CHART_H, 8) : 4
-        const curr = isCurrent(m)
-        return (
-          <div key={`${m.year}-${m.month}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
-            <span style={{
-              fontSize: '9px', fontWeight: curr ? 700 : 400,
-              color: curr ? '#e53e3e' : 'rgba(255,255,255,0.35)',
-              height: '12px', display: 'flex', alignItems: 'center',
-              opacity: m.total > 0 ? 1 : 0,
-            }}>£{m.total.toFixed(0)}</span>
-            <div style={{ width: '100%', height: `${CHART_H}px`, borderRadius: '6px', background: 'rgba(255,255,255,0.04)', position: 'relative', overflow: 'hidden' }}>
-              <div style={{
-                position: 'absolute', bottom: 0, left: 0, right: 0,
-                height: mounted ? `${(barH / CHART_H) * 100}%` : '0%',
-                background: curr ? 'linear-gradient(to bottom, #e53e3e, rgba(229,62,62,0.5))' : 'rgba(229,62,62,0.3)',
-                borderRadius: '6px',
-                transition: `height 0.65s cubic-bezier(0.34,1.56,0.64,1) ${i * 0.07}s`,
-                boxShadow: curr ? '0 0 14px rgba(229,62,62,0.4)' : 'none',
-              }} />
+    <Card title="Paid by week" count={`${formatMoney(sum(weeks))} · 8 weeks`}>
+      <div style={{ padding: '14px 18px 16px' }}>
+        <div className="bars">
+          {weeks.map((w, i) => (
+            <div className={`bar ${i === weeks.length - 1 ? 'hot' : ''}`} key={w.label} title={`${formatMoney(w.amount)} · week of ${w.label}`}>
+              <i style={{ height: `${(w.amount / max) * 100}%`, animationDelay: `${i * 40}ms` }} />
+              <span>{w.label}</span>
             </div>
-            <span style={{ fontSize: '10px', fontWeight: curr ? 700 : 400, color: curr ? '#e53e3e' : 'rgba(255,255,255,0.35)' }}>{m.label}</span>
-            {curr
-              ? <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#e53e3e' }} />
-              : <div style={{ width: '4px', height: '4px' }} />
-            }
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-// ── Animated donut chart ──────────────────────────────────────────────────────
-function DonutChart({ paidAmt, pendingAmt, confirmedAmt, mounted }) {
-  const RADIUS = 46
-  const CIRCUM = 2 * Math.PI * RADIUS
-  const totalAmt = paidAmt + pendingAmt + confirmedAmt || 1
-
-  const paidFrac = paidAmt / totalAmt
-  const pendFrac = pendingAmt / totalAmt
-  const confFrac = confirmedAmt / totalAmt
-
-  const paidLen = paidFrac * CIRCUM
-  const pendLen = pendFrac * CIRCUM
-  const confLen = confFrac * CIRCUM
-  const GAP = 3
-
-  const segments = [
-    { length: Math.max(paidAmt > 0 ? paidLen - GAP : 0, 0), offset: 0,                  color: '#e53e3e', delay: '0.1s' },
-    { length: Math.max(pendingAmt > 0 ? pendLen - GAP : 0, 0), offset: -paidLen,         color: '#fbbf24', delay: '0.3s' },
-    { length: Math.max(confirmedAmt > 0 ? confLen - GAP : 0, 0), offset: -(paidLen + pendLen), color: '#60a5fa', delay: '0.5s' },
-  ]
-
-  return (
-    <div style={{ position: 'relative', width: '140px', height: '140px', margin: '0 auto' }}>
-      <svg width="140" height="140" viewBox="0 0 120 120" style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx="60" cy="60" r={RADIUS} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="16" />
-        {segments.map((seg, i) => (
-          <circle key={i}
-            cx="60" cy="60" r={RADIUS} fill="none"
-            stroke={seg.color} strokeWidth="16"
-            strokeDasharray={`${mounted ? seg.length : 0} ${CIRCUM}`}
-            strokeDashoffset={seg.offset}
-            style={{ transition: `stroke-dasharray 0.85s cubic-bezier(0.34,1.56,0.64,1) ${seg.delay}` }}
-          />
-        ))}
-      </svg>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ fontSize: '20px', fontWeight: '900', color: '#e53e3e', letterSpacing: '-0.03em', lineHeight: 1, margin: 0 }}>
-          £{paidAmt.toFixed(0)}
-        </p>
-        <p style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '3px', margin: '3px 0 0' }}>earned</p>
+          ))}
+        </div>
       </div>
+    </Card>
+  )
+}
+
+function SessionRow({ ev, children }) {
+  return (
+    <div className="row">
+      <DateChip value={ev.start_time} />
+      <div className="main">
+        <div className="title">{ev.title || 'Tutoring session'}</div>
+        <div className="meta">{ev.student_name} · {formatTime(ev.start_time)}–{formatTime(ev.end_time)}</div>
+      </div>
+      {children}
     </div>
   )
 }
 
-// ── Status badge ───────────────────────────────────────────────────────────────
-const STATUS_CFG = {
-  paid:      { bg: 'rgba(229,62,62,0.12)',  text: '#e53e3e', border: 'rgba(229,62,62,0.25)'  },
-  confirmed: { bg: 'rgba(96,165,250,0.12)',  text: '#60a5fa', border: 'rgba(96,165,250,0.25)'  },
-  pending:   { bg: 'rgba(251,191,36,0.12)',  text: '#fbbf24', border: 'rgba(251,191,36,0.25)'  },
-  canceled:  { bg: 'rgba(248,113,113,0.12)', text: '#f87171', border: 'rgba(248,113,113,0.25)' },
-}
-function StatusBadge({ status }) {
-  const s = STATUS_CFG[status] ?? STATUS_CFG.pending
+function Amount({ ev }) {
+  const cancelled = ev.status === 'canceled'
   return (
     <span style={{
-      fontSize: '10px', fontWeight: '700', letterSpacing: '0.04em', textTransform: 'uppercase',
-      background: s.bg, color: s.text, border: `1px solid ${s.border}`, borderRadius: '20px', padding: '3px 8px',
-    }}>{status}</span>
+      fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap',
+      color: cancelled ? 'var(--text-faint)' : 'var(--text)', textDecoration: cancelled ? 'line-through' : 'none',
+    }}>
+      {formatMoney(ev.amount)}
+    </span>
   )
 }
 
-// ── Session row ────────────────────────────────────────────────────────────────
-function EarningRow({ ev, index }) {
-  const date   = ev.start_time ? new Date(ev.start_time).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
-  const earned = ev.status === 'paid'
-  const [hovered, setHovered] = useState(false)
-
-  return (
-    <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        display: 'flex', alignItems: 'center', gap: '14px',
-        padding: '12px 16px',
-        borderBottom: '1px solid var(--border)',
-        background: hovered ? 'rgba(229,62,62,0.04)' : 'transparent',
-        transition: 'background 0.2s',
-        borderLeft: `3px solid ${earned ? '#e53e3e' : 'rgba(255,255,255,0.08)'}`,
-        animation: `slideIn 0.35s ease ${index * 0.04}s both`,
-      }}
-    >
-      <div style={{
-        width: '36px', height: '36px', borderRadius: '10px', flexShrink: 0,
-        background: earned ? 'rgba(229,62,62,0.12)' : 'rgba(255,255,255,0.05)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <span className="material-symbols-outlined" style={{ fontSize: '17px', color: earned ? '#e53e3e' : 'rgba(255,255,255,0.3)' }}>
-          {earned ? 'payments' : 'hourglass_empty'}
-        </span>
-      </div>
-
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ color: 'var(--text)', fontSize: '13px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {ev.title}
-        </p>
-        <p style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '2px' }}>
-          {date}{ev.student_name ? ` · ${ev.student_name}` : ''}
-        </p>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
-        {ev.amount && Number(ev.amount) > 0 && (
-          <p style={{ fontWeight: '800', fontSize: '14px', color: earned ? '#e53e3e' : 'var(--text)', letterSpacing: '-0.02em' }}>
-            £{Number(ev.amount).toFixed(2)}
-          </p>
-        )}
-        <StatusBadge status={ev.status} />
-      </div>
-    </div>
-  )
-}
-
-// ── Main component ─────────────────────────────────────────────────────────────
 export default function Earnings() {
-  const [events,  setEvents]  = useState([])
-  const [loading, setLoading] = useState(true)
-  const [ready,   setReady]   = useState(false)
+  const [events, setEvents] = useState([])
+  const [phase, setPhase] = useState('loading') // loading | ready | error
+  const [filter, setFilter] = useState('all')
+  const [showAll, setShowAll] = useState(false)
 
-  useEffect(() => {
-    getPayments({ role: 'tutor' })
-      .then(({ data }) => setEvents(data.events ?? []))
-      .catch(() => toast.error('Could not load earnings'))
-      .finally(() => { setLoading(false); requestAnimationFrame(() => setReady(true)) })
-  }, [])
+  async function load() {
+    setPhase('loading')
+    try {
+      const { data } = await getPayments({ role: 'tutor' })
+      setEvents(data.events ?? [])
+      setPhase('ready')
+    } catch {
+      setPhase('error')
+    }
+  }
 
-  const paid         = events.filter(e => e.status === 'paid')
-  const pending      = events.filter(e => e.status === 'pending')
-  const confirmed    = events.filter(e => e.status === 'confirmed')
-  const awaitingList = events.filter(e => e.status === 'pending' || e.status === 'confirmed')
-  const total        = paid.reduce((s, e) => s + Number(e.amount ?? 0), 0)
-  const pendingAmt   = pending.reduce((s, e) => s + Number(e.amount ?? 0), 0)
-  const confirmedAmt = confirmed.reduce((s, e) => s + Number(e.amount ?? 0), 0)
-  const now          = new Date()
-  const thisMonth    = paid
-    .filter(e => { const d = new Date(e.start_time); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() })
-    .reduce((s, e) => s + Number(e.amount ?? 0), 0)
+  useEffect(() => { load() }, [])
 
-  const totalDisplay   = useCountUp(total,    { enabled: ready && !loading })
-  const monthDisplay   = useCountUp(thisMonth, { enabled: ready && !loading })
-  const pendingDisplay = useCountUp(pendingAmt + confirmedAmt, { enabled: ready && !loading })
+  const now = new Date()
+  const paid = events.filter((e) => e.status === 'paid')
+  const unpaid = events.filter((e) => e.status === 'confirmed').sort(byStart)
+  const matches = FILTERS.find(([key]) => key === filter)[2]
+  const listed = events.filter(matches) // newest first, as the API sends them
+  const visible = showAll ? listed : listed.slice(0, LIST_PREVIEW)
+  const loading = phase === 'loading'
+  const show = (value) => (loading ? '—' : value)
 
   return (
     <HubLayout initialMode="tutor">
-      <PageTitle title="Earnings" icon="payments" />
-      <style>{`
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateY(16px) }
-          to   { opacity: 1; transform: translateY(0) }
-        }
-        @keyframes pulsePend {
-          0%, 100% { opacity: 1 }
-          50% { opacity: 0.5 }
-        }
-      `}</style>
+      <PageTitle title="Earnings" icon="account_balance" />
 
-      {/* ── Top row: hero total + 6-month chart ─────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-
-        {/* Hero total card */}
-        <div style={{
-          borderRadius: '20px', padding: '24px',
-          background: 'linear-gradient(135deg, rgba(229,62,62,0.14) 0%, rgba(229,62,62,0.04) 100%)',
-          border: '1px solid rgba(229,62,62,0.22)',
-          animation: 'slideIn 0.4s ease 0.05s both',
-          position: 'relative', overflow: 'hidden',
-        }}>
-          <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '160px', height: '160px', borderRadius: '50%', background: 'rgba(229,62,62,0.08)', filter: 'blur(40px)', pointerEvents: 'none' }} />
-          <p style={{ fontSize: '11px', fontWeight: '700', color: '#e53e3e', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>Total Earned</p>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '18px' }}>
-            <span style={{ fontSize: '44px', fontWeight: '900', color: '#e53e3e', lineHeight: 1, letterSpacing: '-0.04em', textShadow: '0 0 28px rgba(229,62,62,0.5)' }}>
-              £{totalDisplay.toFixed(2)}
-            </span>
-            <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>lifetime</span>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {[
-              { label: 'This month',    value: `£${monthDisplay.toFixed(2)}`,   icon: 'calendar_month',  color: '#60a5fa' },
-              { label: 'Sessions paid', value: paid.length,                      icon: 'check_circle',    color: '#e53e3e' },
-              { label: 'Awaiting',      value: `£${pendingDisplay.toFixed(2)}`,  icon: 'hourglass_empty', color: '#fbbf24' },
-            ].map(({ label, value, icon, color }) => (
-              <div key={label} style={{
-                display: 'flex', alignItems: 'center', gap: '7px',
-                background: 'rgba(0,0,0,0.2)', borderRadius: '10px', padding: '7px 12px',
-                border: '1px solid rgba(255,255,255,0.06)',
-              }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '15px', color }}>{icon}</span>
-                <div>
-                  <p style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text)', lineHeight: 1, margin: 0 }}>{value}</p>
-                  <p style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: '2px', margin: '2px 0 0' }}>{label}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 6-month chart */}
-        <div className="glass" style={{ padding: '20px 22px', animation: 'slideIn 0.4s ease 0.1s both' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-            <div>
-              <h2 style={{ fontWeight: '800', fontSize: '14px', color: 'var(--text)', margin: 0 }}>6-Month Overview</h2>
-              <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', margin: '2px 0 0' }}>Monthly earnings breakdown</p>
-            </div>
-            <span style={{ fontSize: '10px', color: '#e53e3e', fontWeight: '600', padding: '2px 8px', borderRadius: '20px', background: 'rgba(229,62,62,0.08)', border: '1px solid rgba(229,62,62,0.15)' }}>
-              ↑ Last 6 months
-            </span>
-          </div>
-          <EarningsGraph events={events} loading={loading} />
+      <div className="dash-head">
+        <h1>Earnings</h1>
+        <div className="dash-actions">
+          <Link to="/tutor-profile" className="btn btn-ghost"><Icon name="sell" />Edit rate</Link>
         </div>
       </div>
 
-      {/* ── Bottom row: donut chart + session lists ──────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '16px' }}>
+      {phase === 'error' ? (
+        <Card>
+          <EmptyState title="Couldn’t load your earnings." action={<button className="btn btn-ghost btn-sm" onClick={load}>Try again</button>} />
+        </Card>
+      ) : (
+        <>
+          <section className="card stat-grid">
+            <Stat label="Earned this month" value={show(formatMoney(sum(paid.filter((e) => sameMonth(e.start_time, now)))))} />
+            <Stat label="All-time" value={show(formatMoney(sum(paid)))} />
+            <Stat label="Awaiting payment" value={show(formatMoney(sum(unpaid)))} />
+            <Stat label="You keep" value="100%" />
+          </section>
 
-        {/* Donut chart + breakdown */}
-        <div className="glass" style={{ padding: '20px', animation: 'slideIn 0.4s ease 0.15s both', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <h3 style={{ fontWeight: '700', fontSize: '13px', color: 'var(--text)', margin: 0 }}>Breakdown</h3>
-          <DonutChart
-            paidAmt={total}
-            pendingAmt={pendingAmt}
-            confirmedAmt={confirmedAmt}
-            mounted={ready && !loading}
-          />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {[
-              { color: '#e53e3e', label: 'Paid',      value: `£${total.toFixed(2)}` },
-              { color: '#60a5fa', label: 'Confirmed', value: `£${confirmedAmt.toFixed(2)}` },
-              { color: '#fbbf24', label: 'Pending',   value: `£${pendingAmt.toFixed(2)}` },
-            ].map(({ color, label, value }) => (
-              <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: color, flexShrink: 0 }} />
-                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{label}</span>
+          <div className="dash-grid">
+            <div className="dash-col">
+              <EarningsChart paid={paid} />
+
+              <section>
+                <div className="tabs" role="tablist" aria-label="Sessions">
+                  {FILTERS.map(([key, label, test]) => (
+                    <button key={key} role="tab" aria-selected={filter === key} className={filter === key ? 'on' : ''}
+                      onClick={() => { setFilter(key); setShowAll(false) }}>
+                      {label}{!loading && <span className="count">{events.filter(test).length}</span>}
+                    </button>
+                  ))}
                 </div>
-                <span style={{ fontSize: '12px', fontWeight: '700', color }}>{value}</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px' }}>
-              <span className="material-symbols-outlined" style={{ color: '#e53e3e', fontSize: '15px' }}>verified</span>
-              <p style={{ fontWeight: '700', fontSize: '12px', color: '#e53e3e', margin: 0 }}>0% Platform Fee</p>
+                <Card>
+                  {loading ? <SkeletonRows rows={4} /> : listed.length ? (
+                    <div className="row-list">
+                      {visible.map((ev) => (
+                        <SessionRow key={ev.id_event} ev={ev}>
+                          <Amount ev={ev} />
+                          <StatusPill status={ev.status} label={TUTOR_LABEL[ev.status]} />
+                        </SessionRow>
+                      ))}
+                      {listed.length > LIST_PREVIEW && (
+                        <button className="row" onClick={() => setShowAll((v) => !v)}
+                          style={{ justifyContent: 'center', fontSize: 12.5, fontWeight: 500, color: 'var(--text-muted)' }}>
+                          {showAll ? 'Show less' : `Show all ${listed.length}`}
+                        </button>
+                      )}
+                    </div>
+                  ) : <EmptyState title={filter === 'all' ? 'No sessions yet.' : `No ${filter} sessions.`} />}
+                </Card>
+              </section>
             </div>
-            <p style={{ color: 'var(--text-faint)', fontSize: '11px', lineHeight: '1.5', margin: 0 }}>
-              You keep <strong style={{ color: 'var(--text)' }}>100%</strong> of every payment.
-            </p>
-          </div>
-        </div>
 
-        {/* Session lists */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0 }}>
-
-          {/* Awaiting / upcoming */}
-          {awaitingList.length > 0 && (
-            <div className="glass" style={{ overflow: 'hidden', animation: 'slideIn 0.4s ease 0.2s both', border: '1px solid rgba(251,191,36,0.18)' }}>
-              <div style={{ padding: '13px 16px 11px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '17px', color: '#fbbf24', animation: 'pulsePend 2s ease-in-out infinite' }}>hourglass_empty</span>
-                  <h2 style={{ fontWeight: '700', fontSize: '13px', color: 'var(--text)', margin: 0 }}>Upcoming / Awaiting</h2>
-                </div>
-                <span style={{ fontSize: '11px', fontWeight: '700', color: '#fbbf24', background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: '20px', padding: '2px 8px' }}>
-                  {awaitingList.length}
-                </span>
-              </div>
-              {awaitingList.map((ev, i) => <EarningRow key={ev.id_event} ev={ev} index={i} />)}
+            <div className="dash-col">
+              <Card title="Awaiting payment" count={unpaid.length || null}>
+                {loading ? <SkeletonRows rows={2} /> : unpaid.length ? (
+                  <div className="row-list">
+                    {unpaid.map((ev) => (
+                      <SessionRow key={ev.id_event} ev={ev}>
+                        <Amount ev={ev} />
+                        <Link to="/messages" search={{ user: ev.student_user_id }} className="icon-btn" aria-label={`Message ${ev.student_name}`}>
+                          <Icon name="chat" />
+                        </Link>
+                      </SessionRow>
+                    ))}
+                  </div>
+                ) : <EmptyState title="Nothing outstanding." />}
+              </Card>
             </div>
-          )}
-
-          {/* Earnings history */}
-          <div className="glass" style={{ overflow: 'hidden', animation: 'slideIn 0.4s ease 0.25s both' }}>
-            <div style={{ padding: '13px 16px 11px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '17px', color: '#e53e3e' }}>history</span>
-                <h2 style={{ fontWeight: '700', fontSize: '13px', color: 'var(--text)', margin: 0 }}>Earnings History</h2>
-              </div>
-              {paid.length > 0 && (
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{paid.length} sessions</span>
-              )}
-            </div>
-            {loading ? (
-              <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: '58px', borderRadius: '8px' }} />)}
-              </div>
-            ) : paid.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '40px', color: 'rgba(255,255,255,0.12)', display: 'block', marginBottom: '10px' }}>payments</span>
-                <p style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: '600' }}>No earnings yet</p>
-                <p style={{ color: 'var(--text-faint)', fontSize: '11px', marginTop: '4px' }}>Confirm sessions to start earning</p>
-              </div>
-            ) : paid.map((ev, i) => <EarningRow key={ev.id_event} ev={ev} index={i} />)}
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </HubLayout>
   )
 }

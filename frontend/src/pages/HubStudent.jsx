@@ -1,711 +1,310 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useAuth } from '../context/AuthContext'
+import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
+import BookSessionModal from '../components/features/BookSessionModal'
+import SpotlightTour from '../components/features/SpotlightTour'
+import { Avatar, Card, CardLink, DateChip, EmptyState, Icon, SkeletonRows, Stat, StatusPill } from '../components/ui'
 import { getActiveTutors, getTutorRequestsSent } from '../api/tutors'
 import { getEvents } from '../api/events'
 import { getConversations } from '../api/messages'
-import SpotlightTour from '../components/features/SpotlightTour'
+import { getRecentThreads } from '../api/forum'
+import { hasExplorerAccess } from '../lib/access'
+import {
+  firstName, formatMoney, formatTime, formatWhen, greeting, hoursBetween, timeAgo, weekBuckets,
+} from '../lib/format'
 
-const STUDENT_TOUR_STEPS = [
-  { target: null,                         position: 'center', title: 'Welcome to Study With Students! 🎉', body: "You're in your student dashboard. Let's take a 30-second tour of the key features." },
-  { target: '[data-tour="find-tutors"]',  position: 'right',  title: 'Find Tutors',       body: 'Browse peer tutors filtered by subject, price, and availability. Add them to your dashboard with one click.' },
-  { target: '[data-tour="messages"]',     position: 'right',  title: 'Messages',           body: 'Chat directly with your tutors — no middleman, no delay.' },
-  { target: '[data-tour="forum"]',        position: 'right',  title: 'Community Forum',    body: 'Ask questions, share knowledge, and connect with students across the platform.' },
-  { target: '[data-tour="study-rooms-student"]', position: 'right', title: 'Study Rooms', body: 'Join group virtual sessions — great for staying accountable and studying alongside others.' },
-  { target: '[data-tour="payments"]',     position: 'right',  title: 'Payments',           body: 'Track every session payment. 0% platform fee — every penny goes directly to your tutor.' },
-  { target: null,                         position: 'center', title: "You're all set! 🚀",  body: 'Press ? at any time to see keyboard shortcuts. Enjoy the platform!' },
+const TOUR_STEPS = [
+  { target: null, position: 'center', title: 'Welcome to Study With Students 🚀', body: "This is your home. Here's a 20-second tour of the essentials." },
+  { target: '[data-tour="find-tutors"]', position: 'right', title: 'Find a tutor', body: 'Browse university students by subject and send a request. Once they accept, you can book sessions.' },
+  { target: '[data-tour="messages"]', position: 'right', title: 'Messages', body: 'Talk to your tutors directly — no middleman.' },
+  { target: '[data-tour="payments"]', position: 'right', title: 'Payments', body: 'Pay tutors per session. We take 0% commission — every penny goes to them.' },
+  { target: '[data-tour="forum"]', position: 'right', title: 'Explorer plan', body: 'For £5/month: the community forum, shared study notes, study rooms and live classes.' },
 ]
 
-const CORAL  = '#ff725e'   // student hub — coral (warm but distinct from amber)
-const GREEN  = '#34d399'
-const BLUE   = '#60a5fa'
-const AMBER  = '#fbbf24'
+const isUpcoming = (e) => new Date(e.end_time) > new Date() && ['pending', 'confirmed', 'paid'].includes(e.status)
 
-const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
-
-// ── CountUp hook ─────────────────────────────────────────────────────────────
-function useCountUp(target, duration = 700) {
-  const [val, setVal] = useState(0)
-  useEffect(() => {
-    if (!target) { setVal(target ?? 0); return }
-    const start = performance.now()
-    let raf
-    const step = (now) => {
-      const t = Math.min((now - start) / duration, 1)
-      const eased = 1 - Math.pow(1 - t, 3)
-      setVal(Math.round(target * eased))
-      if (t < 1) raf = requestAnimationFrame(step)
-    }
-    raf = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(raf)
-  }, [target, duration])
-  return val
-}
-
-function fmt(iso) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-}
-
-function fmtShort(iso) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
-}
-
-// ── Animated XP Donut ────────────────────────────────────────────────────────
-function XpDonut({ xpProgress, level }) {
-  const size   = 96
-  const radius = 36
-  const stroke = 5
-  const cx     = 48
-  const cy     = 48
-  const circum = 2 * Math.PI * radius
-  const [offset, setOffset] = useState(circum)
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setOffset(circum - (xpProgress / 100) * circum)
-    }, 300)
-    return () => clearTimeout(t)
-  }, [xpProgress, circum])
-
+function SessionRow({ ev }) {
   return (
-    <div style={{ position: 'relative', width: `${size}px`, height: `${size}px`, flexShrink: 0 }}>
-      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-        <defs>
-          <linearGradient id="donut-grad-student" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor={CORAL} />
-            <stop offset="100%" stopColor={AMBER} />
-          </linearGradient>
-        </defs>
-        <circle cx={cx} cy={cy} r={radius} fill="none" stroke={`${CORAL}1a`} strokeWidth={stroke} />
-        <circle
-          cx={cx} cy={cy} r={radius}
-          fill="none"
-          stroke="url(#donut-grad-student)"
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          strokeDasharray={circum}
-          strokeDashoffset={offset}
-          style={{ transition: 'stroke-dashoffset 1.4s cubic-bezier(0.4,0,0.2,1)' }}
-        />
-      </svg>
-      <div style={{
-        position: 'absolute', inset: 0,
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        pointerEvents: 'none',
-      }}>
-        <span style={{ fontSize: '22px', fontWeight: '900', color: 'var(--text)', lineHeight: 1 }}>{level}</span>
-        <span style={{ fontSize: '8px', fontWeight: '700', color: CORAL, letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: '2px' }}>Level</span>
-        <span style={{ fontSize: '8px', color: 'var(--text-faint)', marginTop: '1px' }}>
-          {xpProgress}<span style={{ opacity: 0.6 }}>/100</span>
-        </span>
+    <div className="row">
+      <DateChip value={ev.start_time} />
+      <div className="main">
+        <div className="title">{ev.title || 'Tutoring session'}</div>
+        <div className="meta">with {ev.tutor_name} · {formatTime(ev.start_time)}–{formatTime(ev.end_time)}</div>
       </div>
+      <span className="side hide-mobile">{formatMoney(ev.amount)}</span>
+      <StatusPill status={ev.status} />
     </div>
   )
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
-export default function HubStudent() {
-  const { user } = useAuth()
-
-  const [activeTutors,   setActiveTutors]   = useState([])
-  const [events,         setEvents]         = useState([])
-  const [conversations,  setConversations]  = useState([])
-  const [pendingInvites, setPendingInvites] = useState([])  // sent requests, status='pending'
-  const [loading,        setLoading]        = useState(true)
-  const [mounted,        setMounted]        = useState(false)
-  const [showTour,       setShowTour]       = useState(false)
-  const [streak,         setStreak]         = useState(1)
-
-  useEffect(() => {
-    Promise.allSettled([
-      getActiveTutors().then(r       => setActiveTutors(r.data.tutors ?? [])),
-      getEvents().then(r             => setEvents(r.data.events ?? [])),
-      getConversations().then(r      => setConversations(r.data.conversations ?? [])),
-      getTutorRequestsSent().then(r  => setPendingInvites((r.data.requests ?? []).filter(r => r.status === 'pending'))),
-    ]).finally(() => setLoading(false))
-
-    const t = setTimeout(() => setMounted(true), 50)
-
-    // Daily streak
-    try {
-      const today     = new Date().toISOString().split('T')[0]
-      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
-      const s = JSON.parse(localStorage.getItem('sws_streak') || '{"count":1,"last":""}')
-      if (s.last === today) { setStreak(s.count) }
-      else if (s.last === yesterday) {
-        const n = s.count + 1
-        localStorage.setItem('sws_streak', JSON.stringify({ count: n, last: today }))
-        setStreak(n)
-      } else {
-        localStorage.setItem('sws_streak', JSON.stringify({ count: 1, last: today }))
-        setStreak(1)
-      }
-    } catch {}
-
-    // First-time student tour
-    const tourKey = `sws_tour_student_${user?.id}`
-    if (!localStorage.getItem(tourKey)) {
-      const tourTimer = setTimeout(() => setShowTour(true), 800)
-      return () => { clearTimeout(t); clearTimeout(tourTimer) }
-    }
-    return () => clearTimeout(t)
-  }, [])
-
-  const hour     = new Date().getHours()
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
-  const name     = user?.name?.split(' ')[0] ?? 'Student'
-
-  const now         = new Date()
-  const upcoming    = events.filter(e =>
-    (e.status === 'confirmed' || e.status === 'pending') &&
-    new Date(e.start_time) > now
-  )
-  const nextSession = [...upcoming].sort((a, b) => new Date(a.start_time) - new Date(b.start_time))[0] ?? null
-  const unreadCount = conversations.reduce((acc, c) => acc + (c.unread || 0), 0)
-
-  // XP calculation (confirmed sessions only, not just upcoming)
-  const confirmedTotal = events.filter(e => e.status === 'confirmed' || e.status === 'paid').length
-  const totalXP    = 30 + activeTutors.length * 10 + confirmedTotal * 30
-  const level      = Math.floor(totalXP / 100) + 1
-  const xpProgress = totalXP % 100
-
-  function doneTour() {
-    localStorage.setItem(`sws_tour_student_${user?.id}`, 'done')
-    setShowTour(false)
-  }
+function LearningChart({ events }) {
+  const weeks = useMemo(() => {
+    const buckets = weekBuckets(8)
+    return buckets.map((b) => ({
+      ...b,
+      hours: events
+        .filter((e) => ['confirmed', 'paid'].includes(e.status))
+        .filter((e) => { const t = new Date(e.start_time); return t >= b.start && t < b.end })
+        .reduce((sum, e) => sum + hoursBetween(e.start_time, e.end_time), 0),
+    }))
+  }, [events])
+  const max = Math.max(1, ...weeks.map((w) => w.hours))
+  const total = weeks.reduce((s, w) => s + w.hours, 0)
 
   return (
-    <HubLayout initialMode="student" noScroll>
-      {showTour && <SpotlightTour steps={STUDENT_TOUR_STEPS} onDone={doneTour} />}
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '12px' }}>
-
-        {/* ── Welcome banner ─────────────────────────────────────────────── */}
-        <div
-          className={mounted ? 'animate-from-tl' : ''}
-          style={{
-            flexShrink: 0,
-            background: `linear-gradient(135deg, ${CORAL}14 0%, rgba(255,114,94,0.03) 55%, rgba(255,154,60,0.06) 100%)`,
-            border: `1px solid ${CORAL}24`,
-            borderRadius: '16px',
-            padding: '12px 20px',
-            position: 'relative',
-            overflow: 'hidden',
-          }}
-        >
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-
-            {/* Left: greeting + session chip + CTAs */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <h1 style={{ fontSize: '20px', fontWeight: '900', color: 'var(--text)', lineHeight: 1.2, marginBottom: '8px' }}>
-                {greeting}, {name} — <span style={{ color: CORAL }}>ready to learn?</span>
-              </h1>
-
-              {/* Next session chip */}
-              {!loading && nextSession ? (
-                <div style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '7px',
-                  background: `${CORAL}10`, border: `1px solid ${CORAL}28`,
-                  borderRadius: '20px', padding: '4px 11px',
-                  marginBottom: '10px',
-                }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '13px', color: CORAL }}>schedule</span>
-                  <span style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)' }}>
-                    Next: <span style={{ color: 'var(--text)' }}>{nextSession.title}</span>
-                    <span style={{ color: 'var(--text-faint)', marginLeft: '6px' }}>{fmtShort(nextSession.start_time)}</span>
-                  </span>
-                </div>
-              ) : !loading && (
-                <div style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '7px',
-                  background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)',
-                  borderRadius: '20px', padding: '4px 11px',
-                  marginBottom: '10px',
-                }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '13px', color: 'var(--text-faint)' }}>calendar_clock</span>
-                  <span style={{ fontSize: '11px', color: 'var(--text-faint)' }}>No upcoming sessions</span>
-                </div>
-              )}
-
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <Link to="/find-tutors" className="btn-primary" style={{ fontSize: '12px', padding: '7px 16px' }}>
-                  Find a Tutor
-                </Link>
-                <Link to="/calendar/student" className="btn-secondary" style={{ fontSize: '12px', padding: '7px 16px' }}>
-                  My Calendar
-                </Link>
-              </div>
+    <Card title="Learning hours" icon="insights" action={<span className="count">{total.toFixed(1)} h · 8 weeks</span>}>
+      <div style={{ padding: '14px 18px 16px' }}>
+        <div className="bars">
+          {weeks.map((w, i) => (
+            <div className={`bar ${i === weeks.length - 1 ? 'hot' : ''}`} key={w.label} title={`${w.hours.toFixed(1)} h · week of ${w.label}`}>
+              <i style={{ height: `${(w.hours / max) * 100}%`, animationDelay: `${i * 40}ms` }} />
+              <span>{w.label.split(' ')[0]}</span>
             </div>
-
-            {/* Right: stats summary */}
-            <div style={{ flexShrink: 0, display: 'flex', gap: '16px', alignItems: 'center' }}>
-              {/* Streak */}
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '24px', fontWeight: '900', color: AMBER, lineHeight: 1 }}>
-                  {streak}
-                </div>
-                <div style={{ fontSize: '9px', fontWeight: '700', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.07em', marginTop: '2px' }}>
-                  Day streak
-                </div>
-              </div>
-
-              <div style={{ width: '1px', height: '40px', background: 'var(--border)' }} />
-
-              {/* XP donut */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                <XpDonut xpProgress={xpProgress} level={level} />
-                <div style={{ width: '96px' }}>
-                  <div style={{ height: '3px', borderRadius: '2px', background: `${CORAL}1a`, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${xpProgress}%`, background: `linear-gradient(90deg, ${CORAL}, ${AMBER})`, borderRadius: '2px', transition: 'width 1.5s cubic-bezier(0.4,0,0.2,1)' }} />
-                  </div>
-                  <p style={{ fontSize: '8px', color: 'var(--text-faint)', textAlign: 'center', marginTop: '3px' }}>
-                    {100 - xpProgress} XP to Lv {level + 1}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Stats row ───────────────────────────────────────────────────── */}
-        <div style={{ flexShrink: 0, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-          <StatCard
-            icon="cast_for_education"
-            label="Active Tutors"
-            value={loading ? null : activeTutors.length}
-            to="/active-tutors"
-            animClass={mounted ? 'animate-from-bl delay-100' : ''}
-          />
-          <StatCard
-            icon="calendar_clock"
-            label="Upcoming Sessions"
-            value={loading ? null : upcoming.length}
-            to="/calendar/student"
-            animClass={mounted ? 'animate-slide-up delay-150' : ''}
-          />
-          <StatCard
-            icon="message"
-            label="Messages"
-            value={loading ? null : conversations.length}
-            to="/messages"
-            highlight={unreadCount > 0}
-            badge={unreadCount || null}
-            animClass={mounted ? 'animate-from-br delay-100' : ''}
-          />
-        </div>
-
-        {/* ── 3-col panels ────────────────────────────────────────────────── */}
-        <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
-
-          {/* Col 1: Upcoming Sessions */}
-          <Panel
-            title="My Schedule"
-            icon="event"
-            extra={<Link to="/calendar/student" style={{ color: CORAL, fontSize: '12px', fontWeight: '600', textDecoration: 'none' }}>Calendar →</Link>}
-            animClass={mounted ? 'animate-from-bl delay-200' : ''}
-          >
-            {loading ? <SkeletonList rows={5} /> : upcoming.length === 0 ? (
-              <EmptyState icon="calendar_clock" text="No upcoming sessions" action={{ to: '/find-tutors', label: 'Book a session' }} />
-            ) : (
-              upcoming.slice(0, 8).map(ev => <SessionRow key={ev.id_event} event={ev} />)
-            )}
-          </Panel>
-
-          {/* Col 2: My Tutors + Recent Messages */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', minHeight: 0 }}>
-            <Panel
-              title="My Tutors"
-              icon="cast_for_education"
-              extra={<Link to="/active-tutors" style={{ color: CORAL, fontSize: '12px', fontWeight: '600', textDecoration: 'none' }}>View all →</Link>}
-              style={{ flex: 1, minHeight: 0 }}
-              animClass={mounted ? 'animate-from-br delay-200' : ''}
-            >
-              {loading ? <SkeletonList rows={3} /> : (
-                activeTutors.length === 0 && pendingInvites.length === 0 ? (
-                  <EmptyState icon="cast_for_education" text="No active tutors yet" action={{ to: '/find-tutors', label: 'Find one' }} />
-                ) : activeTutors.length === 0 ? (
-                  /* Only pending — nudge them to the page */
-                  <EmptyState icon="hourglass_top" text={`${pendingInvites.length} request${pendingInvites.length !== 1 ? 's' : ''} awaiting response`} action={{ to: '/active-tutors', label: 'View requests' }} />
-                ) : (
-                  activeTutors.slice(0, 5).map(t => <TutorRow key={t.id_tutor} tutor={t} />)
-                )
-              )}
-            </Panel>
-
-            <Panel
-              title="Recent Messages"
-              icon="chat"
-              extra={<Link to="/messages" style={{ color: CORAL, fontSize: '12px', fontWeight: '600', textDecoration: 'none' }}>Open →</Link>}
-              style={{ flex: 1, minHeight: 0 }}
-              animClass={mounted ? 'animate-from-br delay-300' : ''}
-            >
-              {loading ? <SkeletonList rows={2} /> : conversations.length === 0 ? (
-                <EmptyState icon="message" text="No messages yet" />
-              ) : (
-                conversations.slice(0, 3).map(c => <ConvoRow key={c.user_id} convo={c} />)
-              )}
-            </Panel>
-          </div>
-
-          {/* Col 3: Mini Calendar */}
-          <Panel
-            title="Calendar"
-            icon="calendar_month"
-            extra={<Link to="/calendar/student" style={{ color: CORAL, fontSize: '12px', fontWeight: '600', textDecoration: 'none' }}>Full view →</Link>}
-            innerStyle={{ display: 'flex', flexDirection: 'column' }}
-            animClass={mounted ? 'animate-from-tr delay-200' : ''}
-          >
-            <MiniCalendar events={events} />
-          </Panel>
-
+          ))}
         </div>
       </div>
+    </Card>
+  )
+}
+
+function ExplorerUpsell() {
+  return (
+    <section className="card spotlight" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 12 }}>
+      <div>
+        <div className="eyebrow">Explorer plan · £5/month</div>
+        <h2 style={{ fontSize: 17 }}>Study with the whole community</h2>
+        <p className="who" style={{ lineHeight: 1.5 }}>Tutoring is always free to use. Explorer adds everything around it.</p>
+      </div>
+      <div style={{ display: 'grid', gap: 8 }}>
+        {[
+          ['forum', 'Community forum'],
+          ['menu_book', 'Shared study notes & materials'],
+          ['groups', 'Drop-in study rooms'],
+          ['school', 'Live group classes'],
+        ].map(([icon, label]) => (
+          <div key={icon} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text-muted)' }}>
+            <Icon name={icon} size={17} style={{ color: 'var(--coral)' }} />{label}
+          </div>
+        ))}
+      </div>
+      <Link to="/membership" className="btn btn-coral"><Icon name="rocket_launch" />Upgrade for £5/month</Link>
+    </section>
+  )
+}
+
+export default function HubStudent() {
+  const { user } = useAuth()
+  const explorer = hasExplorerAccess(user)
+  const [data, setData] = useState({ events: [], conversations: [], tutors: [], requests: [], threads: [] })
+  const [loading, setLoading] = useState(true)
+  const [booking, setBooking] = useState(null)
+  const [tour, setTour] = useState(false)
+
+  function load() {
+    return Promise.allSettled([
+      getEvents(), getConversations(), getActiveTutors(), getTutorRequestsSent(),
+      explorer ? getRecentThreads(4) : Promise.resolve({ data: { threads: [] } }),
+    ]).then(([ev, conv, tut, req, thr]) => {
+      const ok = (r, key) => (r.status === 'fulfilled' ? r.value.data[key] ?? [] : [])
+      setData({
+        events: ok(ev, 'events').filter((e) => e.role !== 'tutor'),
+        conversations: ok(conv, 'conversations'),
+        tutors: ok(tut, 'tutors'),
+        requests: ok(req, 'requests'),
+        threads: ok(thr, 'threads'),
+      })
+      setLoading(false)
+    })
+  }
+
+  useEffect(() => { load() }, [explorer])
+
+  useEffect(() => {
+    const key = `sws_tour_student_${user?.id}`
+    if (user?.id && !localStorage.getItem(key)) {
+      const t = setTimeout(() => setTour(true), 700)
+      return () => clearTimeout(t)
+    }
+  }, [user?.id])
+
+  const { events, conversations, tutors, requests, threads } = data
+  const upcoming = events.filter(isUpcoming).sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+  const next = upcoming[0]
+  const past = events.filter((e) => new Date(e.end_time) <= new Date() && ['confirmed', 'paid'].includes(e.status))
+  const hoursLearned = past.reduce((s, e) => s + hoursBetween(e.start_time, e.end_time), 0)
+  const spent = events.filter((e) => e.status === 'paid').reduce((s, e) => s + Number(e.amount || 0), 0)
+  const toPay = events.filter((e) => e.status === 'confirmed').length
+  const unread = conversations.reduce((s, c) => s + Number(c.unread || 0), 0)
+  const pendingRequests = requests.filter((r) => r.status === 'pending')
+
+  const summary = [
+    upcoming.length ? `${upcoming.length} upcoming session${upcoming.length > 1 ? 's' : ''}` : 'No sessions booked yet',
+    unread ? `${unread} unread message${unread > 1 ? 's' : ''}` : null,
+    toPay ? `${toPay} to pay` : null,
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <HubLayout initialMode="student">
+      <PageTitle title="Home" icon="space_dashboard" />
+
+      <div className="dash-head">
+        <div>
+          <div className="eyebrow">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+          <h1 style={{ marginTop: 6 }}>{greeting()}, <em>{firstName(user?.name)}</em></h1>
+          <p>{loading ? 'Loading your week…' : summary}</p>
+        </div>
+        <div className="dash-actions">
+          <Link to="/find-tutors" className="btn btn-ghost"><Icon name="person_search" />Find a tutor</Link>
+          <button className="btn btn-coral" disabled={!tutors.length} title={tutors.length ? '' : 'Connect with a tutor first'}
+            onClick={() => setBooking(tutors[0])}>
+            <Icon name="add" />Book a session
+          </button>
+        </div>
+      </div>
+
+      <section className="card stat-grid">
+        <Stat icon="event_upcoming" label="Upcoming" value={upcoming.length}
+          note={next ? `Next: ${formatWhen(next.start_time)}` : 'Nothing scheduled'} />
+        <Stat icon="schedule" label="Hours learned" value={hoursLearned.toFixed(1)} unit="h"
+          note={`${past.length} session${past.length === 1 ? '' : 's'} completed`} />
+        <Stat icon="cast_for_education" label="My tutors" value={tutors.length}
+          note={pendingRequests.length ? `${pendingRequests.length} request${pendingRequests.length > 1 ? 's' : ''} pending` : 'Connected tutors'} />
+        <Stat icon="volunteer_activism" label="Paid to tutors" value={formatMoney(spent)}
+          note="0% commission — all of it" trend="up" />
+      </section>
+
+      <div className="dash-grid">
+        <div className="dash-col">
+          {next ? (
+            <section className="card spotlight">
+              <DateChip value={next.start_time} />
+              <div className="grow">
+                <div className="when"><Icon name="bolt" size={15} />Up next · {formatWhen(next.start_time)}</div>
+                <h2>{next.title || 'Tutoring session'}</h2>
+                <div className="who">with {next.tutor_name} · {formatMoney(next.amount)}</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+                <StatusPill status={next.status} />
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <Link to="/messages" search={{ user: next.tutor_user_id }} className="btn btn-ghost btn-sm"><Icon name="chat" />Message</Link>
+                  {next.status === 'confirmed' && <Link to="/payments" className="btn btn-coral btn-sm"><Icon name="credit_card" />Pay</Link>}
+                </div>
+              </div>
+            </section>
+          ) : !loading && (
+            <section className="card spotlight">
+              <div className="grow">
+                <div className="when"><Icon name="rocket_launch" size={15} />Get started</div>
+                <h2>{tutors.length ? 'Book your next session' : 'Find your first tutor'}</h2>
+                <div className="who">
+                  {tutors.length
+                    ? 'Pick a time that suits you — your tutor confirms, then you pay them directly.'
+                    : 'Send a request to a university student who aced your subject. Booking opens once they accept.'}
+                </div>
+              </div>
+              {tutors.length
+                ? <button className="btn btn-coral" onClick={() => setBooking(tutors[0])}><Icon name="add" />Book</button>
+                : <Link to="/find-tutors" className="btn btn-coral"><Icon name="person_search" />Browse tutors</Link>}
+            </section>
+          )}
+
+          <Card title="Sessions" icon="event" count={upcoming.length || null} action={<CardLink to="/calendar/student">Calendar</CardLink>}>
+            {loading ? <SkeletonRows /> : upcoming.length ? (
+              <div className="row-list">{upcoming.slice(0, 5).map((ev) => <SessionRow key={ev.id_event} ev={ev} />)}</div>
+            ) : (
+              <EmptyState icon="event_available" title="No upcoming sessions">
+                Sessions you request appear here while your tutor confirms them.
+              </EmptyState>
+            )}
+          </Card>
+
+          <LearningChart events={events} />
+        </div>
+
+        <div className="dash-col">
+          <Card title="Messages" icon="chat" count={unread ? `${unread} new` : null} action={<CardLink to="/messages">Inbox</CardLink>}>
+            {loading ? <SkeletonRows rows={2} /> : conversations.length ? (
+              <div className="row-list">
+                {conversations.slice(0, 4).map((c) => (
+                  <Link key={c.user_id} to="/messages" search={{ user: c.user_id }} className="row">
+                    <Avatar name={c.name} size={32} />
+                    <div className="main">
+                      <div className="title" style={{ fontWeight: c.unread ? 800 : 600 }}>{c.name}</div>
+                      <div className="meta">{c.last_from_me ? 'You: ' : ''}{c.last_message}</div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                      <span className="side">{timeAgo(c.last_ts)}</span>
+                      {c.unread > 0 && <span className="nav-badge">{c.unread}</span>}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <EmptyState icon="forum" title="No conversations yet">Message a tutor from their profile.</EmptyState>
+            )}
+          </Card>
+
+          <Card title="My tutors" icon="cast_for_education" action={<CardLink to="/active-tutors" />}>
+            {loading ? <SkeletonRows rows={2} /> : tutors.length || pendingRequests.length ? (
+              <div className="row-list">
+                {tutors.slice(0, 4).map((t) => (
+                  <div key={t.id_tutor} className="row">
+                    <Avatar name={t.name} src={t.avatar_url} size={32} />
+                    <Link to="/tutor/$tutorId" params={{ tutorId: String(t.id_tutor) }} className="main" style={{ color: 'inherit' }}>
+                      <div className="title">{t.name}</div>
+                      <div className="meta">{t.subjects || t.university}</div>
+                    </Link>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setBooking(t)}>Book</button>
+                  </div>
+                ))}
+                {pendingRequests.slice(0, 2).map((r) => (
+                  <div key={r.id} className="row">
+                    <Avatar name={r.tutor_name} size={32} />
+                    <div className="main">
+                      <div className="title">{r.tutor_name}</div>
+                      <div className="meta">Request sent {timeAgo(r.created_at)}</div>
+                    </div>
+                    <StatusPill status="pending" label="Pending" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState icon="person_search" title="No tutors yet" action={<Link to="/find-tutors" className="btn btn-ghost btn-sm">Find a tutor</Link>}>
+                Tutors appear here once they accept your request.
+              </EmptyState>
+            )}
+          </Card>
+
+          {explorer ? (
+            <Card title="Community" icon="forum" action={<CardLink to="/forum">Forum</CardLink>}>
+              {threads.length ? (
+                <div className="row-list">
+                  {threads.map((t) => (
+                    <Link key={t.id} to="/forum/thread/$threadId" params={{ threadId: String(t.id) }} className="row">
+                      <div className="main">
+                        <div className="title">{t.title}</div>
+                        <div className="meta">{t.category_name} · {t.post_count} repl{t.post_count === 1 ? 'y' : 'ies'} · {timeAgo(t.last_activity)}</div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState icon="forum" title="Quiet in here" action={<Link to="/forum" className="btn btn-ghost btn-sm">Start a thread</Link>}>
+                  Be the first to ask the community something.
+                </EmptyState>
+              )}
+            </Card>
+          ) : <ExplorerUpsell />}
+        </div>
+      </div>
+
+      {booking && <BookSessionModal tutor={booking} onClose={() => setBooking(null)} onBooked={load} />}
+      {tour && (
+        <SpotlightTour steps={TOUR_STEPS} onDone={() => { localStorage.setItem(`sws_tour_student_${user?.id}`, 'done'); setTour(false) }} />
+      )}
     </HubLayout>
   )
 }
 
-// ── Mini Calendar ─────────────────────────────────────────────────────────────
-function MiniCalendar({ events }) {
-  const now  = new Date()
-  const [view, setView] = useState({ year: now.getFullYear(), month: now.getMonth() })
-  const { year, month } = view
-
-  const firstDay    = new Date(year, month, 1).getDay()
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-
-  const eventDays = new Set(
-    events.map(e => {
-      if (!e.start_time) return null
-      const d = new Date(e.start_time)
-      return (d.getFullYear() === year && d.getMonth() === month) ? d.getDate() : null
-    }).filter(Boolean)
-  )
-
-  const cells = []
-  for (let i = 0; i < firstDay; i++) cells.push(null)
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
-
-  const isToday = d =>
-    d === now.getDate() && month === now.getMonth() && year === now.getFullYear()
-
-  function prevMonth() {
-    setView(v => v.month === 0
-      ? { year: v.year - 1, month: 11 }
-      : { ...v, month: v.month - 1 })
-  }
-  function nextMonth() {
-    setView(v => v.month === 11
-      ? { year: v.year + 1, month: 0 }
-      : { ...v, month: v.month + 1 })
-  }
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-      {/* Month nav */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-        <button onClick={prevMonth} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '3px', borderRadius: '6px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>chevron_left</span>
-        </button>
-        <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)' }}>
-          {MONTH_NAMES[month]} {year}
-        </span>
-        <button onClick={nextMonth} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '3px', borderRadius: '6px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>chevron_right</span>
-        </button>
-      </div>
-
-      {/* Day-of-week headers */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: '4px' }}>
-        {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
-          <div key={d} style={{ textAlign: 'center', fontSize: '9px', fontWeight: '700', color: 'var(--text-faint)', padding: '2px 0' }}>{d}</div>
-        ))}
-      </div>
-
-      {/* Days — paper unfold on mount */}
-      <div className="animate-paper-unfold" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', flex: 1 }}>
-        {cells.map((d, i) => (
-          <div
-            key={i}
-            style={{
-              textAlign: 'center',
-              fontSize: '11px',
-              fontWeight: d && isToday(d) ? '900' : '500',
-              color: d
-                ? isToday(d) ? 'white'
-                : eventDays.has(d) ? CORAL
-                : 'var(--text-muted)'
-                : 'transparent',
-              background: d && isToday(d) ? CORAL : 'transparent',
-              borderRadius: '50%',
-              width: '26px',
-              height: '26px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto',
-              position: 'relative',
-              cursor: d ? 'pointer' : 'default',
-            }}
-          >
-            {d}
-            {d && eventDays.has(d) && !isToday(d) && (
-              <span style={{
-                position: 'absolute',
-                bottom: '2px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: '4px',
-                height: '4px',
-                borderRadius: '50%',
-                background: CORAL,
-              }} />
-            )}
-          </div>
-        ))}
-      </div>
-
-      {events.length > 0 && (
-        <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--border)' }}>
-          <p style={{ fontSize: '10px', color: 'var(--text-faint)', textAlign: 'center' }}>
-            <span style={{ color: CORAL, fontWeight: '700' }}>{eventDays.size}</span>{' '}
-            day{eventDays.size !== 1 ? 's' : ''} with sessions this month
-          </p>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-function Panel({ title, icon, extra, children, style, innerStyle, animClass }) {
-  return (
-    <div className={animClass} style={{ display: 'flex', flexDirection: 'column', ...style }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-          {icon && (
-            <div style={{
-              width: '22px', height: '22px', borderRadius: '6px',
-              background: `${CORAL}15`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '13px', color: CORAL }}>{icon}</span>
-            </div>
-          )}
-          <h2 style={{ color: 'var(--text)', fontWeight: '800', fontSize: '13px', letterSpacing: '-0.01em' }}>{title}</h2>
-        </div>
-        {extra}
-      </div>
-      <div style={{
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border)',
-        borderRadius: '14px',
-        padding: '12px 14px',
-        backdropFilter: 'blur(12px)',
-        flex: 1,
-        minHeight: 0,
-        overflowY: 'auto',
-        boxShadow: 'var(--shadow-card)',
-        ...innerStyle,
-      }}>
-        {children}
-      </div>
-    </div>
-  )
-}
-
-function StatCard({ icon, label, value, to, highlight, badge, animClass }) {
-  const isNum    = typeof value === 'number'
-  const animated = useCountUp(isNum ? value : 0, 800)
-  const display  = value === null ? null : isNum ? animated : value
-
-  return (
-    <Link to={to} style={{ textDecoration: 'none' }} className={animClass}>
-      <div
-        style={{
-          background: highlight ? 'rgba(96,165,250,0.07)' : 'var(--bg-card)',
-          border: `1px solid ${highlight ? 'rgba(96,165,250,0.25)' : 'var(--border)'}`,
-          borderRadius: '14px',
-          padding: '14px 16px',
-          backdropFilter: 'blur(12px)',
-          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          position: 'relative',
-          boxShadow: 'var(--shadow-card)',
-        }}
-        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = 'var(--shadow-hover)' }}
-        onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-card)' }}
-      >
-        <div style={{
-          width: '42px', height: '42px', borderRadius: '12px',
-          background: `${CORAL}18`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
-        }}>
-          <span className="material-symbols-outlined" style={{ color: CORAL, fontSize: '24px' }}>{icon}</span>
-        </div>
-        <div>
-          {display === null ? (
-            <div className="skeleton" style={{ width: '36px', height: '26px', borderRadius: '6px', marginBottom: '4px' }} />
-          ) : (
-            <div key={value} className="animate-number-pop" style={{ fontSize: '24px', fontWeight: '900', color: 'var(--text)', lineHeight: 1 }}>
-              {display}
-            </div>
-          )}
-          <div style={{ color: 'var(--text-faint)', fontSize: '11px', marginTop: '2px', fontWeight: '600' }}>{label}</div>
-        </div>
-        {badge && (
-          <div style={{
-            position: 'absolute', top: '10px', right: '10px',
-            minWidth: '18px', height: '18px', borderRadius: '9px',
-            background: '#60a5fa', color: 'white',
-            fontSize: '9px', fontWeight: '700', padding: '0 4px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            {badge}
-          </div>
-        )}
-      </div>
-    </Link>
-  )
-}
-
-function SessionRow({ event }) {
-  const STATUS_COLOR = { pending: '#fbbf24', confirmed: '#34d399', canceled: '#f87171', paid: '#60a5fa' }
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-      <span className="material-symbols-outlined" style={{ color: CORAL, fontSize: '15px', flexShrink: 0 }}>event</span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ color: 'var(--text)', fontSize: '12px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.title}</div>
-        <div style={{ color: 'var(--text-faint)', fontSize: '10px', marginTop: '1px' }}>{fmt(event.start_time)}</div>
-      </div>
-      <span style={{
-        background: `${STATUS_COLOR[event.status] ?? '#fbbf24'}18`,
-        color: STATUS_COLOR[event.status] ?? '#fbbf24',
-        fontSize: '10px', fontWeight: '700',
-        padding: '2px 8px', borderRadius: '20px',
-        flexShrink: 0,
-      }}>
-        {event.status}
-      </span>
-    </div>
-  )
-}
-
-function PendingInviteRow({ request }) {
-  return (
-    <Link to="/find-tutors" style={{ textDecoration: 'none' }}>
-      <div
-        style={{
-          display: 'flex', alignItems: 'center', gap: '10px',
-          padding: '7px 6px', marginBottom: '2px',
-          borderBottom: '1px solid var(--border)', borderRadius: '8px',
-          transition: 'background 0.15s', cursor: 'pointer',
-        }}
-        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
-        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-      >
-        <div style={{
-          width: '30px', height: '30px', borderRadius: '50%',
-          background: `${AMBER}20`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: AMBER, flexShrink: 0,
-        }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>hourglass_top</span>
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: 'var(--text)', fontSize: '12px', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {request.tutor_name}
-          </div>
-          <div style={{ color: AMBER, fontSize: '10px', fontWeight: '600' }}>Awaiting response</div>
-        </div>
-        <span style={{
-          background: `${AMBER}18`, color: AMBER, fontSize: '9px', fontWeight: '800',
-          padding: '2px 7px', borderRadius: '9px', flexShrink: 0,
-        }}>
-          PENDING
-        </span>
-      </div>
-    </Link>
-  )
-}
-
-function TutorRow({ tutor }) {
-  const initials = tutor.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-  return (
-    <Link to="/tutor/$tutorId" params={{ tutorId: String(tutor.id_tutor) }} style={{ textDecoration: 'none' }}>
-      <div
-        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 6px', borderBottom: '1px solid var(--border)', borderRadius: '8px', transition: 'background 0.15s', cursor: 'pointer' }}
-        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
-        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-      >
-        <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: `${CORAL}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: CORAL, fontSize: '11px', fontWeight: '800', flexShrink: 0 }}>
-          {initials}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: 'var(--text)', fontSize: '12px', fontWeight: '600' }}>{tutor.name}</div>
-          <div style={{ color: 'var(--text-faint)', fontSize: '10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tutor.subjects}</div>
-        </div>
-        <span className="material-symbols-outlined" style={{ color: 'var(--text-faint)', fontSize: '14px' }}>chevron_right</span>
-      </div>
-    </Link>
-  )
-}
-
-function ConvoRow({ convo }) {
-  const initials = convo.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-  return (
-    <Link to="/messages" style={{ textDecoration: 'none' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: 'rgba(176,190,197,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#b0bec5', fontSize: '11px', fontWeight: '700', flexShrink: 0 }}>
-          {initials}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: 'var(--text)', fontSize: '12px', fontWeight: '600' }}>{convo.name}</div>
-          <div style={{ color: 'var(--text-faint)', fontSize: '10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{convo.last_message ?? 'No messages yet'}</div>
-        </div>
-        {convo.unread > 0 && (
-          <span style={{ width: '18px', height: '18px', borderRadius: '50%', background: CORAL, color: 'white', fontSize: '9px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            {convo.unread}
-          </span>
-        )}
-      </div>
-    </Link>
-  )
-}
-
-function EmptyState({ icon, text, action }) {
-  return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      height: '100%', minHeight: '80px', textAlign: 'center', gap: '6px',
-    }}>
-      <span className="material-symbols-outlined" style={{ fontSize: '26px', color: 'var(--text-faint)' }}>{icon}</span>
-      <p style={{ color: 'var(--text-faint)', fontSize: '12px' }}>{text}</p>
-      {action && (
-        <Link to={action.to} style={{ color: CORAL, fontSize: '11px', fontWeight: '700', textDecoration: 'none' }}>
-          {action.label} →
-        </Link>
-      )}
-    </div>
-  )
-}
-
-function SkeletonList({ rows }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      {[...Array(rows)].map((_, i) => (
-        <div key={i} className="skeleton" style={{ height: '32px', borderRadius: '8px' }} />
-      ))}
-    </div>
-  )
-}

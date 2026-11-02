@@ -10,7 +10,7 @@ const GREEN  = '#34d399'
 const RED    = '#f87171'
 
 const STATUS_CONFIG = {
-  none:     { label: 'No Docs',  color: 'rgba(255,255,255,0.35)', bg: 'rgba(255,255,255,0.06)' },
+  none:     { label: 'No Docs',  color: 'rgb(var(--fg) / 0.35)', bg: 'rgb(var(--fg) / 0.06)' },
   pending:  { label: 'Pending',  color: AMBER,  bg: 'rgba(251,191,36,0.12)' },
   approved: { label: 'Approved', color: GREEN,  bg: 'rgba(52,211,153,0.12)' },
   rejected: { label: 'Rejected', color: RED,    bg: 'rgba(248,113,113,0.12)' },
@@ -55,11 +55,11 @@ function RejectModal({ tutor, onReject, onCancel }) {
         background: '#1e2d45', border: '1px solid rgba(248,113,113,0.25)',
         padding: '24px',
       }}>
-        <h3 style={{ color: 'white', fontWeight: '800', fontSize: '17px', marginBottom: '6px' }}>
+        <h3 style={{ color: 'var(--text)', fontWeight: '800', fontSize: '17px', marginBottom: '6px' }}>
           Reject application
         </h3>
-        <p style={{ color: 'rgba(255,255,255,0.50)', fontSize: '13px', marginBottom: '16px' }}>
-          For: <strong style={{ color: 'white' }}>{tutor.name}</strong> ({tutor.email})
+        <p style={{ color: 'rgb(var(--fg) / 0.50)', fontSize: '13px', marginBottom: '16px' }}>
+          For: <strong style={{ color: 'var(--text)' }}>{tutor.name}</strong> ({tutor.email})
         </p>
         <textarea
           value={notes}
@@ -68,8 +68,8 @@ function RejectModal({ tutor, onReject, onCancel }) {
           rows={4}
           style={{
             width: '100%', padding: '12px', borderRadius: '10px', resize: 'vertical',
-            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
-            color: 'white', fontSize: '13px', lineHeight: 1.6,
+            background: 'rgb(var(--fg) / 0.06)', border: '1px solid rgb(var(--fg) / 0.12)',
+            color: 'var(--text)', fontSize: '13px', lineHeight: 1.6,
             outline: 'none', fontFamily: '"Noto Sans JP", sans-serif',
             boxSizing: 'border-box',
           }}
@@ -79,8 +79,8 @@ function RejectModal({ tutor, onReject, onCancel }) {
             onClick={onCancel}
             style={{
               flex: 1, padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
-              background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
-              color: 'rgba(255,255,255,0.60)', cursor: 'pointer',
+              background: 'rgb(var(--fg) / 0.07)', border: '1px solid rgb(var(--fg) / 0.12)',
+              color: 'rgb(var(--fg) / 0.60)', cursor: 'pointer',
             }}
           >
             Cancel
@@ -90,7 +90,7 @@ function RejectModal({ tutor, onReject, onCancel }) {
             style={{
               flex: 1, padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: '700',
               background: `linear-gradient(135deg, ${RED}, #dc2626)`,
-              border: 'none', color: 'white', cursor: loading ? 'not-allowed' : 'pointer',
+              border: 'none', color: 'var(--text)', cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.6 : 1,
             }}
           >
@@ -111,8 +111,8 @@ function TutorRow({ tutor, onApprove, onReject }) {
 
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.04)', borderRadius: '12px',
-      border: '1px solid rgba(255,255,255,0.07)',
+      background: 'rgb(var(--fg) / 0.04)', borderRadius: '12px',
+      border: '1px solid rgb(var(--fg) / 0.07)',
       marginBottom: '10px', overflow: 'hidden',
       transition: 'border-color 0.15s',
     }}>
@@ -129,44 +129,44 @@ function TutorRow({ tutor, onApprove, onReject }) {
           width: '40px', height: '40px', borderRadius: '10px', flexShrink: 0,
           background: 'linear-gradient(135deg, #2dd4bf, #0d9488)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontWeight: '900', fontSize: '15px', color: 'white',
+          fontWeight: '900', fontSize: '15px', color: 'var(--text)',
         }}>
           {tutor.name?.charAt(0).toUpperCase() ?? '?'}
         </div>
 
         {/* Info */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ color: 'white', fontWeight: '700', fontSize: '14px', marginBottom: '2px' }}>
+          <p style={{ color: 'var(--text)', fontWeight: '700', fontSize: '14px', marginBottom: '2px' }}>
             {tutor.name}
           </p>
-          <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <p style={{ color: 'rgb(var(--fg) / 0.45)', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {tutor.email}
           </p>
         </div>
 
         {/* Status + toggle */}
         <Badge status={tutor.screening_status} />
-        <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'rgba(255,255,255,0.30)', marginLeft: '4px' }}>
+        <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'rgb(var(--fg) / 0.30)', marginLeft: '4px' }}>
           {expanded ? 'expand_less' : 'expand_more'}
         </span>
       </div>
 
       {/* Expanded detail */}
       {expanded && (
-        <div style={{ padding: '0 16px 16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ padding: '0 16px 16px', borderTop: '1px solid rgb(var(--fg) / 0.06)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '14px', marginBottom: '16px' }}>
             <div>
-              <p style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Uni Email</p>
-              <p style={{ fontSize: '13px', color: 'white' }}>
-                {tutor.uni_email ?? <span style={{ color: 'rgba(255,255,255,0.30)' }}>—</span>}
+              <p style={{ fontSize: '10px', fontWeight: '700', color: 'rgb(var(--fg) / 0.30)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Uni Email</p>
+              <p style={{ fontSize: '13px', color: 'var(--text)' }}>
+                {tutor.uni_email ?? <span style={{ color: 'rgb(var(--fg) / 0.30)' }}>—</span>}
                 {tutor.uni_email_verified && (
                   <span className="material-symbols-outlined" style={{ fontSize: '13px', color: GREEN, marginLeft: '4px', verticalAlign: 'middle', fontVariationSettings: '"FILL" 1' }}>verified</span>
                 )}
               </p>
             </div>
             <div>
-              <p style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Submitted</p>
-              <p style={{ fontSize: '13px', color: 'white' }}>
+              <p style={{ fontSize: '10px', fontWeight: '700', color: 'rgb(var(--fg) / 0.30)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>Submitted</p>
+              <p style={{ fontSize: '13px', color: 'var(--text)' }}>
                 {tutor.created_at ? new Date(tutor.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
               </p>
             </div>
@@ -175,13 +175,13 @@ function TutorRow({ tutor, onApprove, onReject }) {
           {/* Proof document */}
           {proofUrl && (
             <div style={{ marginBottom: '16px' }}>
-              <p style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
+              <p style={{ fontSize: '10px', fontWeight: '700', color: 'rgb(var(--fg) / 0.30)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
                 Proof Document
               </p>
               {tutor.proof_doc_path?.endsWith('.pdf') ? (
                 <a
                   href={proofUrl} target="_blank" rel="noreferrer"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)', color: TEAL, fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', background: 'rgb(var(--fg) / 0.07)', border: '1px solid rgb(var(--fg) / 0.10)', color: TEAL, fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>picture_as_pdf</span>
                   View PDF
@@ -190,7 +190,7 @@ function TutorRow({ tutor, onApprove, onReject }) {
                 <a href={proofUrl} target="_blank" rel="noreferrer">
                   <img
                     src={proofUrl} alt="Proof of enrolment"
-                    style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.10)' }}
+                    style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain', borderRadius: '10px', border: '1px solid rgb(var(--fg) / 0.10)' }}
                   />
                 </a>
               )}
@@ -213,7 +213,7 @@ function TutorRow({ tutor, onApprove, onReject }) {
                 style={{
                   flex: 1, padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: '700',
                   background: `linear-gradient(135deg, ${GREEN}, #059669)`,
-                  border: 'none', color: 'white', cursor: 'pointer',
+                  border: 'none', color: 'var(--text)', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                   boxShadow: '0 3px 10px rgba(52,211,153,0.30)',
                 }}
@@ -303,7 +303,7 @@ export default function AdminScreening() {
   ]
 
   return (
-    <div style={{ minHeight: '100vh', background: '#1b263b', fontFamily: '"Noto Sans JP", sans-serif', padding: '32px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', fontFamily: '"Noto Sans JP", sans-serif', padding: '32px' }}>
       {rejectModal && (
         <RejectModal
           tutor={rejectModal}
@@ -316,10 +316,10 @@ export default function AdminScreening() {
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
           <div>
-            <h1 style={{ fontSize: '24px', fontWeight: '900', color: 'white', marginBottom: '4px' }}>
+            <h1 style={{ fontSize: '24px', fontWeight: '900', color: 'var(--text)', marginBottom: '4px' }}>
               Tutor Screening Queue
             </h1>
-            <p style={{ color: 'rgba(255,255,255,0.40)', fontSize: '13px' }}>
+            <p style={{ color: 'rgb(var(--fg) / 0.40)', fontSize: '13px' }}>
               Review and approve tutor applications
             </p>
           </div>
@@ -330,7 +330,7 @@ export default function AdminScreening() {
           }}>
             <span className="material-symbols-outlined" style={{ fontSize: '18px', color: AMBER }}>pending</span>
             <span style={{ fontSize: '20px', fontWeight: '900', color: AMBER }}>{counts.pending}</span>
-            <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.40)' }}>pending</span>
+            <span style={{ fontSize: '12px', color: 'rgb(var(--fg) / 0.40)' }}>pending</span>
           </div>
         </div>
 
@@ -344,9 +344,9 @@ export default function AdminScreening() {
                 onClick={() => setFilter(key)}
                 style={{
                   padding: '7px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
-                  background: active ? 'rgba(255,114,94,0.15)' : 'rgba(255,255,255,0.06)',
-                  border: `1px solid ${active ? 'rgba(255,114,94,0.30)' : 'rgba(255,255,255,0.08)'}`,
-                  color: active ? CORAL : 'rgba(255,255,255,0.50)',
+                  background: active ? 'rgba(255,114,94,0.15)' : 'rgb(var(--fg) / 0.06)',
+                  border: `1px solid ${active ? 'rgba(255,114,94,0.30)' : 'rgb(var(--fg) / 0.08)'}`,
+                  color: active ? CORAL : 'rgb(var(--fg) / 0.50)',
                   cursor: 'pointer', transition: 'all 0.15s',
                 }}
               >
@@ -359,12 +359,12 @@ export default function AdminScreening() {
         {/* List */}
         {loading ? (
           <div style={{ textAlign: 'center', padding: '48px 0' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'rgba(255,255,255,0.20)' }}>hourglass_empty</span>
+            <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'rgb(var(--fg) / 0.20)' }}>hourglass_empty</span>
           </div>
         ) : displayed.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '48px 0' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '40px', color: 'rgba(255,255,255,0.15)', display: 'block', marginBottom: '10px' }}>inbox</span>
-            <p style={{ color: 'rgba(255,255,255,0.30)', fontSize: '14px' }}>No applications {filter ? `with status "${filter}"` : 'yet'}</p>
+            <span className="material-symbols-outlined" style={{ fontSize: '40px', color: 'rgb(var(--fg) / 0.15)', display: 'block', marginBottom: '10px' }}>inbox</span>
+            <p style={{ color: 'rgb(var(--fg) / 0.30)', fontSize: '14px' }}>No applications {filter ? `with status "${filter}"` : 'yet'}</p>
           </div>
         ) : (
           displayed.map(tutor => (

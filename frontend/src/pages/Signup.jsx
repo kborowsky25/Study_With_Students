@@ -2,14 +2,20 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import toast from 'react-hot-toast'
 import { register as apiRegister, sendVerification } from '../api/auth'
+import { useAuth } from '../context/AuthContext'
 
 const CORAL = '#ff725e'
 const GREEN = '#34d399'
 
 // ── 6-box OTP input ───────────────────────────────────────────────────────────
-function OTPInput({ onChange, disabled }) {
+function OTPInput({ value = '', onChange, disabled }) {
   const [digits, setDigits] = useState(Array(6).fill(''))
   const refs = useRef([])
+
+  // Reflect a code set from outside (e.g. the dev-mode autofill)
+  useEffect(() => {
+    if (value !== digits.join('')) setDigits([...value.slice(0, 6).split(''), ...Array(6).fill('')].slice(0, 6))
+  }, [value])
 
   function handleChange(idx, raw) {
     // Accept only digits; handle paste of full code in one box
@@ -71,9 +77,9 @@ function OTPInput({ onChange, disabled }) {
             textAlign: 'center',
             fontSize: '26px', fontWeight: '900',
             borderRadius: '14px',
-            border: `2px solid ${d ? CORAL : 'rgba(255,255,255,0.14)'}`,
-            background: d ? `${CORAL}12` : 'rgba(255,255,255,0.04)',
-            color: d ? CORAL : 'rgba(255,255,255,0.5)',
+            border: `2px solid ${d ? CORAL : 'rgb(var(--fg) / 0.14)'}`,
+            background: d ? `${CORAL}12` : 'rgb(var(--fg) / 0.04)',
+            color: d ? CORAL : 'rgb(var(--fg) / 0.5)',
             outline: 'none',
             transition: 'all 0.15s',
             caretColor: CORAL,
@@ -93,6 +99,7 @@ export default function Signup() {
   const [loading, setLoading] = useState(false)
   const [resendIn, setResendIn] = useState(0)
   const navigate = useNavigate()
+  const { login } = useAuth()
 
   // Countdown timer for resend button
   useEffect(() => {
@@ -115,12 +122,18 @@ export default function Signup() {
   async function handleSendCode(e) {
     e.preventDefault()
     if (form.password !== form.confirm) { toast.error('Passwords do not match'); return }
-    if (form.password.length < 6)       { toast.error('Password must be at least 6 characters'); return }
+    if (form.password.length < 8)       { toast.error('Password must be at least 8 characters'); return }
     setLoading(true)
     try {
-      await sendVerification(form.email)
+      const { data } = await sendVerification(form.email)
       setStep('verify')
-      toast.success('Verification code sent! Check your email.')
+      if (data.dev_code) {
+        // Local development without SMTP: the API hands the code back directly
+        setOtp(data.dev_code)
+        toast.success(`Dev mode — code ${data.dev_code} filled in for you`, { duration: 6000 })
+      } else {
+        toast.success('Verification code sent! Check your email.')
+      }
     } catch (err) {
       toast.error(err.response?.data?.error ?? 'Could not send code')
     } finally {
@@ -134,9 +147,10 @@ export default function Signup() {
     if (otp.length !== 6) { toast.error('Enter the full 6-digit code'); return }
     setLoading(true)
     try {
-      await apiRegister(form.name, form.email, form.password, otp)
-      toast.success('Account created! Please log in.')
-      navigate({ to: '/login' })
+      const { data } = await apiRegister(form.name, form.email, form.password, otp)
+      login(data.access_token, data.user)
+      toast.success(`Welcome aboard, ${form.name.split(' ')[0]}! 🚀`)
+      navigate({ to: '/hub/student' })
     } catch (err) {
       toast.error(err.response?.data?.error ?? 'Registration failed')
     } finally {
@@ -148,7 +162,8 @@ export default function Signup() {
     if (resendIn > 0) return
     setLoading(true)
     try {
-      await sendVerification(form.email)
+      const { data } = await sendVerification(form.email)
+      if (data.dev_code) setOtp(data.dev_code)
       setResendIn(30)
       toast.success('New code sent!')
     } catch (err) {
@@ -160,14 +175,14 @@ export default function Signup() {
 
   // ── Shared layout ─────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#1b263b', display: 'flex', fontFamily: '"Noto Sans JP", sans-serif' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', display: 'flex', fontFamily: '"Noto Sans JP", sans-serif' }}>
 
       {/* Left — form */}
       <div className="animate-slide-in-left" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4vw' }}>
 
         {/* Logo */}
         <Link to="/" style={{ textDecoration: 'none', marginBottom: '3vh' }}>
-          <span style={{ fontSize: '22px', fontWeight: '900', color: 'white' }}>
+          <span style={{ fontSize: '22px', fontWeight: '900', color: 'var(--text)' }}>
             Study<span style={{ color: CORAL }}>WithStudents</span>
           </span>
         </Link>
@@ -177,7 +192,7 @@ export default function Signup() {
           {step === 'form' ? (
             /* ── STEP 1: Registration form ──────────────────────────────── */
             <>
-              <h1 style={{ fontSize: '32px', fontWeight: '900', color: 'white', marginBottom: '4px', letterSpacing: '-0.5px' }}>
+              <h1 style={{ fontSize: '32px', fontWeight: '900', color: 'var(--text)', marginBottom: '4px', letterSpacing: '-0.5px' }}>
                 SIGN UP
               </h1>
               <p style={{ color: '#b0bec5', marginBottom: '28px', fontSize: '15px' }}>
@@ -206,8 +221,8 @@ export default function Signup() {
                   value={form.password}
                   onChange={update('password')}
                   required
-                  minLength={6}
-                  placeholder="Password (min 6 characters)"
+                  minLength={8}
+                  placeholder="Password (min 8 characters)"
                   className="input-field"
                 />
                 <input
@@ -243,7 +258,7 @@ export default function Signup() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '28px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'white', fontVariationSettings: '"FILL" 1' }}>check</span>
+                    <span className="material-symbols-outlined" style={{ fontSize: '14px', color: '#fff', fontVariationSettings: '"FILL" 1' }}>check</span>
                   </div>
                   <span style={{ fontSize: '12px', color: GREEN, fontWeight: '600' }}>Details</span>
                 </div>
@@ -252,24 +267,24 @@ export default function Signup() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: CORAL, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontSize: '12px', color: 'white', fontWeight: '800' }}>2</span>
+                    <span style={{ fontSize: '12px', color: '#fff', fontWeight: '800' }}>2</span>
                   </div>
                   <span style={{ fontSize: '12px', color: CORAL, fontWeight: '600' }}>Verify email</span>
                 </div>
               </div>
 
-              <h1 style={{ fontSize: '28px', fontWeight: '900', color: 'white', marginBottom: '8px', letterSpacing: '-0.5px' }}>
+              <h1 style={{ fontSize: '28px', fontWeight: '900', color: 'var(--text)', marginBottom: '8px', letterSpacing: '-0.5px' }}>
                 Check your inbox
               </h1>
               <p style={{ color: '#b0bec5', marginBottom: '6px', fontSize: '14px', lineHeight: 1.6 }}>
                 We sent a 6-digit code to
               </p>
-              <p style={{ color: 'white', fontWeight: '700', fontSize: '15px', marginBottom: '32px' }}>
+              <p style={{ color: 'var(--text)', fontWeight: '700', fontSize: '15px', marginBottom: '32px' }}>
                 {form.email}
               </p>
 
               <form onSubmit={handleVerify} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                <OTPInput onChange={setOtp} disabled={loading} />
+                <OTPInput value={otp} onChange={setOtp} disabled={loading} />
 
                 <button
                   type="submit"
@@ -314,9 +329,9 @@ export default function Signup() {
               </div>
 
               {/* Dev hint */}
-              <div style={{ marginTop: '20px', padding: '10px 14px', borderRadius: '10px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ marginTop: '20px', padding: '10px 14px', borderRadius: '10px', background: 'rgb(var(--fg) / 0.04)', border: '1px solid rgb(var(--fg) / 0.08)' }}>
                 <p style={{ fontSize: '11px', color: '#b0bec5', margin: 0, lineHeight: 1.5 }}>
-                  <span style={{ fontWeight: '700', color: 'rgba(255,255,255,0.4)' }}>No email?</span>{' '}
+                  <span style={{ fontWeight: '700', color: 'rgb(var(--fg) / 0.4)' }}>No email?</span>{' '}
                   Check your spam folder. In development, the code is printed to the Flask terminal.
                 </p>
               </div>
