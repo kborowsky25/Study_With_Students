@@ -1,0 +1,32 @@
+# Study with Students: public pages are open to crawlers, the signed-in app is not.
+# The public pages render from /api/public/, so crawlers must be able to fetch it.
+
+User-agent: *
+Allow: /api/public/
+Allow: /api/uploads/tutor-avatars/
+Disallow: /api/
+
+# Signed-in app (these redirect to the login page)
+Disallow: /hub
+Disallow: /find-tutors
+Disallow: /tutor/
+Disallow: /tutor-profile
+Disallow: /tutor-screening
+Disallow: /active-tutors
+Disallow: /active-students
+Disallow: /liked-tutors
+Disallow: /calendar/
+Disallow: /payments
+Disallow: /earnings
+Disallow: /student/
+Disallow: /study-rooms/
+Disallow: /messages
+Disallow: /xp
+Disallow: /membership
+Disallow: /forum
+Disallow: /study-notes
+Disallow: /classroom
+Disallow: /admin
+Disallow: /superadmin
+
+Sitemap: https://www.studywithstudents.co.uk/sitemap.xml
