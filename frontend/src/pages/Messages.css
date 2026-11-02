@@ -14,7 +14,7 @@
   border-right: 1px solid var(--border);
 }
 .inbox-list-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 10px; }
-.inbox-list-head h2 { font-size: 18px; font-weight: 900; letter-spacing: -0.02em; }
+.inbox-list-head h2 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
 
 .inbox-filter {
   display: flex;
@@ -29,7 +29,7 @@
   color: var(--text-faint);
 }
 .inbox-filter .material-symbols-outlined { font-size: 17px; }
-.inbox-filter input { flex: 1; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; font-size: 13px; }
+.inbox-filter input { flex: 1; align-self: stretch; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; font-size: 13px; }
 .inbox-filter input::placeholder { color: var(--text-faint); }
 .inbox-filter:focus-within { border-color: var(--coral); box-shadow: 0 0 0 3px var(--coral-soft); }
 
@@ -57,7 +57,7 @@
 .convo-name { flex: 1; font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .convo-time { font-size: 11px; color: var(--text-faint); white-space: nowrap; }
 .convo-preview { font-size: 12.5px; color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.convo.unread .convo-name { font-weight: 800; }
+.convo.unread .convo-name { font-weight: 700; }
 .convo.unread .convo-preview { color: var(--text-muted); }
 
 .inbox-thread { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
@@ -72,7 +72,7 @@
   padding: 0 20px;
   border-bottom: 1px solid var(--border);
 }
-.thread-name { font-size: 14px; font-weight: 800; }
+.thread-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .thread-sub { font-size: 12px; color: var(--text-faint); }
 .thread-head .thread-back { display: none; }
 
@@ -130,7 +130,15 @@
 .composer .btn { width: 36px; padding: 0; }
 .composer-hint { font-size: 11px; color: var(--text-faint); padding: 7px 22px 12px; display: flex; align-items: center; gap: 4px; }
 
+/* "New message" picker: results are buttons so they work with the keyboard */
+.inbox-picker .palette-item { width: 100%; border: 0; font: inherit; text-align: left; }
+.inbox-picker .palette-item:not(.on) { background: transparent; }
+.inbox-picker .palette-item:focus-visible { outline: 2px solid var(--coral); outline-offset: -2px; }
+.inbox-picker-close { display: none; }
+
 @media (max-width: 900px) {
+  .inbox-picker-close { display: inline-flex; margin-right: -8px; }
+  .inbox-picker .palette-item { height: 44px; }
   .inbox { grid-template-columns: minmax(0, 1fr); }
   .inbox.has-thread .inbox-list { display: none; }
   .inbox:not(.has-thread) .inbox-thread { display: none; }

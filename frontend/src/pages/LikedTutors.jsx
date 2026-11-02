@@ -6,12 +6,10 @@ import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
 import BookSessionModal from '../components/features/BookSessionModal'
 import TutorCard from '../components/features/TutorCard'
-import { Card, Icon, SkeletonRows } from '../components/ui'
+import { Card, EmptyState, Icon, SkeletonRows } from '../components/ui'
 import { getActiveTutors, getLikedTutors, getTutorRequestsSent, likeTutor, requestTutor } from '../api/tutors'
 import { errorMessage } from '../api/client'
 import { firstName } from '../lib/format'
-
-const emptyLine = { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '16px 18px', fontSize: 13, color: 'var(--text-faint)' }
 
 export default function LikedTutors() {
   const { user } = useAuth()
@@ -110,7 +108,8 @@ export default function LikedTutors() {
             ))}
           </div>
         ) : (
-          <div style={emptyLine}>No saved tutors yet.</div>
+          <EmptyState title="No saved tutors yet."
+            action={<Link to="/find-tutors" className="btn btn-ghost btn-sm">Find tutors</Link>} />
         )}
       </Card>
 

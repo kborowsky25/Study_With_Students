@@ -7,6 +7,7 @@ import { ConfirmProvider } from './components/ui/confirm'
 import { router } from './router'
 import './index.css'
 import './styles/app.css'
+import './styles/responsive.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

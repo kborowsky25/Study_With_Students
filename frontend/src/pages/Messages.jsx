@@ -8,6 +8,7 @@ import { Avatar, EmptyState, Icon, Kbd, Pill, SkeletonRows } from '../components
 import { getConversations, getMessages, searchUsers, sendMessage } from '../api/messages'
 import { getUserProfile } from '../api/users'
 import { errorMessage } from '../api/client'
+import { useAutoFocus } from '../hooks/useAutoFocus'
 import { notifyUnreadChanged } from '../hooks/useUnreadCount'
 import { formatDay, formatTime, timeAgo } from '../lib/format'
 import './Messages.css'
@@ -19,27 +20,39 @@ function NewMessageDialog({ onPick, onClose }) {
   const [q, setQ] = useState('')
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
+  const [index, setIndex] = useState(0)
+  const inputRef = useAutoFocus()
 
   useEffect(() => {
     if (q.trim().length < 2) { setResults([]); return }
     setLoading(true)
     const t = setTimeout(() => {
       searchUsers(q.trim())
-        .then(({ data }) => setResults(data.users ?? []))
+        .then(({ data }) => { setResults(data.users ?? []); setIndex(0) })
         .catch(() => setResults([]))
         .finally(() => setLoading(false))
     }, 250)
     return () => clearTimeout(t)
   }, [q])
 
+  function onKeyDown(e) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setIndex((i) => Math.min(i + 1, results.length - 1)) }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setIndex((i) => Math.max(i - 1, 0)) }
+    else if (e.key === 'Enter' && results[index]) { e.preventDefault(); onPick(results[index]) }
+    else if (e.key === 'Escape') { e.preventDefault(); onClose() }
+  }
+
   return (
     <div className="overlay" onMouseDown={onClose}>
-      <div className="dialog palette" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="dialog palette inbox-picker" role="dialog" aria-label="New message" onMouseDown={(e) => e.stopPropagation()}>
         <div className="palette-input">
           <Icon name="person_search" />
-          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or email address…"
-            onKeyDown={(e) => { if (e.key === 'Escape') onClose(); if (e.key === 'Enter' && results[0]) onPick(results[0]) }} />
-          <Kbd>esc</Kbd>
+          <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onKeyDown}
+            placeholder="Search by name or email address…" aria-label="Search people" />
+          <span className="hide-mobile"><Kbd>esc</Kbd></span>
+          <button type="button" className="icon-btn inbox-picker-close" onClick={onClose} aria-label="Close">
+            <Icon name="close" />
+          </button>
         </div>
         <div className="palette-list">
           {q.trim().length < 2 ? (
@@ -48,13 +61,14 @@ function NewMessageDialog({ onPick, onClose }) {
             <div className="palette-empty">Searching…</div>
           ) : results.length === 0 ? (
             <div className="palette-empty">No one matches “{q}”.</div>
-          ) : results.map((u) => (
-            <div key={u.id_user} className="palette-item" onClick={() => onPick(u)}>
+          ) : results.map((u, i) => (
+            <button key={u.id_user} type="button" className={`palette-item ${i === index ? 'on' : ''}`}
+              onMouseMove={() => setIndex(i)} onClick={() => onPick(u)}>
               <Avatar name={u.name} size={26} />
               <span className="grow" style={{ color: 'var(--text)' }}>{u.name}</span>
               {u.is_tutor && <Pill tone="coral">Tutor</Pill>}
-              {u.university && <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>{u.university}</span>}
-            </div>
+              {u.university && <span className="hide-mobile" style={{ fontSize: 12, color: 'var(--text-faint)' }}>{u.university}</span>}
+            </button>
           ))}
         </div>
       </div>
@@ -91,6 +105,7 @@ export default function Messages() {
   const threadRef = useRef(null)
   const inputRef = useRef(null)
   const stickToBottom = useRef(true)
+  const lastSeen = useRef(null) // "<partner>:<newest message id>" the unread badge was last synced for
 
   const loadInbox = useCallback(() =>
     getConversations()
@@ -98,11 +113,18 @@ export default function Messages() {
       .catch(() => {})
       .finally(() => setLoadingInbox(false)), [])
 
+  // Opening a thread marks it read on the server. The sidebar badge only needs a refresh
+  // when that can have changed: on open, and when a new message arrives.
   const loadThread = useCallback((id) =>
     getMessages(id).then(({ data }) => {
-      setMessages(data.messages ?? [])
-      setConversations((list) => list.map((c) => (c.user_id === id ? { ...c, unread: 0 } : c)))
-      notifyUnreadChanged()
+      const list = data.messages ?? []
+      setMessages(list)
+      const seen = `${id}:${list[list.length - 1]?.id_message ?? 0}`
+      if (seen !== lastSeen.current) {
+        lastSeen.current = seen
+        setConversations((all) => all.map((c) => (c.user_id === id ? { ...c, unread: 0 } : c)))
+        notifyUnreadChanged()
+      }
     }), [])
 
   // Inbox: load + poll
@@ -112,26 +134,38 @@ export default function Messages() {
     return () => clearInterval(t)
   }, [loadInbox])
 
-  // Selected conversation follows ?user=
+  // You can't message yourself: drop a ?user= that points at your own account.
   useEffect(() => {
-    if (!partnerId) { setPartner(null); setMessages([]); return }
-    const known = conversations.find((c) => c.user_id === partnerId)
-    if (known) setPartner({ user_id: known.user_id, name: known.name })
-    else if (partner?.user_id !== partnerId) {
-      getUserProfile(partnerId)
-        .then(({ data }) => setPartner({ user_id: partnerId, name: data.user.name }))
-        .catch(() => { toast.error('That user could not be found'); navigate({ to: '/messages', search: {} }) })
-    }
-  }, [partnerId, conversations])
+    if (partnerId && partnerId === user?.id) navigate({ to: '/messages', search: {}, replace: true })
+  }, [partnerId, user?.id, navigate])
+
+  // Selected conversation follows ?user=. Someone new (no conversation yet) is looked up once.
+  const knownName = conversations.find((c) => c.user_id === partnerId)?.name
+  useEffect(() => {
+    if (!partnerId) { setPartner(null); return }
+    if (knownName) { setPartner({ user_id: partnerId, name: knownName }); return }
+    let live = true
+    setPartner((p) => (p?.user_id === partnerId ? p : null))
+    getUserProfile(partnerId)
+      .then(({ data }) => { if (live) setPartner({ user_id: partnerId, name: data.user.name }) })
+      .catch(() => {
+        if (!live) return
+        toast.error('That user could not be found')
+        navigate({ to: '/messages', search: {} })
+      })
+    return () => { live = false }
+  }, [partnerId, knownName, navigate])
 
   // Thread: load + poll
   useEffect(() => {
-    if (!partnerId) return
+    if (!partnerId) { setMessages([]); return }
+    setMessages([])
     setLoadingThread(true)
     stickToBottom.current = true
     loadThread(partnerId).catch(() => {}).finally(() => setLoadingThread(false))
     const t = setInterval(() => loadThread(partnerId).catch(() => {}), THREAD_POLL_MS)
-    inputRef.current?.focus()
+    // Focus the composer with a mouse; on touch screens that would pop the keyboard over the thread.
+    if (window.matchMedia?.('(pointer: fine)').matches) inputRef.current?.focus()
     return () => clearInterval(t)
   }, [partnerId, loadThread])
 
@@ -171,6 +205,7 @@ export default function Messages() {
 
   const groups = useMemo(() => groupByDay(messages), [messages])
   const lastMine = [...messages].reverse().find((m) => m.id_sender === user?.id)
+  const partnerFirst = partner?.name?.split(' ')[0]
 
   return (
     <HubLayout raw noScroll>
@@ -182,18 +217,18 @@ export default function Messages() {
             <h2>Inbox</h2>
             <button className="btn btn-coral btn-sm" onClick={() => setComposing(true)}><Icon name="edit_square" />New</button>
           </div>
-          <div className="inbox-filter">
+          <label className="inbox-filter">
             <Icon name="search" />
-            <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter conversations" />
-          </div>
+            <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter conversations"
+              aria-label="Filter conversations" />
+          </label>
           <div className="inbox-scroll">
             {loadingInbox ? <SkeletonRows rows={4} /> : visible.length === 0 ? (
-              <EmptyState icon="forum" title={filter ? 'No matches' : 'No conversations yet'}
-                action={!filter && <button className="btn btn-ghost btn-sm" onClick={() => setComposing(true)}>Start one</button>}>
-                {!filter && 'Message a tutor or student to get started.'}
-              </EmptyState>
+              <EmptyState title={filter ? 'No matches.' : 'No conversations yet.'}
+                action={!filter && <button className="btn btn-ghost btn-sm" onClick={() => setComposing(true)}>Start one</button>} />
             ) : visible.map((c) => (
-              <button key={c.user_id} className={`convo ${c.user_id === partnerId ? 'on' : ''} ${c.unread ? 'unread' : ''}`} onClick={() => open(c.user_id)}>
+              <button key={c.user_id} className={`convo ${c.user_id === partnerId ? 'on' : ''} ${c.unread ? 'unread' : ''}`}
+                onClick={() => open(c.user_id)} aria-current={c.user_id === partnerId ? 'true' : undefined}>
                 <Avatar name={c.name} size={36} />
                 <span className="convo-main">
                   <span className="convo-top">
@@ -202,7 +237,7 @@ export default function Messages() {
                   </span>
                   <span className="convo-preview">{c.last_from_me ? 'You: ' : ''}{c.last_message}</span>
                 </span>
-                {c.unread > 0 && <span className="nav-badge">{c.unread}</span>}
+                {c.unread > 0 && <span className="nav-badge" aria-label={`${c.unread} unread`}>{c.unread}</span>}
               </button>
             ))}
           </div>
@@ -212,10 +247,8 @@ export default function Messages() {
         <section className="inbox-thread">
           {!partnerId ? (
             <div className="thread-empty">
-              <EmptyState icon="chat_bubble" title="Your conversations live here"
-                action={<button className="btn btn-coral" onClick={() => setComposing(true)}><Icon name="edit_square" />New message</button>}>
-                Pick a conversation on the left, or start a new one with a tutor or student.
-              </EmptyState>
+              <EmptyState title="Pick a conversation, or start a new one."
+                action={<button className="btn btn-coral" onClick={() => setComposing(true)}><Icon name="edit_square" />New message</button>} />
             </div>
           ) : (
             <>
@@ -228,8 +261,8 @@ export default function Messages() {
                   <div className="thread-name">{partner?.name ?? 'Loading…'}</div>
                   <div className="thread-sub">Direct messages</div>
                 </div>
-                <Link to="/student/$userId" params={{ userId: String(partnerId) }} className="btn btn-quiet btn-sm hide-mobile">
-                  <Icon name="person" />Profile
+                <Link to="/student/$userId" params={{ userId: String(partnerId) }} className="btn btn-quiet btn-sm" aria-label="Profile">
+                  <Icon name="person" /><span className="hide-mobile">Profile</span>
                 </Link>
               </header>
 
@@ -237,9 +270,7 @@ export default function Messages() {
                 onScroll={(e) => { const el = e.currentTarget; stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80 }}>
                 {loadingThread && messages.length === 0 ? <SkeletonRows rows={3} /> : messages.length === 0 ? (
                   <div className="thread-empty">
-                    <EmptyState icon="waving_hand" title={`Say hi to ${partner?.name?.split(' ')[0] ?? 'them'}`}>
-                      Introduce yourself and what you’d like help with.
-                    </EmptyState>
+                    <EmptyState title={partnerFirst ? `Say hi to ${partnerFirst}.` : 'Say hi.'} />
                   </div>
                 ) : groups.map((g) => (
                   <div key={g.day}>
@@ -272,7 +303,8 @@ export default function Messages() {
                   maxLength={4000}
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) send(e) }}
-                  placeholder={`Message ${partner?.name?.split(' ')[0] ?? ''}…`}
+                  placeholder={partnerFirst ? `Message ${partnerFirst}…` : 'Message…'}
+                  aria-label="Message"
                 />
                 <button className="btn btn-coral" type="submit" disabled={!draft.trim() || sending} aria-label="Send">
                   <Icon name="send" />

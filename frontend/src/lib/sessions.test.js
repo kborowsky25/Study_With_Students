@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canJoin, canReview, isStudyRoomCopy, JOIN_EARLY_MS, needsPayment } from './sessions'
+import { bookingFee, canJoin, canReview, isStudyRoomCopy, JOIN_EARLY_MS, needsPayment, totalPrice } from './sessions'
 
 const START = new Date(2026, 10, 4, 18, 0).getTime()
 const END = START + 3_600_000
@@ -33,10 +33,15 @@ describe('canJoin', () => {
 })
 
 describe('canReview', () => {
-  it('lets the student rate a paid session, or a confirmed one once it has ended', () => {
-    expect(canReview(session({ status: 'paid' }), START - 86_400_000)).toBe(true)
+  it('lets the student rate a confirmed or paid session once it has ended', () => {
     expect(canReview(session(), END + 1)).toBe(true)
+    expect(canReview(session({ status: 'paid' }), END + 1)).toBe(true)
     expect(canReview(session(), START)).toBe(false)
+  })
+
+  it('not before it has happened, even when it was paid in advance', () => {
+    expect(canReview(session({ status: 'paid' }), START - 86_400_000)).toBe(false)
+    expect(canReview(session({ status: 'paid' }), START + 60_000)).toBe(false)
   })
 
   it('only once, only students, never pending or cancelled sessions', () => {
@@ -58,6 +63,19 @@ describe('money', () => {
     expect(needsPayment(session({ amount: 0 }))).toBe(false)
     expect(needsPayment(session({ status: 'paid' }))).toBe(false)
     expect(needsPayment(session({ status: 'pending' }))).toBe(false)
+  })
+
+  it('bookingFee and totalPrice: the family pays the price plus the fee', () => {
+    expect(bookingFee(session({ amount: 22, booking_fee: 1.1 }))).toBe(1.1)
+    expect(totalPrice(session({ amount: 22, booking_fee: 1.1 }))).toBeCloseTo(23.1)
+    expect(totalPrice(session({ amount: '33.00', booking_fee: '1.65' }))).toBeCloseTo(34.65)
+  })
+
+  it('sessions from before the booking fee have none', () => {
+    expect(bookingFee(session({ amount: 22 }))).toBe(0)
+    expect(bookingFee(session({ booking_fee: null }))).toBe(0)
+    expect(totalPrice(session({ amount: 22 }))).toBe(22)
+    expect(totalPrice(session({ amount: null }))).toBe(0)
   })
 
   it('isStudyRoomCopy: free calendar copies of study rooms', () => {

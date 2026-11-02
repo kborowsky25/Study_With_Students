@@ -6,27 +6,18 @@ import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
 import UserBadges from '../components/features/UserBadges'
 import { Avatar, Card, EmptyState, Icon, SkeletonRows } from '../components/ui'
+import { useConfirm } from '../components/ui/confirm'
 import { createPost, deletePost, deleteThread, getThread } from '../api/forum'
-import { errorMessage } from '../api/client'
-import { formatDate, formatTime, timeAgo } from '../lib/format'
+import { notifyError } from '../lib/errors'
+import { authorOf } from '../lib/forum'
+import { formatDate, fullDate, plural, timeAgo } from '../lib/format'
+import { isSubmitShortcut, SUBMIT_KEYS } from '../lib/keyboard'
 
-const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
-const SUBMIT_KEYS = isMac ? '⌘ Enter' : 'Ctrl + Enter'
-
-const plural = (n, one, many = `${one}s`) => `${n} ${Number(n) === 1 ? one : many}`
-const authorOf = (item) => item?.author_name?.trim() || 'Member'
-const fullDate = (value) => `${formatDate(value, { year: 'numeric' })}, ${formatTime(value)}`
 const bodyText = (text) => String(text ?? '').replace(/\s+$/, '')
 const sameUser = (a, b) => a != null && b != null && Number(a) === Number(b)
 
 // Post bodies keep the author's line breaks.
 const BODY = { fontSize: 13.5, lineHeight: 1.65, color: 'var(--text)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }
-
-// The API client already handles 401 (back to login) and 402 (Explorer upsell toast).
-function notify(err) {
-  const status = err?.response?.status
-  if (status !== 401 && status !== 402) toast.error(errorMessage(err))
-}
 
 /** One post in the thread: the opening post (`op`) or a reply. */
 function Post({ post, op = false, byAuthor = false, mine = false, busy = false, onDelete }) {
@@ -44,7 +35,7 @@ function Post({ post, op = false, byAuthor = false, mine = false, busy = false, 
         <div style={{ ...BODY, ...(op && { fontSize: 14, lineHeight: 1.7 }), marginTop: op ? 8 : 4 }}>{bodyText(post.content)}</div>
       </div>
       {mine && onDelete && (
-        <button type="button" className="icon-btn" style={{ width: 28, height: 28, opacity: busy ? 0.5 : 1 }}
+        <button type="button" className="icon-btn" style={{ opacity: busy ? 0.5 : 1 }}
           disabled={busy} onClick={() => onDelete(post)} title="Delete reply" aria-label="Delete reply">
           <Icon name="delete" size={17} />
         </button>
@@ -123,6 +114,7 @@ export default function ForumThread() {
   const { threadId } = useParams({ strict: false })
   const navigate = useNavigate()
   const { user } = useAuth()
+  const confirm = useConfirm()
   const [thread, setThread] = useState(null)
   const [posts, setPosts] = useState([])
   const [status, setStatus] = useState('loading')
@@ -145,7 +137,7 @@ export default function ForumThread() {
     } catch (err) {
       if (id !== request.current) return
       if (err?.response?.status === 404) return setStatus('missing')
-      notify(err)
+      notifyError(err, 'Couldn’t load this thread')
       if (!quiet) setStatus('error')
     }
   }, [threadId])
@@ -171,14 +163,14 @@ export default function ForumThread() {
       await load({ quiet: true })
       setRevealPost(data.post?.id ?? null)
     } catch (err) {
-      notify(err)
+      notifyError(err, 'Couldn’t post your reply')
     } finally {
       setPosting(false)
     }
   }
 
   function onComposerKeyDown(e) {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !e.nativeEvent.isComposing) {
+    if (isSubmitShortcut(e)) {
       e.preventDefault()
       submitReply()
     }
@@ -192,27 +184,34 @@ export default function ForumThread() {
   }
 
   async function removeThread() {
-    if (!window.confirm('Delete this thread and all of its replies? This can’t be undone.')) return
+    const ok = await confirm({
+      title: 'Delete this thread?',
+      body: 'Its replies are deleted too. This can’t be undone.',
+      confirmLabel: 'Delete thread',
+      danger: true,
+    })
+    if (!ok) return
     setBusy('thread')
     try {
       await deleteThread(thread.id)
       toast.success('Thread deleted')
       navigate({ to: '/forum/category/$categoryId', params: { categoryId: String(thread.category_id) }, replace: true })
     } catch (err) {
-      notify(err)
+      notifyError(err, 'Couldn’t delete the thread')
       setBusy(null)
     }
   }
 
   async function removePost(post) {
-    if (!window.confirm('Delete this reply? This can’t be undone.')) return
+    const ok = await confirm({ title: 'Delete this reply?', body: 'This can’t be undone.', confirmLabel: 'Delete reply', danger: true })
+    if (!ok) return
     setBusy(post.id)
     try {
       await deletePost(post.id)
       setPosts((list) => list.filter((p) => p.id !== post.id))
       toast.success('Reply deleted')
     } catch (err) {
-      notify(err)
+      notifyError(err, 'Couldn’t delete the reply')
     } finally {
       setBusy(null)
     }

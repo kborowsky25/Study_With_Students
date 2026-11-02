@@ -1,245 +1,156 @@
-import { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Icon } from '../ui'
 
-const CORAL = '#ff725e'
-const OVERLAY_Z = 9100
+const Z = 9100
+const PAD = 6           // space between the target and the highlight ring
+const CARD_W = 300
+const CARD_H_EST = 170  // only used to keep the card inside the viewport
+const GAP = 12
+const EDGE = 12
 
-// ─── SpotlightTour ────────────────────────────────────────────────────────────
-// steps: Array<{ target: string|null, title: string, body: string, position?: 'right'|'left'|'top'|'bottom'|'center' }>
-// onDone: () => void   — called when tour completes or is skipped
+/** Where `selector` is on screen, or null when it isn't visible (missing, hidden, or in the closed mobile sidebar). */
+function visibleRect(selector) {
+  const el = selector ? document.querySelector(selector) : null
+  if (!el) return null
+  const r = el.getBoundingClientRect()
+  if (!r.width || !r.height || r.right <= 0 || r.left >= window.innerWidth) return null
+  return { el, top: r.top, left: r.left, width: r.width, height: r.height }
+}
+
+function autoPosition(sp) {
+  const vw = window.innerWidth
+  if (vw < 640) return sp.top > window.innerHeight / 2 ? 'top' : 'bottom'
+  if (sp.left < vw * 0.35) return 'right'
+  if (sp.left + sp.width > vw * 0.65) return 'left'
+  return 'bottom'
+}
+
+function cardPosition(sp, position) {
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const width = Math.min(CARD_W, vw - EDGE * 2)
+  if (!sp || position === 'center') {
+    return { position: 'fixed', top: '50%', left: '50%', width, transform: 'translate(-50%, -50%)' }
+  }
+  const pos = position ?? autoPosition(sp)
+  const clampX = (x) => Math.max(EDGE, Math.min(x, vw - width - EDGE))
+  const clampY = (y) => Math.max(EDGE, Math.min(y, vh - CARD_H_EST - EDGE))
+  if (pos === 'right') return { position: 'fixed', width, left: clampX(sp.left + sp.width + GAP), top: clampY(sp.top + sp.height / 2 - CARD_H_EST / 2) }
+  if (pos === 'left') return { position: 'fixed', width, left: clampX(sp.left - width - GAP), top: clampY(sp.top + sp.height / 2 - CARD_H_EST / 2) }
+  if (pos === 'top') return { position: 'fixed', width, left: clampX(sp.left + sp.width / 2 - width / 2), top: clampY(sp.top - CARD_H_EST - GAP) }
+  return { position: 'fixed', width, left: clampX(sp.left + sp.width / 2 - width / 2), top: clampY(sp.top + sp.height + GAP) }
+}
+
+/**
+ * A short guided tour that highlights one element at a time.
+ *
+ *   steps:  [{ target: '[data-tour="messages"]' | null, title, body, position?: 'right'|'left'|'top'|'bottom'|'center' }]
+ *   onDone: called when the tour is finished or skipped
+ *
+ * Steps whose target isn't on screen (e.g. sidebar items on a phone) show as a centred card.
+ */
 export default function SpotlightTour({ steps, onDone }) {
-  const [idx,     setIdx]     = useState(0)
-  const [rect,    setRect]    = useState(null)   // DOMRect of current target
-  const [visible, setVisible] = useState(false)  // fade-in after first paint
-  const roRef = useRef(null)   // ResizeObserver
-
+  const [idx, setIdx] = useState(0)
+  const [rect, setRect] = useState(null)
+  const nextRef = useRef(null)
   const step = steps[idx]
+  const last = idx === steps.length - 1
 
-  // ── Find & track target element ───────────────────────────────────────────
-  const measureTarget = useCallback(() => {
-    if (!step?.target) { setRect(null); return }
-    const el = document.querySelector(step.target)
-    if (!el) { setRect(null); return }
-    const r = el.getBoundingClientRect()
-    setRect({ top: r.top, left: r.left, width: r.width, height: r.height })
-    // Scroll the element into view if it's offscreen
-    if (r.top < 0 || r.bottom > window.innerHeight) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }
+  const measure = useCallback(() => {
+    const r = visibleRect(step?.target)
+    if (r && (r.top < 0 || r.top + r.height > window.innerHeight)) r.el.scrollIntoView({ block: 'center' })
+    const next = r && { top: r.top, left: r.left, width: r.width, height: r.height }
+    // Keep the old object when nothing moved, so the ring's own transitions don't re-render it.
+    setRect((prev) => (prev && next && ['top', 'left', 'width', 'height'].every((k) => prev[k] === next[k]) ? prev : next))
   }, [step?.target])
 
   useLayoutEffect(() => {
-    measureTarget()
-    setVisible(false)
-    const t = setTimeout(() => setVisible(true), 40)
-
-    // Observe layout changes
+    measure()
     const el = step?.target ? document.querySelector(step.target) : null
-    if (el) {
-      roRef.current = new ResizeObserver(measureTarget)
-      roRef.current.observe(el)
-      roRef.current.observe(document.body)
-    }
-    window.addEventListener('resize', measureTarget)
-    window.addEventListener('scroll', measureTarget, true)
+    const ro = el ? new ResizeObserver(measure) : null
+    if (ro) { ro.observe(el); ro.observe(document.body) }
+    window.addEventListener('resize', measure)
+    window.addEventListener('scroll', measure, true)
+    // The sidebar slides in and out (mobile drawer, collapse): measure again once it has moved.
+    document.addEventListener('transitionend', measure, true)
     return () => {
-      clearTimeout(t)
-      roRef.current?.disconnect()
-      window.removeEventListener('resize', measureTarget)
-      window.removeEventListener('scroll', measureTarget, true)
+      ro?.disconnect()
+      window.removeEventListener('resize', measure)
+      window.removeEventListener('scroll', measure, true)
+      document.removeEventListener('transitionend', measure, true)
     }
-  }, [measureTarget, step?.target])
+  }, [measure, step?.target])
 
-  function next() {
-    if (idx < steps.length - 1) setIdx(i => i + 1)
-    else done()
-  }
-  function back() { if (idx > 0) setIdx(i => i - 1) }
-  function done() { onDone?.() }
+  useEffect(() => { nextRef.current?.focus() }, [idx])
 
-  // ── Keyboard navigation ───────────────────────────────────────────────────
+  const next = useCallback(() => (last ? onDone?.() : setIdx((i) => i + 1)), [last, onDone])
+  const back = useCallback(() => setIdx((i) => Math.max(0, i - 1)), [])
+
   useEffect(() => {
     function onKey(e) {
-      if (e.key === 'ArrowRight' || e.key === 'Enter') { e.preventDefault(); next() }
-      if (e.key === 'ArrowLeft')  { e.preventDefault(); back() }
-      if (e.key === 'Escape')     { e.preventDefault(); done() }
+      if (e.key === 'Escape') { e.preventDefault(); onDone?.() }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); next() }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); back() }
+      // Enter on a focused button presses that button; elsewhere it moves on
+      else if (e.key === 'Enter' && e.target?.tagName !== 'BUTTON') { e.preventDefault(); next() }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  })
+  }, [next, back, onDone])
 
-  // ── Spotlight geometry ────────────────────────────────────────────────────
-  const PAD = 8
-  const sp = rect ? {
-    top:    rect.top    - PAD,
-    left:   rect.left   - PAD,
-    width:  rect.width  + PAD * 2,
-    height: rect.height + PAD * 2,
-  } : null
+  if (!step) return null
+  const sp = rect && { top: rect.top - PAD, left: rect.left - PAD, width: rect.width + PAD * 2, height: rect.height + PAD * 2 }
 
-  // ── Tooltip positioning ───────────────────────────────────────────────────
-  const TOOLTIP_W = 280
-  const TOOLTIP_H_EST = 160
-  const GAP = 14
-
-  function tooltipStyle() {
-    if (!sp || step?.position === 'center') {
-      return {
-        position: 'fixed',
-        top: '50%', left: '50%',
-        transform: 'translate(-50%, -50%)',
-        width: TOOLTIP_W,
-      }
-    }
-    const pos = step?.position ?? autoPosition(sp)
-    const vw = window.innerWidth
-    const vh = window.innerHeight
-    let top, left
-
-    if (pos === 'right') {
-      left = Math.min(sp.left + sp.width + GAP, vw - TOOLTIP_W - 12)
-      top  = Math.max(12, Math.min(sp.top + sp.height / 2 - TOOLTIP_H_EST / 2, vh - TOOLTIP_H_EST - 12))
-    } else if (pos === 'left') {
-      left = Math.max(12, sp.left - TOOLTIP_W - GAP)
-      top  = Math.max(12, Math.min(sp.top + sp.height / 2 - TOOLTIP_H_EST / 2, vh - TOOLTIP_H_EST - 12))
-    } else if (pos === 'top') {
-      left = Math.max(12, Math.min(sp.left + sp.width / 2 - TOOLTIP_W / 2, vw - TOOLTIP_W - 12))
-      top  = Math.max(12, sp.top - TOOLTIP_H_EST - GAP)
-    } else { // bottom
-      left = Math.max(12, Math.min(sp.left + sp.width / 2 - TOOLTIP_W / 2, vw - TOOLTIP_W - 12))
-      top  = Math.min(sp.top + sp.height + GAP, vh - TOOLTIP_H_EST - 12)
-    }
-    return { position: 'fixed', top, left, width: TOOLTIP_W }
-  }
-
-  function autoPosition(s) {
-    const vw = window.innerWidth
-    // If element is in left 30% → tooltip to the right; otherwise to the right or left
-    if (s.left < vw * 0.35) return 'right'
-    if (s.left + s.width > vw * 0.65) return 'left'
-    return 'bottom'
-  }
-
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* Dark overlay — uses box-shadow trick to create spotlight cutout */}
-      <div
-        onClick={next}
-        style={{
-          position: 'fixed', inset: 0, zIndex: OVERLAY_Z,
-          opacity: visible ? 1 : 0,
-          transition: 'opacity 0.25s ease',
-        }}
-      >
-        {/* If no target: solid dark overlay */}
-        {!sp && (
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.72)' }} />
-        )}
-
-        {/* If target: spotlight box */}
-        {sp && (
-          <div
-            style={{
-              position: 'fixed',
-              top: sp.top, left: sp.left,
-              width: sp.width, height: sp.height,
-              borderRadius: '10px',
-              boxShadow: `0 0 0 9999px rgba(0,0,0,0.72)`,
-              border: `2px solid ${CORAL}`,
-              zIndex: OVERLAY_Z + 1,
-              pointerEvents: 'none',
-              transition: 'all 0.3s cubic-bezier(0.4,0,0.2,1)',
-            }}
-          />
+      <div onClick={next} style={{ position: 'fixed', inset: 0, zIndex: Z, animation: 'fadeIn 0.12s ease-out both' }}>
+        {sp ? (
+          <div style={{
+            position: 'fixed', top: sp.top, left: sp.left, width: sp.width, height: sp.height,
+            borderRadius: 'var(--radius)', boxShadow: '0 0 0 9999px var(--overlay)', outline: '2px solid var(--coral)',
+            pointerEvents: 'none', transition: 'top 0.2s ease, left 0.2s ease, width 0.2s ease, height 0.2s ease',
+          }} />
+        ) : (
+          <div style={{ position: 'absolute', inset: 0, background: 'var(--overlay)' }} />
         )}
       </div>
 
-      {/* Tooltip card */}
       <div
-        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tour-title"
+        onClick={(e) => e.stopPropagation()}
         style={{
-          ...tooltipStyle(),
-          zIndex: OVERLAY_Z + 2,
+          ...cardPosition(sp, step.position),
+          zIndex: Z + 1,
+          padding: '14px 16px 16px',
+          borderRadius: 'var(--radius-lg)',
           background: 'var(--elevated)',
-          border: `1px solid rgba(255,114,94,0.25)`,
-          borderRadius: '16px',
-          padding: '20px',
-          boxShadow: '0 24px 60px rgba(0,0,0,0.5)',
-          opacity: visible ? 1 : 0,
-          transform: visible
-            ? (step?.position === 'center' || !sp ? 'translate(-50%, -50%) scale(1)' : 'scale(1)')
-            : (step?.position === 'center' || !sp ? 'translate(-50%, -50%) scale(0.95)' : 'scale(0.95)'),
-          transition: 'opacity 0.25s ease, transform 0.25s ease',
+          color: 'var(--text)',
+          boxShadow: 'var(--shadow-pop)',
+          animation: 'fadeIn 0.12s ease-out both', // opacity only: a transform animation would undo the centring
         }}
       >
-        {/* Step counter */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-          <div style={{ display: 'flex', gap: '5px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <div style={{ display: 'flex', gap: 4, flex: 1 }} aria-label={`Step ${idx + 1} of ${steps.length}`}>
             {steps.map((_, i) => (
-              <div
-                key={i}
-                style={{
-                  width: i === idx ? '18px' : '6px',
-                  height: '6px',
-                  borderRadius: '3px',
-                  background: i === idx ? CORAL : 'rgb(var(--fg) / 0.20)',
-                  transition: 'width 0.25s ease, background 0.25s ease',
-                }}
-              />
+              <span key={i} style={{
+                width: i === idx ? 16 : 6, height: 4, borderRadius: 2,
+                background: i === idx ? 'var(--coral)' : 'rgb(var(--fg) / 0.22)', transition: 'width 0.15s ease',
+              }} />
             ))}
           </div>
-          <button
-            onClick={done}
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer', padding: '2px',
-              color: 'rgb(var(--fg) / 0.30)', fontSize: '18px', lineHeight: 1,
-            }}
-            title="Skip tour"
-          >
-            ×
+          <button type="button" className="icon-btn" onClick={() => onDone?.()} aria-label="Skip tour" title="Skip tour" style={{ marginRight: -6 }}>
+            <Icon name="close" />
           </button>
         </div>
 
-        {/* Content */}
-        <h3 style={{
-          fontSize: '16px', fontWeight: '800', color: 'var(--text)',
-          marginBottom: '8px', lineHeight: 1.25, letterSpacing: '-0.2px',
-        }}>
-          {step.title}
-        </h3>
-        <p style={{
-          fontSize: '13px', color: 'rgb(var(--fg) / 0.60)',
-          lineHeight: 1.6, marginBottom: '18px',
-        }}>
-          {step.body}
-        </p>
+        <h3 id="tour-title" style={{ fontSize: 14.5, fontWeight: 600, lineHeight: 1.3, marginBottom: 6 }}>{step.title}</h3>
+        <p style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--text-muted)', marginBottom: 14 }}>{step.body}</p>
 
-        {/* Navigation */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          {idx > 0 && (
-            <button
-              onClick={back}
-              style={{
-                padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
-                border: '1px solid rgb(var(--fg) / 0.14)',
-                background: 'rgb(var(--fg) / 0.06)',
-                color: 'rgb(var(--fg) / 0.60)', cursor: 'pointer',
-              }}
-            >
-              ← Back
-            </button>
-          )}
-          <button
-            onClick={next}
-            style={{
-              flex: 1, padding: '9px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '700',
-              background: `linear-gradient(135deg, ${CORAL}, #e05a48)`,
-              border: 'none', color: '#fff', cursor: 'pointer',
-              boxShadow: `0 4px 14px rgba(255,114,94,0.35)`,
-            }}
-          >
-            {idx === steps.length - 1 ? 'Done!' : 'Next →'}
-          </button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          {idx > 0 && <button type="button" className="btn btn-quiet" onClick={back}>Back</button>}
+          <button ref={nextRef} type="button" className="btn btn-coral" onClick={next}>{last ? 'Done' : 'Next'}</button>
         </div>
       </div>
     </>

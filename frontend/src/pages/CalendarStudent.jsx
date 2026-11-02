@@ -5,10 +5,11 @@ import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
 import EventCard, { CompactSession, MonthGrid } from '../components/features/EventCard'
 import { BookSessionButton } from '../components/features/TutorCard'
-import { Card, Icon, SkeletonRows } from '../components/ui'
+import { Card, EmptyState, Icon, SkeletonRows } from '../components/ui'
 import { getEvents } from '../api/events'
 import { getActiveTutors } from '../api/tutors'
 import { errorMessage } from '../api/client'
+import { byStart, sameDay, startOfDay, startOfMonth } from '../lib/dates'
 
 const LEGEND = [
   { status: 'pending', label: 'Awaiting tutor' },
@@ -17,12 +18,6 @@ const LEGEND = [
   { status: 'canceled', label: 'Cancelled' },
 ]
 
-const emptyLine = { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '16px 18px', fontSize: 13, color: 'var(--text-faint)' }
-
-const startOfDay = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x }
-const startOfMonth = (d) => new Date(d.getFullYear(), d.getMonth(), 1)
-const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
-const byStart = (a, b) => new Date(a.start_time) - new Date(b.start_time)
 
 export default function CalendarStudent() {
   const [events, setEvents] = useState([])
@@ -84,7 +79,7 @@ export default function CalendarStudent() {
                 {dayEvents.map((ev) => <EventCard key={ev.id_event} event={ev} variant="time" onChanged={load} />)}
               </div>
             ) : (
-              <div style={emptyLine}>Nothing on this day.</div>
+              <EmptyState title="Nothing on this day." />
             )}
           </Card>
 
@@ -96,7 +91,7 @@ export default function CalendarStudent() {
                 ))}
               </div>
             ) : (
-              <div style={emptyLine}>No upcoming sessions.</div>
+              <EmptyState title="No upcoming sessions." />
             )}
           </Card>
         </div>

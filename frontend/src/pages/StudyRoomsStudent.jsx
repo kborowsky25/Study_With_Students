@@ -7,44 +7,9 @@ import HubLayout from '../components/layout/HubLayout'
 import { Card, DateChip, EmptyState, Icon, Pill, SkeletonRows } from '../components/ui'
 import { getStudyRooms, saveToCalendar } from '../api/studyrooms'
 import { errorMessage } from '../api/client'
-import { isVerifiedTutor } from '../lib/access'
+import { useNow } from '../hooks/useNow'
 import { formatTime } from '../lib/format'
-
-const JOIN_WINDOW = 15 * 60_000 // the join link shows from 15 minutes before the start
-
-/** Rooms store whatever the tutor typed — only http(s) links are rendered. */
-function meetingUrl(link) {
-  const s = (link || '').trim()
-  if (/^https?:\/\/\S+$/i.test(s)) return s
-  if (/^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(s)) return `https://${s}`
-  return null
-}
-
-function phaseOf(room, now) {
-  const start = new Date(room.start_time).getTime()
-  const end = new Date(room.end_time).getTime()
-  if (now >= end) return 'past'
-  if (now >= start) return 'live'
-  return start - now <= JOIN_WINDOW ? 'soon' : 'upcoming'
-}
-
-/** Re-render periodically so "Live now" and "Starts in" stay current. */
-function useNow(every = 30_000) {
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), every)
-    return () => clearInterval(id)
-  }, [every])
-  return now
-}
-
-function formatLength(start, end) {
-  const mins = Math.round((new Date(end) - new Date(start)) / 60_000)
-  if (mins < 60) return `${mins} min`
-  return mins % 60 ? `${Math.floor(mins / 60)} h ${mins % 60}` : `${mins / 60} h`
-}
-
-const minutesUntil = (value, now) => Math.max(1, Math.ceil((new Date(value) - now) / 60_000))
+import { formatLength, isOpen, livePhase, meetingUrl, minutesUntil } from '../lib/meetings'
 
 function PhasePill({ room, phase, now }) {
   if (phase === 'live') return <Pill tone="green">Live now</Pill>
@@ -62,11 +27,11 @@ function JoinLink({ url, label, small }) {
 }
 
 function RoomRow({ room, now, userId, saving, onSave }) {
-  const phase = phaseOf(room, now)
+  const phase = livePhase(room, now)
   const mine = room.creator_user_id === userId
 
   let action = null
-  if (phase === 'live' || phase === 'soon') {
+  if (isOpen(phase)) {
     action = <JoinLink url={meetingUrl(room.zoom_link)} label={mine ? 'Start' : 'Join'} small />
   } else if (phase === 'upcoming') {
     if (mine) action = <Pill>Hosting</Pill>
@@ -81,7 +46,7 @@ function RoomRow({ room, now, userId, saving, onSave }) {
   }
 
   return (
-    <div className="row">
+    <div className="row row-wrap">
       <DateChip value={room.start_time} />
       <div className="main">
         <div className="title">
@@ -92,8 +57,10 @@ function RoomRow({ room, now, userId, saving, onSave }) {
           {mine ? 'You' : room.tutor_name || 'Tutor'} · {formatTime(room.start_time)}–{formatTime(room.end_time)} · {formatLength(room.start_time, room.end_time)}
         </div>
       </div>
-      <PhasePill room={room} phase={phase} now={now} />
-      {action}
+      <div className="row-actions">
+        <PhasePill room={room} phase={phase} now={now} />
+        {action}
+      </div>
     </div>
   )
 }
@@ -130,9 +97,9 @@ export default function StudyRoomsStudent() {
     }
   }
 
-  const active = rooms.filter((r) => phaseOf(r, now) !== 'past') // the API sorts by start time
-  const past = rooms.filter((r) => phaseOf(r, now) === 'past').reverse()
-  const highlight = active.find((r) => phaseOf(r, now) !== 'upcoming')
+  const active = rooms.filter((r) => livePhase(r, now) !== 'past') // the API sorts by start time
+  const past = rooms.filter((r) => livePhase(r, now) === 'past').reverse()
+  const highlight = active.find((r) => livePhase(r, now) !== 'upcoming')
   const list = active.filter((r) => r !== highlight)
 
   const row = (room) => (
@@ -147,7 +114,7 @@ export default function StudyRoomsStudent() {
         <h1>Study rooms</h1>
         <div className="dash-actions">
           <Link to="/calendar/student" className="btn btn-ghost"><Icon name="calendar_month" />Calendar</Link>
-          {isVerifiedTutor(user) && (
+          {user?.is_tutor && user.screening_status === 'approved' && (
             <Link to="/study-rooms/tutor" className="btn btn-coral"><Icon name="add" />Host a room</Link>
           )}
         </div>
@@ -158,7 +125,7 @@ export default function StudyRoomsStudent() {
           <section className="card spotlight">
             <div className="grow">
               <div className="when">
-                {phaseOf(highlight, now) === 'live'
+                {livePhase(highlight, now) === 'live'
                   ? `Live now · until ${formatTime(highlight.end_time)}`
                   : `Starts in ${minutesUntil(highlight.start_time, now)} min · ${formatTime(highlight.start_time)}`}
               </div>

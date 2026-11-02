@@ -4,7 +4,9 @@ import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
 import { Card, DateChip, EmptyState, Icon, SkeletonRows, Stat, StatusPill } from '../components/ui'
 import { getPayments } from '../api/payments'
+import { byStart } from '../lib/dates'
 import { formatMoney, formatTime, weekBuckets } from '../lib/format'
+import { isStudyRoomCopy } from '../lib/sessions'
 
 const LIST_PREVIEW = 8
 
@@ -17,8 +19,8 @@ const FILTERS = [
   ['unpaid', 'Unpaid', (e) => e.status === 'confirmed'],
 ]
 
+// Tutors earn the session's full `amount`. The booking fee is paid by the family on top and is never part of it.
 const sum = (list) => list.reduce((s, e) => s + Number(e.amount || 0), 0)
-const byStart = (a, b) => new Date(a.start_time) - new Date(b.start_time)
 const sameMonth = (value, now) => {
   const d = new Date(value)
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
@@ -49,13 +51,13 @@ function EarningsChart({ paid }) {
 
 function SessionRow({ ev, children }) {
   return (
-    <div className="row">
+    <div className="row row-wrap">
       <DateChip value={ev.start_time} />
       <div className="main">
         <div className="title">{ev.title || 'Tutoring session'}</div>
         <div className="meta">{ev.student_name} · {formatTime(ev.start_time)}–{formatTime(ev.end_time)}</div>
       </div>
-      {children}
+      <div className="row-actions">{children}</div>
     </div>
   )
 }
@@ -82,7 +84,8 @@ export default function Earnings() {
     setPhase('loading')
     try {
       const { data } = await getPayments({ role: 'tutor' })
-      setEvents(data.events ?? [])
+      // Study rooms students saved to their calendars come back as £0 sessions: not earnings.
+      setEvents((data.events ?? []).filter((e) => !isStudyRoomCopy(e)))
       setPhase('ready')
     } catch {
       setPhase('error')

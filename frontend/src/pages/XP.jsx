@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react'
-import { Link } from '@tanstack/react-router'
 import { useAuth } from '../context/AuthContext'
 import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
 import { Card, Icon, Pill, SkeletonRows, Stat } from '../components/ui'
 import { getEvents } from '../api/events'
 import { getActiveStudents, getActiveTutors } from '../api/tutors'
+import { isStudyRoomCopy } from '../lib/sessions'
+import './XP.css'
 
 const TIERS = {
   student: ['Newcomer', 'Explorer', 'Scholar', 'Achiever', 'Prodigy', 'Elite', 'Legend'],
   tutor:   ['Guide', 'Mentor', 'Educator', 'Expert', 'Professor', 'Master', 'Grandmaster'],
 }
 const THRESHOLDS = [0, 150, 400, 900, 1800, 3500, 6000]
+
+const article = (word) => (/^[aeiou]/i.test(word) ? 'an' : 'a') // "an Explorer", "a Scholar"
 
 const ACTIONS = {
   student: [
@@ -35,7 +38,7 @@ export default function XP() {
 
   useEffect(() => {
     Promise.allSettled([
-      getEvents().then((r) => setEvents((r.data.events ?? []).filter((e) => e.role === mode))),
+      getEvents().then((r) => setEvents((r.data.events ?? []).filter((e) => e.role === mode && !isStudyRoomCopy(e)))),
       (mode === 'tutor' ? getActiveStudents() : getActiveTutors())
         .then((r) => setPeople(r.data.tutors ?? r.data.students ?? [])),
     ]).finally(() => setLoading(false))
@@ -60,44 +63,38 @@ export default function XP() {
       <div className="dash-head">
         <div>
           <div className="eyebrow">{mode === 'tutor' ? 'Tutor' : 'Student'} graduation</div>
-          <h1 style={{ marginTop: 6 }}>You’re a <em>{tiers[level]}</em></h1>
+          <h1 style={{ marginTop: 6 }}>You’re {article(tiers[level])} <em>{tiers[level]}</em></h1>
           <p>{next ? `${next - xp} XP to ${tiers[level + 1]}` : 'Top tier reached — legendary.'}</p>
         </div>
-        {user?.is_premium && <Pill tone="coral">✦ Explorer badge</Pill>}
       </div>
 
       <section className="card spotlight" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 14, marginBottom: 18 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <span style={{ fontSize: 40, fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1 }}>{loading ? '—' : xp}</span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-faint)' }}>XP</span>
+          <span style={{ fontSize: 40, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{loading ? '—' : xp}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-faint)' }}>XP</span>
           <span style={{ flex: 1 }} />
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
             Level {level + 1} of {tiers.length}
           </span>
         </div>
         <div className="progress" style={{ height: 8 }}><i style={{ width: `${loading ? 0 : pct}%`, transition: 'width 0.9s ease' }} /></div>
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${tiers.length}, 1fr)`, gap: 4 }}>
+        <ol className="xp-tiers" aria-label="Tiers">
           {tiers.map((name, i) => (
-            <div key={name} style={{ textAlign: 'center' }}>
-              <div style={{
-                width: 22, height: 22, margin: '0 auto 5px', borderRadius: '50%',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: i <= level ? 'var(--coral)' : 'rgb(var(--fg) / 0.08)',
-                color: i <= level ? '#fff' : 'var(--text-faint)', fontSize: 11, fontWeight: 800,
-              }}>
-                {i < level ? <Icon name="check" size={14} /> : i + 1}
-              </div>
-              <div style={{ fontSize: 11, fontWeight: i === level ? 800 : 600, color: i === level ? 'var(--text)' : 'var(--text-faint)' }}>{name}</div>
-              <div style={{ fontSize: 10, color: 'var(--text-faint)' }}>{THRESHOLDS[i]}</div>
-            </div>
+            <li key={name} className={`xp-tier ${i <= level ? 'reached' : ''} ${i === level ? 'current' : ''}`} title={`${name} · ${THRESHOLDS[i]} XP`}
+              aria-current={i === level ? 'step' : undefined}>
+              <div className="xp-tier-dot">{i < level ? <Icon name="check" size={14} /> : i + 1}</div>
+              <div className="xp-tier-name">{name}</div>
+              <div className="xp-tier-xp">{THRESHOLDS[i]}</div>
+            </li>
           ))}
-        </div>
+        </ol>
       </section>
 
-      <section className="card stat-grid" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
-        <Stat icon="event" label={mode === 'tutor' ? 'Sessions taught' : 'Sessions booked'} value={live.length} />
-        <Stat icon="check_circle" label="Confirmed or paid" value={done.length} />
-        <Stat icon="groups_2" label={mode === 'tutor' ? 'Students' : 'Tutors'} value={people.length} />
+      <section className="card stat-grid">
+        <Stat label={mode === 'tutor' ? 'Sessions taught' : 'Sessions booked'} value={loading ? '—' : live.length} />
+        <Stat label="Confirmed or paid" value={loading ? '—' : done.length} />
+        <Stat label="Paid" value={loading ? '—' : paid.length} />
+        <Stat label={mode === 'tutor' ? 'Students' : 'Tutors'} value={loading ? '—' : people.length} />
       </section>
 
       <Card title="How to earn XP" icon="bolt">
@@ -116,11 +113,6 @@ export default function XP() {
         )}
       </Card>
 
-      {mode === 'student' && !user?.is_premium && (
-        <p style={{ fontSize: 12.5, color: 'var(--text-faint)', marginTop: 14 }}>
-          Explorer members get the ✦ Explorer badge on their profile. <Link to="/membership" className="card-link" style={{ display: 'inline' }}>See the plan</Link>
-        </p>
-      )}
     </HubLayout>
   )
 }
