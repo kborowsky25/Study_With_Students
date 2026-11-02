@@ -3,6 +3,8 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import toast from 'react-hot-toast'
 import { login as apiLogin } from '../api/auth'
 import { useAuth } from '../context/AuthContext'
+import Art from '../components/marketing/Art'
+import { MarketingPage } from '../components/marketing'
 
 export default function Login() {
   const [email,    setEmail]    = useState('')
@@ -27,71 +29,47 @@ export default function Login() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', display: 'flex', fontFamily: '"Noto Sans JP", sans-serif' }}>
+    <MarketingPage title="Log in" footer={false}>
+      <section className="mk-auth">
+        <div className="mk-container mk-auth-grid">
+          <div className="mk-auth-art"><Art name="login" eager /></div>
 
-      {/* Left — illustration */}
-      <div className="animate-slide-in-left" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4vw' }}>
-        <img
-          src="/static/images/login/login.svg"
-          alt="Study With Students"
-          style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
-          className="animate-float"
-        />
-      </div>
+          <div className="mk-auth-panel">
+            <h1 className="mk-auth-title">Log in</h1>
+            <p className="mk-sub">One day or day one?</p>
 
-      {/* Right — form */}
-      <div className="animate-slide-in-right" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4vw' }}>
+            <form onSubmit={handleSubmit} className="mk-form">
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                placeholder="Email"
+                aria-label="Email"
+                autoComplete="email"
+                className="mk-input"
+              />
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+                placeholder="Password"
+                aria-label="Password"
+                autoComplete="current-password"
+                className="mk-input"
+              />
+              <button type="submit" disabled={loading} className="mk-btn mk-btn-coral mk-btn-block">
+                {loading ? 'Signing in…' : 'Log in'}
+              </button>
+            </form>
 
-        {/* Logo */}
-        <Link to="/" style={{ textDecoration: 'none', marginBottom: '3vh' }}>
-          <span style={{ fontSize: '22px', fontWeight: '900', color: 'var(--text)' }}>
-            Study<span style={{ color: '#ff725e' }}>WithStudents</span>
-          </span>
-        </Link>
-
-        <div style={{ width: '100%', maxWidth: '420px' }}>
-          <h1 style={{ fontSize: '32px', fontWeight: '900', color: 'var(--text)', marginBottom: '4px', letterSpacing: '-0.5px' }}>
-            LOG IN
-          </h1>
-          <p style={{ color: '#b0bec5', marginBottom: '32px', fontSize: '15px' }}>
-            One day or day one?
-          </p>
-
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              placeholder="Email"
-              className="input-field"
-            />
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-              placeholder="Password"
-              className="input-field"
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary"
-              style={{ padding: '14px', fontSize: '16px', marginTop: '4px', opacity: loading ? 0.6 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
-            >
-              {loading ? 'Signing in…' : 'Login'}
-            </button>
-          </form>
-
-          <p style={{ color: '#b0bec5', fontSize: '14px', marginTop: '24px', textAlign: 'center' }}>
-            Don&apos;t have an account yet?{' '}
-            <Link to="/signup" style={{ color: '#ff725e', fontWeight: '600', textDecoration: 'none' }}>
-              Sign up here
-            </Link>
-          </p>
+            <p className="mk-auth-alt">
+              Don&apos;t have an account yet? <Link to="/signup">Sign up here</Link>
+            </p>
+          </div>
         </div>
-      </div>
-    </div>
+      </section>
+    </MarketingPage>
   )
 }
