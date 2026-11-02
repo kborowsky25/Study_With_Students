@@ -6,6 +6,14 @@
 
 .shell, .shell * { -webkit-font-smoothing: antialiased; }
 
+/* Icons are SVGs sized by font-size (1em square) */
+.icon { width: 1em; height: 1em; font-size: 18px; flex-shrink: 0; vertical-align: -0.16em; }
+.btn .icon { font-size: 16px; margin-left: -2px; }
+.btn-sm .icon { font-size: 15px; }
+.icon-btn .icon { font-size: 18px; }
+.card-link .icon { font-size: 15px; }
+.shell-title .icon { font-size: 16px; }
+
 /* ── Shell ───────────────────────────────────────────────────────────────── */
 
 .shell {
