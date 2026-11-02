@@ -1,7 +1,5 @@
 // Single source of truth for hub navigation: the sidebar, the ⌘K palette and
 // the "g then key" shortcuts all read from here.
-//
-// `explorer: true` marks community features included in the £5/month plan.
 
 export const STUDENT_NAV = [
   {
@@ -22,19 +20,17 @@ export const STUDENT_NAV = [
   },
   {
     title: 'Community',
-    explorer: true,
     items: [
-      { to: '/forum',               label: 'Forum',       icon: 'forum',     key: 'e', tour: 'forum',               explorer: true },
-      { to: '/study-notes',         label: 'Study notes', icon: 'menu_book', key: 'n',                              explorer: true },
-      { to: '/study-rooms/student', label: 'Study rooms', icon: 'groups',    key: 's', tour: 'study-rooms-student', explorer: true },
-      { to: '/classroom',           label: 'Classes',     icon: 'school',    key: 'r',                              explorer: true },
+      { to: '/forum',               label: 'Forum',       icon: 'forum',     key: 'e', tour: 'forum' },
+      { to: '/study-notes',         label: 'Study notes', icon: 'menu_book', key: 'n' },
+      { to: '/study-rooms/student', label: 'Study rooms', icon: 'groups',    key: 's', tour: 'study-rooms-student' },
+      { to: '/classroom',           label: 'Classes',     icon: 'school',    key: 'r' },
     ],
   },
   {
     title: 'You',
     items: [
       { to: '/xp',         label: 'Graduation', icon: 'military_tech',     key: 'x' },
-      { to: '/membership', label: 'Membership', icon: 'workspace_premium', key: 'b' },
     ],
   },
 ]
