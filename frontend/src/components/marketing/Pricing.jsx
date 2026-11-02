@@ -34,14 +34,13 @@ export function FeeCalculator() {
         step="1"
         value={rate}
         onChange={(e) => setRate(Number(e.target.value))}
-        style={{ '--fill': `${((rate - 10) / 50) * 100}%` }}
       />
       <dl className="mk-calc-lines">
         <div><dt>To your tutor</dt><dd>{formatMoney(rate, { decimals: 2 })}</dd></div>
         <div><dt>Booking fee ({FEE}%)</dt><dd>{formatMoney(fee, { decimals: 2 })}</dd></div>
         <div className="is-total"><dt>You pay</dt><dd>{formatMoney(rate + fee, { decimals: 2 })}</dd></div>
       </dl>
-      <p className="mk-calc-keep"><Icon name="check_circle" fill />Your tutor keeps 100% of their rate.</p>
+      <p className="mk-calc-keep"><Icon name="check_circle" />Your tutor keeps 100% of their rate.</p>
     </div>
   )
 }
@@ -65,10 +64,10 @@ export function PricingExplainer() {
             <div><b>Your tutor keeps 100%</b><p>We never take a cut of a tutor's rate.</p></div>
           </li>
         </ol>
-        <div className="mk-free">
-          <Icon name="diversity_3" />
-          <p><b>The community is free.</b> The forum, study notes, study rooms and live classes are free for every member.</p>
-        </div>
+        <p className="mk-free">
+          <Icon name="groups" />
+          <span><b>The community is free.</b> The forum, study notes, study rooms and live classes are free for every member.</span>
+        </p>
       </div>
       <FeeCalculator />
     </div>

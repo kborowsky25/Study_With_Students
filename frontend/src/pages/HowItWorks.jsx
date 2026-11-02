@@ -89,7 +89,7 @@ export default function HowItWorks() {
           <ul className="mk-feature-rows">
             {FEATURES.map(({ art, label }) => (
               <li key={art}>
-                <Art name={art} eager />
+                <Art name={art} />
                 <span>{label}</span>
               </li>
             ))}
@@ -102,7 +102,7 @@ export default function HowItWorks() {
         <Wave top />
         <div className="mk-container mk-center">
           <h2 id="easy-title" className="mk-h2">Start exploring in 3 easy steps</h2>
-          <ol className="mk-step-cards">
+          <ol className="mk-step-cards brand-light">
             {EASY_STEPS.map(({ art, text }, i) => (
               <li key={art}>
                 <h3>Step {i + 1}</h3>
@@ -129,7 +129,7 @@ export default function HowItWorks() {
             </dl>
           </div>
           <div className="mk-modes">
-            <figure className="mk-mode is-student"><Art name="students" /><figcaption>Student mode</figcaption></figure>
+            <figure className="mk-mode is-student"><Art name="studentMode" /><figcaption>Student mode</figcaption></figure>
             <figure className="mk-mode is-tutor"><Art name="tutorMode" /><figcaption>Tutor mode</figcaption></figure>
           </div>
         </div>

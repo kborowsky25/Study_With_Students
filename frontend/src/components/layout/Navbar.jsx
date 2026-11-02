@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { Icon } from '../ui'
-import Art from '../marketing/Art'
+import { Logo } from '../brand/Logo'
 
 // Public-site navbar, as on the original homepage: logo, three links, Sign up + Log in.
 // Styles: styles/marketing.css (.mk-nav).
@@ -64,9 +64,8 @@ export default function Navbar() {
   return (
     <header className={`mk-nav${scrolled ? ' is-scrolled' : ''}${open ? ' is-open' : ''}`}>
       <div className="mk-container mk-nav-inner">
-        <Link to="/" className="mk-logo" onClick={close}>
-          <Art name="rocket" className="mk-logo-mark" />
-          Study with Students
+        <Link to="/" className="mk-logo" onClick={close} aria-label="Study with Students, home">
+          <Logo size={28} />
         </Link>
 
         <nav className="mk-nav-links" aria-label="Main">{links}</nav>

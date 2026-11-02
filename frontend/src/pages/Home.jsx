@@ -27,15 +27,15 @@ const UNIVERSITIES = [
 
 const SUBJECTS = [
   ['Mathematics', 'calculate'],
-  ['Physics', 'bolt'],
-  ['Chemistry', 'science'],
-  ['Biology', 'genetics'],
-  ['Computer Science', 'terminal'],
+  ['Physics', 'atom'],
+  ['Chemistry', 'flask'],
+  ['Biology', 'dna'],
+  ['Computer Science', 'code'],
   ['Economics', 'trending_up'],
-  ['Business', 'business_center'],
+  ['Business', 'briefcase'],
   ['English', 'menu_book'],
   ['French', 'translate'],
-  ['Psychology', 'psychology'],
+  ['Psychology', 'brain'],
   ['Art', 'palette'],
   ['Law', 'gavel'],
   ['Engineering', 'engineering'],
@@ -43,9 +43,9 @@ const SUBJECTS = [
 
 const REASONS = [
   ['schedule', 'Find tutors quickly'],
-  ['stacks', '100% student run'],
+  ['backpack', '100% student run'],
   ['verified_user', 'Enhanced DBS checks'],
-  ['laptop_chromebook', 'Flexible and online'],
+  ['videocam', 'Flexible and online'],
 ]
 
 const STEPS = [
@@ -76,7 +76,7 @@ export default function Home() {
           </div>
           {HERO_ART.map(({ area, art, label }) => (
             <figure key={area} className="mk-hero-art" data-area={area}>
-              <Art name={art} eager />
+              <Art name={art} />
               <figcaption className="mk-tag">{label}</figcaption>
             </figure>
           ))}
@@ -173,7 +173,7 @@ export default function Home() {
                 <div><b>They study at a university</b><p>A university email and proof of enrolment, reviewed by us.</p></div>
               </li>
               <li>
-                <Icon name="shield_person" />
+                <Icon name="shield" />
                 <div><b>They have an enhanced DBS check</b><p>A criminal record check from the Disclosure and Barring Service.</p></div>
               </li>
             </ul>
@@ -189,7 +189,7 @@ export default function Home() {
       <section className="mk-section" aria-labelledby="steps-title">
         <div className="mk-container">
           <h2 id="steps-title" className="mk-h2 mk-coral">How it works</h2>
-          <p className="mk-sub mk-sub-arrow"><Icon name="subdirectory_arrow_right" />3 easy steps:</p>
+          <p className="mk-sub mk-sub-arrow"><span className="mk-arrow" aria-hidden="true">↳</span>3 easy steps:</p>
           <ol className="mk-steps">
             {STEPS.map(({ art, title, text }, i) => (
               <li key={art} className="mk-step">

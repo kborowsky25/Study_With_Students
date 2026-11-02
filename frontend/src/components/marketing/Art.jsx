@@ -1,72 +1,45 @@
-// Every illustration on the public site goes through <Art name="…" />, so the
-// drawings can be swapped in one place.
-//
-// Today each name points at one of the original image files in public/static/images.
-// `native` is the export from components/brand that should replace it. When that set
-// lands, the swap is this file only:
-//
-//   import * as Brand from '../brand'
-//   ...
-//   const Native = Brand[art.native]
-//   if (Native) return <Native className={className} aria-hidden={alt ? undefined : true} />
-//
-// Entries without `native` (the login/signup scenes, the About page globe) keep their file.
-import { Icon } from '../ui'
-
-const IMG = '/static/images'
+// Every illustration on the public site goes through <Art name="…" />: each slot names a
+// scene from our brand set (components/brand/illustrations.jsx), so a drawing can be
+// swapped for another here without touching the pages. Scenes take their colours from
+// styles/brand.css, so they follow the theme.
+import { ILLUSTRATIONS } from '../brand/illustrations'
 
 const ART = {
-  // Homepage hero, around the headline
-  tutoring:    { native: 'TutoringOneToOne', file: `${IMG}/homepage/tutoring.svg` },
-  group:       { native: 'GroupStudy',       file: `${IMG}/homepage/group.svg` },
-  forum:       { native: 'StudentForum',     file: `${IMG}/homepage/forum1.svg` },
-  events:      { native: 'Events',           file: `${IMG}/homepage/events.svg` },
-  uniGuidance: { native: 'UniGuidance',      file: `${IMG}/homepage/uniguide.svg` },
+  // Homepage
+  tutoring:    'TutoringOneToOne',
+  group:       'GroupStudy',
+  forum:       'StudentForum',
+  events:      'Events',
+  uniGuidance: 'UniGuidance',
+  studyNotes:  'StudyNotes',
+  step1:       'Profile',
+  step2:       'Students',
+  step3:       'FindTutor',
+  becomeTutor: 'BecomeTutor',
 
-  // Features
-  findTutor:   { native: 'FindTutor',    file: `${IMG}/howitworks/tutors.svg` },
-  uni:         { native: 'UniGuidance',  file: `${IMG}/howitworks/uni.svg` },
-  classes:     { native: 'Classes',      file: `${IMG}/howitworks/events.svg` },
-  studyRooms:  { native: 'GroupStudy',   file: `${IMG}/howitworks/group.svg` },
-  forumBoard:  { native: 'StudentForum', file: `${IMG}/howitworks/forum.svg` },
-  studyNotes:  { native: 'StudyNotes',   file: `${IMG}/homepage/subjects.svg` },
+  // How it works
+  findTutor:   'FindTutor',
+  uni:         'UniGuidance',
+  classes:     'Classes',
+  studyRooms:  'GroupStudy',
+  forumBoard:  'StudentForum',
+  stepJoin:    'Rocket',
+  stepMode:    'Students',
+  stepExplore: 'Messages',
+  studentMode: 'StudyNotes',
+  tutorMode:   'Profile',
 
-  // People and modes
-  students:    { native: 'Students',    file: `${IMG}/hub/students.svg` },
-  tutorMode:   { native: 'Profile',     file: `${IMG}/hub/tutor.svg` },
-  becomeTutor: { native: 'BecomeTutor', file: `${IMG}/homepage/becoming_tutor.svg` },
-  space:       { native: 'BecomeTutor', file: `${IMG}/becometutor/space.svg` },
-  earnings:    { native: 'Earnings',    file: `${IMG}/becometutor/list.svg` },
-  mission:     { file: `${IMG}/aboutus/earth.svg` },
-
-  // The three steps (homepage and the How it works cards)
-  step1:       { native: 'Profile',      file: `${IMG}/homepage/step1.svg` },
-  step2:       { native: 'Students',     file: `${IMG}/homepage/step2.svg` },
-  step3:       { native: 'FindTutor',    file: `${IMG}/homepage/step3.svg` },
-  stepJoin:    { native: 'Profile',      file: `${IMG}/howitworks/step1.svg` },
-  stepMode:    { native: 'Students',     file: `${IMG}/howitworks/step2.svg` },
-  stepExplore: { native: 'Messages',     file: `${IMG}/howitworks/step3.svg` },
-
-  // Log in / sign up scenes
-  login:       { file: `${IMG}/login/login.svg` },
-  signup:      { file: `${IMG}/signup/signup.svg` },
-
-  // The logo mark is the Material rocket until the native one exists
-  rocket:      { native: 'Rocket', icon: 'rocket_launch' },
+  // About us, Become a tutor, log in and sign up
+  mission:     'Students',
+  space:       'BecomeTutor',
+  earnings:    'Earnings',
+  login:       'Rocket',
+  signup:      'BecomeTutor',
 }
 
-export default function Art({ name, alt = '', className = '', eager = false }) {
-  const art = ART[name]
-  if (!art) return null
-  if (art.icon) return <Icon name={art.icon} className={className} />
-  return (
-    <img
-      src={art.file}
-      alt={alt}
-      className={className}
-      loading={eager ? 'eager' : 'lazy'}
-      decoding="async"
-      draggable="false"
-    />
-  )
+/** Decorative by default; pass `alt` to give the scene an accessible name. */
+export default function Art({ name, alt = '', className, backdrop = true }) {
+  const Scene = ILLUSTRATIONS[ART[name]]
+  if (!Scene) return null
+  return <Scene title={alt} className={className} backdrop={backdrop} />
 }

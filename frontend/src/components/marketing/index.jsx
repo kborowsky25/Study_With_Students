@@ -48,7 +48,7 @@ export function Checks({ items, className = '' }) {
   return (
     <ul className={`mk-checks ${className}`}>
       {items.map((item) => (
-        <li key={item}><Icon name="check_box" className="mk-check" />{item}</li>
+        <li key={item}><Icon name="check_circle" className="mk-check" />{item}</li>
       ))}
     </ul>
   )

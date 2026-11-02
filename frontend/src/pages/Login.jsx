@@ -32,7 +32,7 @@ export default function Login() {
     <MarketingPage title="Log in" footer={false}>
       <section className="mk-auth">
         <div className="mk-container mk-auth-grid">
-          <div className="mk-auth-art"><Art name="login" eager /></div>
+          <div className="mk-auth-art"><Art name="login" /></div>
 
           <div className="mk-auth-panel">
             <h1 className="mk-auth-title">Log in</h1>

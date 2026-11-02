@@ -250,7 +250,7 @@ export default function Signup() {
             )}
           </div>
 
-          <div className="mk-auth-art"><Art name="signup" eager /></div>
+          <div className="mk-auth-art"><Art name="signup" /></div>
         </div>
       </section>
     </MarketingPage>

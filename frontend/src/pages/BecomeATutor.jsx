@@ -47,7 +47,7 @@ export default function BecomeATutor() {
                 </li>
               ))}
             </ol>
-            <div className="mk-process-art"><Art name="space" eager /></div>
+            <div className="mk-process-art"><Art name="space" /></div>
           </div>
           <div className="mk-actions">
             <Link to={start} className="mk-btn mk-btn-coral">Become a tutor</Link>
@@ -65,7 +65,7 @@ export default function BecomeATutor() {
       <section className="mk-band mk-band-expect" aria-labelledby="expect-title">
         <Wave top shape="b" />
         <div className="mk-container">
-          <div className="mk-expect">
+          <div className="mk-expect brand-dark">
             <div>
               <h2 id="expect-title" className="mk-h2">Here's what to expect</h2>
               <ol className="mk-numbered">

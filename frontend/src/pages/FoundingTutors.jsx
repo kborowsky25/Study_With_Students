@@ -30,7 +30,7 @@ export default function FoundingTutors() {
               <Link to="/become-tutor" className="mk-btn mk-btn-slate">How tutoring works</Link>
             </div>
           </div>
-          <div className="mk-founding-art"><Art name="becomeTutor" eager /></div>
+          <div className="mk-founding-art"><Art name="becomeTutor" /></div>
         </div>
       </section>
 

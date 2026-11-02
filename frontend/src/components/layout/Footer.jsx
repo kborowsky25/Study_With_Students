@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import Art from '../marketing/Art'
+import { Logo } from '../brand/Logo'
 
 // The original footer: logo, two columns of links, and the rights line between rules.
 // Navy in both themes. Styles: styles/marketing.css (.mk-footer).
@@ -31,9 +31,8 @@ export default function Footer() {
       <div className="mk-container">
         <div className="mk-footer-grid">
           <div className="mk-footer-brand">
-            <Link to="/" className="mk-logo">
-              <Art name="rocket" className="mk-logo-mark" />
-              Study with Students
+            <Link to="/" className="mk-logo" aria-label="Study with Students, home">
+              <Logo size={28} />
             </Link>
             <p>The first 100% student led tutoring website. Free to join, and tutors keep 100% of their rate.</p>
           </div>
