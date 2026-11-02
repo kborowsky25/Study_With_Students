@@ -1,0 +1,31 @@
+/* Reports: the report dialog in Messages and the admin queue. */
+
+.dialog.report-dialog { max-width: 460px; }
+.report-reasons { display: flex; flex-direction: column; gap: 1px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.report-reasons legend { padding: 0; margin-bottom: 6px; font-size: 12.5px; font-weight: 500; color: var(--text-muted); }
+.report-reasons label { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 6px 10px; border-radius: var(--radius-sm); font-size: 13.5px; line-height: 1.35; cursor: pointer; }
+.report-reasons label:hover { background: rgb(var(--fg) / 0.05); }
+.report-reasons label.on { background: var(--coral-soft); color: var(--coral); }
+.report-reasons input, .report-block input { margin: 0; flex-shrink: 0; accent-color: var(--coral); }
+.report-urgent { font-size: 13px; font-weight: 600; color: var(--red); }
+.report-block { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); cursor: pointer; }
+
+/* Admin queue */
+.dialog.report-review { max-width: 620px; }
+.report-facts { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 6px 12px; font-size: 13px; }
+.report-facts dt { color: var(--text-faint); }
+.report-facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.report-quote { padding: 8px 12px; border-left: 2px solid var(--coral); font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.report-quote .original { display: block; margin-top: 4px; color: var(--text-muted); }
+.report-log { display: flex; flex-direction: column; max-height: 300px; overflow-y: auto; border-top: 1px solid var(--border); }
+.report-log > div { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; line-height: 1.45; }
+.report-log .who { color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.report-log .what { white-space: pre-wrap; overflow-wrap: anywhere; }
+.report-log .what.flagged { color: var(--coral); }
+.report-log .original { display: block; color: var(--text-muted); }
+
+@media (max-width: 520px) {
+  .report-facts { grid-template-columns: 1fr; gap: 0 0; }
+  .report-facts dd { margin-bottom: 6px; }
+  .report-log > div { grid-template-columns: 1fr; gap: 2px; }
+}

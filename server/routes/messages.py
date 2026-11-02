@@ -1,10 +1,11 @@
 """Messages: direct conversations between users, with read receipts.
 
-Who can write to whom is one rule, CAN_WRITE: anyone may write to a verified tutor, a tutor may
-write to the students whose request they accepted, and anyone may reply to someone who wrote to
-them. So nobody can start a conversation with an under-18 student: only the tutors they asked
-for, and people they wrote to themselves, can message them. A block stops messages both ways
-(server/routes/safety.py).
+Who can write to whom is one rule, CAN_WRITE: anyone may write to a verified tutor, a verified
+tutor may write to the students whose request they accepted, and anyone may reply to someone who
+wrote to them. So nobody can start a conversation with an under-18 student: only the tutors they
+asked for, and people they wrote to themselves, can message them. "Verified" is an approved
+tutor screening; a tutor profile still waiting for it can't start conversations either way.
+A block stops messages both ways (server/routes/safety.py).
 
 Between a tutor and a student or parent (and whenever an under-18 is involved), phone numbers,
 emails and off-platform handles are hidden (server/contact_details.py). The original stays in
@@ -37,14 +38,15 @@ CAN_WRITE = f"""
         OR EXISTS (SELECT 1 FROM tutor_requests r
                    JOIN tutor_profiles   mt ON mt.id_tutor  = r.tutor_id
                    JOIN student_profiles s  ON s.id_student = r.student_id
-                   WHERE r.status = 'accepted' AND mt.id_user = %(me)s AND s.id_user = u.id_user)
+                   WHERE r.status = 'accepted' AND mt.id_user = %(me)s AND mt.screening_status = 'approved'
+                     AND s.id_user = u.id_user)
         OR EXISTS (SELECT 1 FROM active_students a
                    JOIN tutor_profiles   mt ON mt.id_tutor  = a.id_tutor
                    JOIN student_profiles s  ON s.id_student = a.id_student
-                   WHERE mt.id_user = %(me)s AND s.id_user = u.id_user)
+                   WHERE mt.id_user = %(me)s AND mt.screening_status = 'approved' AND s.id_user = u.id_user)
         OR EXISTS (SELECT 1 FROM active_tutors a
                    JOIN tutor_profiles mt ON mt.id_tutor = a.id_tutor
-                   WHERE mt.id_user = %(me)s AND a.id_user = u.id_user)
+                   WHERE mt.id_user = %(me)s AND mt.screening_status = 'approved' AND a.id_user = u.id_user)
         OR (EXISTS (SELECT 1 FROM tutor_profiles t WHERE t.id_user = u.id_user AND t.screening_status = 'approved')
             AND NOT {minor_sql('u.id_user')})
     )
@@ -74,7 +76,9 @@ def refusal(cur, me, other):
                EXISTS (SELECT 1 FROM user_blocks WHERE blocker_id = %(me)s AND blocked_id = u.id_user) AS i_blocked,
                EXISTS (SELECT 1 FROM user_blocks WHERE blocker_id = u.id_user AND blocked_id = %(me)s) AS blocked_me,
                EXISTS (SELECT 1 FROM tutor_profiles WHERE id_user = u.id_user) AS is_tutor,
-               EXISTS (SELECT 1 FROM tutor_profiles WHERE id_user = %(me)s) AS me_tutor
+               EXISTS (SELECT 1 FROM tutor_profiles WHERE id_user = %(me)s) AS me_tutor,
+               EXISTS (SELECT 1 FROM tutor_profiles
+                       WHERE id_user = %(me)s AND screening_status = 'approved') AS me_verified
         FROM users u WHERE u.id_user = %(other)s
     """, {'me': me, 'other': other})
     rows = cur.fetchall()
@@ -87,6 +91,8 @@ def refusal(cur, me, other):
         return 'blocked', 'You can’t message this person'
     if r['is_tutor']:
         return 'tutor_not_verified', f'You can message {first} once they’re a verified tutor'
+    if r['me_tutor'] and not r['me_verified']:
+        return 'not_verified', 'You can message students once your tutor profile is verified'
     if r['me_tutor']:
         return 'not_your_student', (f'You can message {first} once you’ve accepted their request '
                                     'to be their tutor, or after they write to you')

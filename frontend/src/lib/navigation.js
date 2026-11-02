@@ -71,7 +71,36 @@ export const TUTOR_NAV = [
   },
 ]
 
-export const navFor = (mode) => (mode === 'tutor' ? TUTOR_NAV : STUDENT_NAV)
+// Parents: their children's sessions, progress and payments live on the parent home page.
+export const PARENT_NAV = [
+  {
+    items: [
+      { to: '/hub/parent', label: 'Home',     icon: 'space_dashboard', key: 'h' },
+      { to: '/messages',   label: 'Messages', icon: 'chat',            key: 'm', badge: 'unread' },
+    ],
+  },
+]
+
+export const navFor = (mode) => ({ tutor: TUTOR_NAV, parent: PARENT_NAV })[mode] ?? STUDENT_NAV
+
+/**
+ * The hub views a user can be in: student (everyone except accounts that signed up as a
+ * parent), tutor (anyone with a tutor profile: the screening and DBS pages use it) and parent.
+ */
+export function modesFor(user) {
+  if (!user) return ['student']
+  return [
+    (user.is_student !== false || !user.is_parent) && 'student',
+    user.is_tutor && 'tutor',
+    user.is_parent && 'parent',
+  ].filter(Boolean)
+}
+
+/** The views offered as "Switch to … mode": tutor mode only once the tutor is verified. */
+export const switchableModes = (user) =>
+  modesFor(user).filter((m) => m !== 'tutor' || user?.screening_status === 'approved')
+
+export const MODE_LABELS = { student: 'Student', tutor: 'Tutor', parent: 'Parent' }
 
 export const flatNav = (mode) => navFor(mode).flatMap((group) => group.items)
 

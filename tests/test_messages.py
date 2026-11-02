@@ -125,6 +125,14 @@ class TestWhoCanWrite:
         make.connect(sam, oliver)
         assert send(api, oliver, sam, 'Welcome aboard!').status_code == 201
 
+    @pytest.mark.parametrize('status', ['pending', 'none'])
+    def test_an_unverified_tutor_cannot_message_the_students_who_asked(self, api, make, people, status):
+        _, _, sam = people
+        noah = make.tutor('Noah Fox', status=status)
+        make.connect(sam, noah)
+        res = send(api, noah, sam, 'Hi Sam')
+        assert (res.status_code, res.get_json()['code']) == (403, 'not_verified')
+
     def test_a_tutor_replies_to_a_student_who_wrote_first(self, api, people):
         _, oliver, sam = people
         send(api, sam, oliver, 'Are you free on Sunday?')

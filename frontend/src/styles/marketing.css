@@ -446,6 +446,17 @@
 .mk-input:focus { border-color: var(--coral); }
 .mk .mk-input:focus-visible { outline: none; }
 
+/* Sign-up: student or parent account, date of birth, the parent's confirmation */
+.mk-account { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mk-account button { min-height: 48px; padding: 6px 10px; border: 1.5px solid var(--border-strong); border-radius: 12px; background: var(--input-bg); color: var(--text-muted); font: inherit; font-size: 15px; font-weight: 700; line-height: 1.25; cursor: pointer; transition: border-color 0.15s ease, color 0.15s ease; }
+.mk-account button:hover { color: var(--text); }
+.mk-account button.is-on { border-color: var(--coral); color: var(--coral); }
+.mk-field { display: flex; flex-direction: column; gap: 6px; }
+.mk-field > span { font-size: 14px; font-weight: 700; color: var(--text-muted); }
+.mk-field .mk-input { appearance: none; min-width: 0; }
+.mk-agree { display: flex; align-items: flex-start; gap: 10px; font-size: 15px; font-weight: 500; line-height: 1.45; color: var(--text-muted); cursor: pointer; }
+.mk-agree input { width: 18px; height: 18px; margin: 2px 0 0; flex-shrink: 0; accent-color: var(--coral); }
+
 .mk-auth-alt { margin-top: 26px; text-align: center; font-size: 15px; font-weight: 500; color: var(--text-muted); }
 .mk-auth-alt a { margin-left: 4px; color: var(--coral); font-weight: 800; text-decoration: none; }
 .mk-auth-alt a:hover { text-decoration: underline; }

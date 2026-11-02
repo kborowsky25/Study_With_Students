@@ -10,6 +10,7 @@ import { toDateInput } from '../lib/dates'
 import { formatDate, formatMoney } from '../lib/format'
 import { bookingFee } from '../lib/sessions'
 import DbsReviewPanel from '../components/features/DbsReviewPanel'
+import ReportsPanel from '../components/features/ReportsPanel'
 
 const TABS = [
   ['overview', 'Overview'],
@@ -17,12 +18,14 @@ const TABS = [
   ['users', 'Users'],
   ['sessions', 'Sessions'],
   ['checks', 'Background checks'],
+  ['reports', 'Reports'],
 ]
 
 const ROLES = [
   ['', 'All'],
   ['student', 'Students'],
   ['tutor', 'Tutors'],
+  ['parent', 'Parents'],
 ]
 
 /** One request per admin panel, loaded independently so a slow one doesn't hold up the rest. */
@@ -42,6 +45,7 @@ const fetchStats = () => client.get('/admin/stats').then((r) => r.data.stats)
 const fetchQueue = () => getScreeningQueue().then((r) => r.data.queue ?? [])
 const fetchUsers = () => client.get('/admin/users').then((r) => r.data.users ?? [])
 const fetchEvents = () => client.get('/admin/recent-events').then((r) => r.data.events ?? [])
+const fetchOpenReports = () => client.get('/admin/reports').then((r) => r.data.open ?? 0)
 
 function Retry({ title, onRetry }) {
   return <EmptyState title={title} action={<button className="btn btn-ghost btn-sm" onClick={onRetry}>Try again</button>} />
@@ -101,7 +105,8 @@ function Users({ users, status, onRetry }) {
   const q = query.trim().toLowerCase()
   const shown = list.filter((u) => {
     const text = !q || u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q)
-    const kind = !role || (role === 'tutor' && u.is_tutor) || (role === 'student' && !u.is_tutor)
+    const kind = !role || (role === 'tutor' && u.is_tutor) || (role === 'parent' && u.is_parent)
+      || (role === 'student' && !u.is_tutor && !u.is_parent)
     return text && kind
   })
 
@@ -131,7 +136,8 @@ function Users({ users, status, onRetry }) {
                   <div className="meta">{u.email}</div>
                 </div>
                 <div className="row-actions">
-                  {u.is_tutor ? <ScreeningPill status={u.screening_status} /> : <span className="side hide-mobile">Student</span>}
+                  {u.is_tutor ? <ScreeningPill status={u.screening_status} />
+                    : <span className="side hide-mobile">{u.is_parent ? 'Parent' : 'Student'}</span>}
                 </div>
               </Link>
             ))}
@@ -174,6 +180,7 @@ export default function SuperAdmin() {
   const queue = useAdminData(fetchQueue)
   const users = useAdminData(fetchUsers)
   const events = useAdminData(fetchEvents)
+  const reports = useAdminData(fetchOpenReports)
 
   const pending = useMemo(() => (queue.data ?? []).filter((t) => t.screening_status === 'pending').length, [queue.data])
 
@@ -197,6 +204,7 @@ export default function SuperAdmin() {
           <button key={key} role="tab" aria-selected={tab === key} className={tab === key ? 'on' : ''} onClick={() => setTab(key)}>
             {label}
             {key === 'applications' && pending > 0 && <span className="nav-badge">{pending}</span>}
+            {key === 'reports' && reports.data > 0 && <span className="nav-badge">{reports.data}</span>}
           </button>
         ))}
       </div>
@@ -209,6 +217,7 @@ export default function SuperAdmin() {
       {tab === 'users' && <Users users={users.data} status={users.status} onRetry={users.load} />}
       {tab === 'sessions' && <Sessions events={events.data} status={events.status} onRetry={events.load} />}
       {tab === 'checks' && <DbsReviewPanel />}
+      {tab === 'reports' && <ReportsPanel onOpenCount={(n) => reports.setData(() => n)} />}
     </HubLayout>
   )
 }

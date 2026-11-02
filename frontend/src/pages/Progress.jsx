@@ -1,6 +1,7 @@
 // Progress by exam-spec topic, from the tutors' lesson notes.
 //   /progress                the signed-in student's own progress (every tutor's notes)
-//   /progress?student=<id>   a tutor's view of one of their students (user id; only their own notes)
+//   /progress?student=<id>   a tutor's view of one of their students (user id; only their own notes),
+//                            or a linked parent's view of their child (every tutor's notes)
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import HubLayout from '../components/layout/HubLayout'
@@ -15,6 +16,7 @@ import { firstName, formatDate } from '../lib/format'
 import { useQuery } from '../lib/query'
 import { Q } from '../lib/queries'
 import { CONFIDENCE, NQ } from '../lib/progress'
+import { FQ } from '../lib/family'
 import '../components/features/progress.css'
 
 const plural = (n, word) => `${word}${n === 1 ? '' : 's'}`
@@ -144,7 +146,10 @@ export default function Progress() {
   const [notesKey, fetchNotes] = NQ.notes(studentId)
   const progress = useQuery(progressKey, fetchProgress, { enabled: Boolean(studentId) })
   const notes = useQuery(notesKey, fetchNotes, { enabled: Boolean(studentId) })
-  const students = useQuery(Q.activeStudents[0], Q.activeStudents[1], { enabled: !isSelf })
+  const family = useQuery(...FQ.family, { enabled: !isSelf && Boolean(user?.is_parent) })
+  const children = family.data?.children ?? []
+  const isParent = !isSelf && children.some((c) => c.user_id === studentId)
+  const students = useQuery(Q.activeStudents[0], Q.activeStudents[1], { enabled: !isSelf && Boolean(user?.is_tutor) && !isParent })
 
   useEffect(() => { setTab('overview') }, [studentId])
 
@@ -157,7 +162,7 @@ export default function Progress() {
   const homework = (data?.homework ?? []).filter((h) => !subject || h.subject === subject.key)
   const openHomework = (data?.homework ?? []).filter((h) => !h.done_at).length
 
-  const studentList = students.data?.students ?? []
+  const studentList = isParent ? children : (students.data?.students ?? [])
   const switcher = !isSelf && studentList.length > 1 && (
     <select className="input" style={{ width: 'auto' }} value={studentId} aria-label="Student"
       onChange={(e) => navigate({ to: '/progress', search: { student: Number(e.target.value) } })}>
@@ -174,14 +179,15 @@ export default function Progress() {
   } else if (!data.lessons) {
     body = (
       <Card>
-        <EmptyState title={isSelf ? 'Your tutor’s notes appear here after each session' : `No lesson notes for ${firstName(name)} yet`} />
+        <EmptyState title={isSelf ? 'Your tutor’s notes appear here after each session'
+          : isParent ? `${firstName(name)}’s tutors’ notes appear here after each session` : `No lesson notes for ${firstName(name)} yet`} />
       </Card>
     )
   } else {
     const timeline = (
       <Card title="Lesson notes" count={shownNotes.length || null}>
         {notes.data
-          ? <ProgressTimeline notes={shownNotes} canTick={isSelf} showTutor={isSelf} onEdit={(n) => setEditing(n.event_id)} />
+          ? <ProgressTimeline notes={shownNotes} canTick={isSelf} showTutor={isSelf || isParent} onEdit={(n) => setEditing(n.event_id)} />
           : <SkeletonRows rows={3} />}
       </Card>
     )
@@ -233,7 +239,7 @@ export default function Progress() {
   }
 
   return (
-    <HubLayout initialMode={isSelf ? undefined : 'tutor'}>
+    <HubLayout initialMode={isSelf ? undefined : isParent || !user?.is_tutor ? 'parent' : 'tutor'}>
       <PageTitle title={isSelf || !name ? 'Progress' : `${name} · Progress`} icon="insights" />
 
       <div className="dash-head">
@@ -246,7 +252,9 @@ export default function Progress() {
         {!isSelf && (
           <div className="dash-actions">
             {switcher}
-            <Link to="/messages" search={{ user: studentId }} className="btn btn-ghost"><Icon name="chat" />Message</Link>
+            {isParent
+              ? <Link to="/hub/parent" search={{ child: studentId }} className="btn btn-ghost"><Icon name="space_dashboard" />Overview</Link>
+              : <Link to="/messages" search={{ user: studentId }} className="btn btn-ghost"><Icon name="chat" />Message</Link>}
           </div>
         )}
       </div>

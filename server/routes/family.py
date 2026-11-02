@@ -16,6 +16,7 @@ from flask_jwt_extended import jwt_required
 
 from ..config import Config
 from ..db import current_user_id, get_db
+from ..extensions import stripe_enabled
 from ..family import MAX_PARENTS, is_linked_parent, is_minor, needs_parent
 from ..ratelimit import jwt_user, rate_limit
 from .auth import _valid_email, build_session
@@ -307,7 +308,8 @@ def remove_link(link_id):
 @bp.route('/family/children/<int:child_id>', methods=['GET'])
 @jwt_required()
 def child_overview(child_id):
-    """Sessions (upcoming and the last RECENT_DAYS days) and tutors of one of my children."""
+    """Sessions (upcoming and the last RECENT_DAYS days) and tutors of one of my children, and
+    whether card payments are on."""
     uid  = current_user_id()
     conn = get_db(); cur = conn.cursor(dictionary=True)
     try:
@@ -341,7 +343,7 @@ def child_overview(child_id):
             path = t.pop('avatar_path')
             t['avatar_url'] = f'/api/uploads/tutor-avatars/{path}' if path else None
             t['can_message'] = can_write(cur, uid, t['user_id'])
-        return jsonify({'child': child, 'events': events, 'tutors': tutors})
+        return jsonify({'child': child, 'events': events, 'tutors': tutors, 'stripe_enabled': stripe_enabled()})
     finally:
         cur.close(); conn.close()
 

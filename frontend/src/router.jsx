@@ -36,6 +36,9 @@ const StudyRoomsTutor = lazy(() => import('./pages/StudyRoomsTutor'))
 const Availability    = lazy(() => import('./pages/Availability'))
 const BackgroundCheck = lazy(() => import('./pages/BackgroundCheck'))
 
+// Hub — parent
+const HubParent       = lazy(() => import('./pages/HubParent'))
+
 // Hub — shared
 const Messages       = lazy(() => import('./pages/Messages'))
 const ForumHome      = lazy(() => import('./pages/ForumHome'))
@@ -73,17 +76,23 @@ function requireVerifiedTutor() {
   if (user.screening_status !== 'approved') throw redirect({ to: '/tutor-screening' })
 }
 
+function requireParent() {
+  const user = requireAuth()
+  if (!user.is_parent) throw redirect({ to: '/hub/student' })
+}
+
 function requireAdmin() {
   const user = requireAuth()
   if (!user.is_admin) throw redirect({ to: '/hub' })
 }
 
-/** /hub → the dashboard for the last-used view. */
+/** /hub → the dashboard for the last-used view (a parent-only account always has the parent one). */
 function redirectToHub() {
   const user = requireAuth()
-  const tutorView = user.is_tutor && user.screening_status === 'approved' &&
-    localStorage.getItem('sws_hub_mode') === 'tutor'
-  throw redirect({ to: tutorView ? '/hub/tutor' : '/hub/student' })
+  const last = localStorage.getItem('sws_hub_mode')
+  const tutorView = user.is_tutor && user.screening_status === 'approved' && last === 'tutor'
+  const parentView = user.is_parent && (last === 'parent' || user.is_student === false)
+  throw redirect({ to: tutorView ? '/hub/tutor' : parentView ? '/hub/parent' : '/hub/student' })
 }
 
 // ── Route table ───────────────────────────────────────────────────────────────
@@ -114,6 +123,7 @@ const routeTree = rootRoute.addChildren([
   page('/hub',             () => null, redirectToHub),
   page('/hub/student',     HubStudent, requireAuth),
   page('/hub/tutor',       HubTutor,   requireVerifiedTutor),
+  page('/hub/parent',      HubParent,  requireParent),
 
   // Students
   page('/find-tutors',      FindTutors,      requireAuth),

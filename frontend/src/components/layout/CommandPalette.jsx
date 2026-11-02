@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
-import { flatNav } from '../../lib/navigation'
+import { flatNav, switchableModes } from '../../lib/navigation'
 import { Icon, Kbd } from '../ui'
 
 /** ⌘K — jump to any page or run a quick action. */
@@ -24,11 +24,9 @@ export default function CommandPalette({ mode, onClose, onSwitchMode }) {
       mode === 'student' && { icon: 'event_available', label: 'Book a session', run: go('/active-tutors') },
       { icon: 'edit_square', label: 'New message', run: go('/messages') },
       { icon: dark ? 'light_mode' : 'dark_mode', label: dark ? 'Switch to light mode' : 'Switch to dark mode', run: toggle },
-      user?.is_tutor && {
-        icon: 'swap_horiz',
-        label: mode === 'tutor' ? 'Switch to student view' : 'Switch to tutor view',
-        run: () => onSwitchMode(mode === 'tutor' ? 'student' : 'tutor'),
-      },
+      ...switchableModes(user).filter((m) => m !== mode).map((m) => ({
+        icon: 'swap_horiz', label: `Switch to ${m} view`, run: () => onSwitchMode(m),
+      })),
       { icon: 'logout', label: 'Log out', run: () => { logout(); navigate({ to: '/login' }) } },
     ].filter(Boolean).map((a) => ({ group: 'Actions', ...a }))
     return [...pages, ...actions]

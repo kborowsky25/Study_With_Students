@@ -59,6 +59,11 @@
 .convo-preview { font-size: 12.5px; color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .convo.unread .convo-name { font-weight: 700; }
 .convo.unread .convo-preview { color: var(--text-muted); }
+.convo .convo-blocked { flex-shrink: 0; font-size: 12px; color: var(--text-faint); }
+
+/* A parent's view: their children's conversations with tutors, under their own */
+.inbox-group { padding: 14px 10px 6px; font-size: 11.5px; font-weight: 500; color: var(--text-faint); }
+.inbox-group:first-child { padding-top: 4px; }
 
 .inbox-thread { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
 .thread-empty { flex: 1; display: flex; align-items: center; justify-content: center; height: 100%; }
@@ -73,8 +78,11 @@
   border-bottom: 1px solid var(--border);
 }
 .thread-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.thread-sub { font-size: 12px; color: var(--text-faint); }
+.thread-sub { font-size: 12px; color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.thread-sub .icon { font-size: 13px; vertical-align: -2px; margin-right: 5px; }
 .thread-head .thread-back { display: none; }
+.thread-actions { position: relative; flex-shrink: 0; }
+.thread-actions .thread-menu { top: calc(100% + 6px); right: 0; }
 
 .thread-scroll { flex: 1; overflow-y: auto; padding: 8px 24px 16px; }
 
@@ -99,6 +107,10 @@
 .bubble-row.tail .bubble { border-bottom-left-radius: 5px; }
 .bubble-row.mine .bubble { background: var(--coral); border-color: transparent; color: #fff; }
 .bubble-row.mine.tail .bubble { border-bottom-left-radius: 16px; border-bottom-right-radius: 5px; }
+/* In a parent's read-only view the child's side isn't the reader's own, so it stays neutral */
+.bubble-row.read-only.mine .bubble { background: rgb(var(--fg) / 0.08); color: var(--text); }
+.bubble .hidden-detail { font-style: italic; color: var(--text-faint); }
+.bubble-row.mine:not(.read-only) .bubble .hidden-detail { color: rgb(255 255 255 / 0.78); }
 .bubble-meta { font-size: 11px; color: var(--text-faint); margin-top: 4px; padding: 0 4px; }
 
 .composer {
@@ -129,6 +141,8 @@
 .composer textarea::placeholder { color: var(--text-faint); }
 .composer .btn { width: 36px; padding: 0; }
 .composer-hint { font-size: 11px; color: var(--text-faint); padding: 7px 22px 12px; display: flex; align-items: center; gap: 4px; }
+/* In place of the composer: why there's nothing to type in (read-only, blocked, not allowed) */
+.composer-note { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px 10px; margin: 0 20px; padding: 14px 8px 18px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--text-faint); text-align: center; }
 
 /* "New message" picker: results are buttons so they work with the keyboard */
 .inbox-picker .palette-item { width: 100%; border: 0; font: inherit; text-align: left; }
@@ -146,4 +160,5 @@
   .thread-head .thread-back { display: inline-flex; margin-left: -8px; }
   .thread-scroll { padding: 8px 14px 14px; }
   .composer { margin: 0 12px 12px; }
+  .composer-note { margin: 0 12px; }
 }

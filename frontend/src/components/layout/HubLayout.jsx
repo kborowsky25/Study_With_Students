@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { PageTitleProvider, usePageTitleCtx } from '../../context/PageTitleContext'
 import { useUnreadCount } from '../../hooks/useUnreadCount'
-import { flatNav, matchNav } from '../../lib/navigation'
+import { flatNav, matchNav, modesFor } from '../../lib/navigation'
 import { Icon, Kbd } from '../ui'
 import CommandPalette from './CommandPalette'
 import Sidebar, { SIDEBAR_MAX, SIDEBAR_MIN } from './Sidebar'
@@ -66,9 +66,11 @@ function HubInner({ children, initialMode, raw, noScroll }) {
   const unread = useUnreadCount()
   useStreak()
 
+  // Student, tutor or parent view: the page's own if it has one, else the last one used
+  const modes = modesFor(user)
   const [mode, setMode] = useState(() => {
-    if (!user?.is_tutor) return 'student'
-    return initialMode ?? localStorage.getItem(MODE_KEY) ?? 'student'
+    const preferred = [initialMode, localStorage.getItem(MODE_KEY)]
+    return preferred.find((m) => modes.includes(m)) ?? modes[0]
   })
   const [width, setWidth] = useState(() => clampWidth(readNumber(WIDTH_KEY, DEFAULT_WIDTH)))
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSED_KEY) === '1')
@@ -78,14 +80,19 @@ function HubInner({ children, initialMode, raw, noScroll }) {
   const [help, setHelp] = useState(false)
   const goto = useRef({ active: false, timer: null })
 
-  useEffect(() => { if (initialMode && user?.is_tutor) setMode(initialMode) }, [initialMode, user?.is_tutor])
+  const modeKey = modes.join()
+  useEffect(() => {
+    const available = modeKey.split(',')
+    if (initialMode && available.includes(initialMode)) setMode(initialMode)
+    else setMode((m) => (available.includes(m) ? m : available[0]))
+  }, [initialMode, modeKey])
   useEffect(() => { localStorage.setItem(MODE_KEY, mode) }, [mode])
   useEffect(() => { localStorage.setItem(COLLAPSED_KEY, collapsed ? '1' : '0') }, [collapsed])
   useEffect(() => { setDrawer(false) }, [pathname])
 
   const switchMode = useCallback((next) => {
     setMode(next)
-    navigate({ to: next === 'tutor' ? '/hub/tutor' : '/hub/student' })
+    navigate({ to: `/hub/${next}` })
   }, [navigate])
 
   // Drag the sidebar edge to resize; double-click resets
