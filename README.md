@@ -49,12 +49,22 @@ app in `api/index.py` (Python serverless function). In the Vercel project:
    Railway, TiDB Cloud or AWS RDS), then load `db/schema.sql` (the API also creates
    missing tables on startup).
 3. **Environment variables** (Production): `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`,
-   `DB_PASSWORD`, optional `DB_SSL_CA`; `SECRET_KEY`, `JWT_SECRET_KEY` (long random
-   strings); `FRONTEND_URL=https://www.studywithstudents.co.uk`; `SUPER_ADMIN_EMAIL`,
-   `ADMIN_SECRET`; `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`;
-   `STRIPE_SECRET_KEY`; and for the frontend build `VITE_STRIPE_PUBLISHABLE_KEY`.
-4. Push to the production branch. Check `https://www.studywithstudents.co.uk/api/health`
+   `DB_PASSWORD`, optional `DB_SSL_CA`; `SECRET_KEY`, `JWT_SECRET_KEY` (random, 32+
+   characters); `FRONTEND_URL=https://www.studywithstudents.co.uk`; `SUPER_ADMIN_EMAIL`,
+   `ADMIN_SECRET` (32+ characters); `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USERNAME`,
+   `MAIL_PASSWORD`; `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`; and for the frontend
+   build `VITE_STRIPE_PUBLISHABLE_KEY`. Give Preview its own values (Stripe test keys, a
+   separate database). In production the API refuses to start with missing or weak
+   secrets — the error is in the function logs.
+4. **Stripe webhook**: in the Stripe Dashboard add an endpoint for
+   `https://www.studywithstudents.co.uk/api/payments/webhook` with the events
+   `checkout.session.completed` and `checkout.session.async_payment_succeeded`, and put its
+   signing secret in `STRIPE_WEBHOOK_SECRET`. It marks a session paid even when the family
+   doesn't come back to the site after paying.
+5. Push to the production branch. Check `https://www.studywithstudents.co.uk/api/health`
    — it returns `{"ok": true, "database": true}` once the database is reachable.
+
+See [SECURITY.md](SECURITY.md) for what the API protects and the remaining operational to-dos.
 
 Uploaded files (avatars, study notes, tutor proofs) go to `/tmp` on Vercel and do not
 persist between requests; move them to object storage (e.g. Vercel Blob or S3) before
@@ -66,13 +76,16 @@ relying on uploads in production.
 api/index.py           WSGI entrypoint (local dev + the Vercel /api function)
 vercel.json            Vercel: builds frontend/ as static, routes /api/* to Flask
 server/
-  __init__.py          app factory: blueprints, JSON, errors, schema bootstrap
+  __init__.py          app factory: blueprints, JSON, errors, security headers, schema bootstrap
   config.py            all settings, read from the environment / .env
   db.py                MySQL connection helpers
   permissions.py       admin checks
+  ratelimit.py         @rate_limit — in-memory sliding window (per instance)
   matching.py          tutor ↔ student matching model (0–100 score + reasons)
   schema.py            creates missing tables/columns on startup — never drops
   services/email.py    verification emails (prints codes in development)
+  services/verification.py  verification codes (expiry, 5-attempt cap)
+  services/uploads.py  upload checks (extension, size, real file type)
   routes/              one blueprint per domain:
     auth  tutors  learning  events  reviews  payments  messages  forum
     notes  study_rooms  classrooms  users  screening  admin

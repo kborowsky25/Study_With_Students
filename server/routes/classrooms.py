@@ -5,12 +5,12 @@ from datetime import datetime
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 
-from ..permissions import explorer_required
 from ..db import current_user_id, get_db
 
 bp = Blueprint('classrooms', __name__, url_prefix='/api')
 
 MAX_CLASS_SIZE = 20  # classes stay small
+MAX_TITLE_LENGTH, MAX_SUBJECT_LENGTH, MAX_DESCRIPTION_LENGTH, MAX_LINK_LENGTH = 255, 100, 2000, 500
 
 
 def _parse_dt(value):
@@ -27,7 +27,7 @@ def _classrooms_missing(e):
 
 
 @bp.route('/classrooms', methods=['GET'])
-@explorer_required
+@jwt_required()
 def get_classrooms():
     uid  = current_user_id()
     conn = get_db(); cur = conn.cursor(dictionary=True)
@@ -81,10 +81,12 @@ def get_classrooms():
 def create_classroom():
     uid   = current_user_id()
     data  = request.get_json(silent=True) or {}
-    title = (data.get('title') or '').strip()
-    start = _parse_dt(data.get('start_time'))
-    end   = _parse_dt(data.get('end_time'))
-    link  = (data.get('zoom_link') or '').strip()
+    title       = str(data.get('title') or '').strip()
+    subject     = str(data.get('subject') or '').strip()
+    description = str(data.get('description') or '').strip()
+    start       = _parse_dt(data.get('start_time'))
+    end         = _parse_dt(data.get('end_time'))
+    link        = str(data.get('zoom_link') or '').strip()
     try:
         capacity = int(data.get('capacity') or MAX_CLASS_SIZE)
     except (TypeError, ValueError):
@@ -93,11 +95,15 @@ def create_classroom():
 
     if not title:
         return jsonify({'error': 'Give the class a title'}), 400
+    if (len(title) > MAX_TITLE_LENGTH or len(subject) > MAX_SUBJECT_LENGTH
+            or len(description) > MAX_DESCRIPTION_LENGTH):
+        return jsonify({'error': f'Titles are limited to {MAX_TITLE_LENGTH} characters, subjects to '
+                                 f'{MAX_SUBJECT_LENGTH} and descriptions to {MAX_DESCRIPTION_LENGTH:,}'}), 400
     if not start or not end or end <= start:
         return jsonify({'error': 'Choose a valid start and end time'}), 400
     if end <= datetime.now():
         return jsonify({'error': 'That time has already passed'}), 400
-    if link and not re.match(r'https?://\S+$', link, re.IGNORECASE):
+    if link and (len(link) > MAX_LINK_LENGTH or not re.match(r'https://[^/\s]+\S*$', link, re.IGNORECASE)):
         return jsonify({'error': 'The meeting link must start with https://'}), 400
 
     conn = get_db(); cur = conn.cursor()
@@ -112,8 +118,7 @@ def create_classroom():
         cur.execute("""
             INSERT INTO classrooms (tutor_id, title, subject, description, capacity, start_time, end_time, zoom_link)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """, (row[0], title, (data.get('subject') or '').strip() or None,
-              (data.get('description') or '').strip() or None,
+        """, (row[0], title, subject or None, description or None,
               capacity, start, end, link or None))
         conn.commit()
         return jsonify({'classroom': {'id': cur.lastrowid}}), 201
@@ -161,7 +166,7 @@ def get_my_classrooms():
 
 
 @bp.route('/classrooms/<int:classroom_id>/enroll', methods=['POST'])
-@explorer_required
+@jwt_required()
 def enroll_classroom(classroom_id):
     uid  = current_user_id()
     conn = get_db(); cur = conn.cursor()
@@ -172,7 +177,8 @@ def enroll_classroom(classroom_id):
             return jsonify({'error': 'Student profile required'}), 403
         student_id = row[0]
 
-        cur.execute("SELECT capacity FROM classrooms WHERE id = %s", (classroom_id,))
+        # Lock the class so two students can't both take the last seat
+        cur.execute("SELECT capacity FROM classrooms WHERE id = %s FOR UPDATE", (classroom_id,))
         c = cur.fetchone()
         if not c:
             return jsonify({'error': 'Classroom not found'}), 404

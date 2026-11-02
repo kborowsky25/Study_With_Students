@@ -71,13 +71,25 @@ def get_user_profile(user_id):
         cur.close(); conn.close()
 
 
+# Editable bio fields → their maximum length (column sizes in db/schema.sql)
+BIO_FIELDS = {'education_level': 100, 'school_name': 200, 'study_year': 50, 'bio': 5000}
+
+
 @bp.route('/users/me/student-bio', methods=['PUT'])
 @jwt_required()
 def update_student_bio():
     """Let a student update their public bio fields."""
     uid  = current_user_id()
-    data = request.get_json()
-    allowed = ('education_level', 'school_name', 'study_year', 'bio')
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Send the fields to update as JSON'}), 400
+    # Column names come from BIO_FIELDS only, never from the request
+    fields = {k: data[k] for k in BIO_FIELDS if k in data}
+    for key, value in fields.items():
+        if value is not None and not isinstance(value, str):
+            return jsonify({'error': f'{key} must be text'}), 400
+        if value and len(value) > BIO_FIELDS[key]:
+            return jsonify({'error': f'{key} is limited to {BIO_FIELDS[key]:,} characters'}), 400
     conn = get_db(); cur = conn.cursor()
     try:
         # Ensure student_profiles row exists
@@ -85,8 +97,6 @@ def update_student_bio():
         if not cur.fetchone():
             cur.execute("INSERT INTO student_profiles (id_user) VALUES (%s)", (uid,))
             conn.commit()
-        # Build update
-        fields = {k: v for k, v in data.items() if k in allowed}
         if not fields:
             return jsonify({'message': 'nothing to update'}), 200
         set_clause = ', '.join(f"{k} = %s" for k in fields)

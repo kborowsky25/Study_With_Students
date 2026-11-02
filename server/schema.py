@@ -46,6 +46,7 @@ COLUMN_MIGRATIONS = [
     ('events',           'canceled_by',            "VARCHAR(10) NULL"),
     ('events',           'canceled_at',            "DATETIME NULL"),
     ('events',           'cancel_type',            "VARCHAR(16) NULL"),
+    ('email_verifications', 'attempts',               "INT NOT NULL DEFAULT 0"),
 ]
 
 FORUM_CATEGORIES = [

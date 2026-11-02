@@ -3,59 +3,12 @@
 from flask import Blueprint, jsonify, request
 
 from ..permissions import check_admin
-from ..config import Config
 from ..db import get_db
 
 bp = Blueprint('admin', __name__, url_prefix='/api')
 
-# ── Admin — tutor approval ────────────────────────────────────────────────────
-# Protected by X-Admin-Secret header. Set ADMIN_SECRET env var in production.
-
-
-@bp.route('/admin/tutors', methods=['GET'])
-def admin_list_tutors():
-    if not check_admin():
-        return jsonify({'error': 'Unauthorized'}), 403
-    conn = get_db(); cur = conn.cursor(dictionary=True)
-    try:
-        cur.execute("""
-            SELECT tp.id_tutor, u.name, u.email, tp.university, tp.course,
-                   tp.subjects, tp.status, tp.age
-            FROM tutor_profiles tp
-            JOIN users u ON u.id_user = tp.id_user
-            ORDER BY tp.id_tutor DESC
-        """)
-        return jsonify({'tutors': cur.fetchall()})
-    finally:
-        cur.close(); conn.close()
-
-@bp.route('/admin/tutors/<int:tutor_id>/approve', methods=['POST'])
-def admin_approve_tutor(tutor_id):
-    if not check_admin():
-        return jsonify({'error': 'Unauthorized'}), 403
-    conn = get_db(); cur = conn.cursor()
-    try:
-        cur.execute("UPDATE tutor_profiles SET status = 'approved' WHERE id_tutor = %s", (tutor_id,))
-        conn.commit()
-        if cur.rowcount == 0:
-            return jsonify({'error': 'Tutor not found'}), 404
-        return jsonify({'message': f'Tutor {tutor_id} approved'})
-    finally:
-        cur.close(); conn.close()
-
-@bp.route('/admin/tutors/<int:tutor_id>/reject', methods=['POST'])
-def admin_reject_tutor(tutor_id):
-    if not check_admin():
-        return jsonify({'error': 'Unauthorized'}), 403
-    conn = get_db(); cur = conn.cursor()
-    try:
-        cur.execute("UPDATE tutor_profiles SET status = 'rejected' WHERE id_tutor = %s", (tutor_id,))
-        conn.commit()
-        if cur.rowcount == 0:
-            return jsonify({'error': 'Tutor not found'}), 404
-        return jsonify({'message': f'Tutor {tutor_id} rejected'})
-    finally:
-        cur.close(); conn.close()
+# Every endpoint needs the X-Admin-Secret header or a super-admin JWT (permissions.check_admin).
+# Tutors are approved through the screening queue.
 
 
 # ── Admin — screening queue ────────────────────────────────────────────────────
@@ -135,13 +88,17 @@ def admin_stats():
               (SELECT COUNT(*) FROM tutor_profiles WHERE screening_status = 'pending')  AS pending_screenings,
               (SELECT COUNT(*) FROM tutor_profiles WHERE screening_status = 'approved') AS approved_tutors,
               (SELECT COUNT(*) FROM events WHERE status <> 'canceled')                  AS total_sessions,
-              (SELECT COUNT(*) FROM events WHERE status = 'paid')                       AS completed_sessions,
-              (SELECT COUNT(*) FROM users WHERE is_premium = 1
-                 AND (premium_expires_at IS NULL OR premium_expires_at > UTC_TIMESTAMP())) AS premium_users
+              (SELECT COUNT(*) FROM events WHERE status = 'paid')                       AS completed_sessions
         """)
         stats = {k: int(v or 0) for k, v in cur.fetchone().items()}
-        # The Explorer plan is the platform's only revenue (sessions carry 0% commission)
-        stats['monthly_recurring_revenue'] = stats['premium_users'] * Config.MEMBERSHIP_PRICE_PENCE / 100
+
+        # Booking fees on paid sessions are the platform's only revenue; tutors keep the rest
+        cur.execute("""
+            SELECT COALESCE(SUM(booking_fee), 0) AS booking_fee_revenue,
+                   COALESCE(SUM(amount), 0)      AS tutor_earnings
+            FROM events WHERE status = 'paid'
+        """)
+        stats.update(cur.fetchone())
 
         cur.execute("""
             SELECT DATE(created_at) AS day, COUNT(*) AS signups
@@ -164,7 +121,6 @@ def admin_users():
     try:
         cur.execute("""
             SELECT u.id_user, u.name, u.email,
-                   COALESCE(u.is_premium, 0) AS is_premium,
                    (SELECT COUNT(*) FROM tutor_profiles tp WHERE tp.id_user = u.id_user) AS is_tutor,
                    (SELECT tp.screening_status FROM tutor_profiles tp WHERE tp.id_user = u.id_user LIMIT 1) AS screening_status
             FROM users u
@@ -174,7 +130,6 @@ def admin_users():
         rows = cur.fetchall()
         for r in rows:
             r['is_tutor'] = bool(r['is_tutor'])
-            r['is_premium'] = bool(r['is_premium'])
         return jsonify({'users': rows}), 200
     finally:
         cur.close(); conn.close()

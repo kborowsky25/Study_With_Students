@@ -24,6 +24,10 @@ setup and the project layout.
 - Passwords are hashed with werkzeug; legacy plaintext rows are upgraded on next login.
 - JSON: datetimes serialise as ISO-8601 and decimals as numbers (server/json.py).
 - SQL must always be parameterised — never interpolate user input.
+- Abuse-prone endpoints get `@rate_limit` (server/ratelimit.py), placed *below* `@jwt_required`
+  when keyed per user. Uploads go through `services/uploads.read_upload`.
+- Never return Stripe or exception text to the client — log it. See SECURITY.md before touching auth,
+  payments or the Stripe webhook (`/api/payments/webhook`, idempotent).
 - IDs: `events.tutor_id` → `tutor_profiles.id_tutor`, `events.student_id` → `student_profiles.id_student`
   (not user ids). Join through the profile tables to reach `users`.
 

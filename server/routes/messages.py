@@ -3,6 +3,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 
 from ..db import current_user_id, get_db
+from ..ratelimit import jwt_user, rate_limit
 
 bp = Blueprint('messages', __name__, url_prefix='/api')
 
@@ -83,15 +84,20 @@ def get_messages(other_user_id):
 
 @bp.route('/messages', methods=['POST'])
 @jwt_required()
+@rate_limit(30, per=60, key=jwt_user)
+@rate_limit(200, per=3600, key=jwt_user)
 def send_message():
     uid         = current_user_id()
     data        = request.get_json(silent=True) or {}
-    receiver_id = data.get('receiver_id')
-    message     = (data.get('message') or '').strip()
+    message     = str(data.get('message') or '').strip()
+    try:
+        receiver_id = int(data.get('receiver_id') or 0)
+    except (TypeError, ValueError):
+        receiver_id = 0
 
     if not receiver_id or not message:
         return jsonify({'error': 'receiver_id and message required'}), 400
-    if int(receiver_id) == uid:
+    if receiver_id == uid:
         return jsonify({'error': "You can't message yourself"}), 400
     if len(message) > MAX_MESSAGE_LENGTH:
         return jsonify({'error': f'Messages are limited to {MAX_MESSAGE_LENGTH} characters'}), 400

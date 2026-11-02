@@ -1,4 +1,5 @@
 import axios from 'axios'
+import toast from 'react-hot-toast'
 
 const client = axios.create({
   baseURL: '/api',
@@ -21,6 +22,9 @@ client.interceptors.response.use(
       localStorage.removeItem('sws_token')
       localStorage.removeItem('sws_user')
       if (!window.location.pathname.startsWith('/login')) window.location.href = '/login'
+    } else if (status === 429) {
+      // Rate limited (login, sign-up codes, messages, forum posts) — one toast however many requests hit it
+      toast.error(err.response?.data?.error || 'Too many attempts — please wait a moment and try again', { id: 'rate-limited' })
     }
     return Promise.reject(err)
   },

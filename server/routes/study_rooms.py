@@ -5,13 +5,13 @@ from datetime import datetime
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 
-from ..permissions import explorer_required
 from ..db import current_user_id, get_db
 
 bp = Blueprint('study_rooms', __name__, url_prefix='/api')
 
 # Calendar copies of a room are events titled "Study Room: <subject>".
 CALENDAR_PREFIX = 'Study Room: '
+MAX_SUBJECT_LENGTH, MAX_DESCRIPTION_LENGTH, MAX_LINK_LENGTH = 150, 2000, 500
 
 
 def _parse_dt(value):
@@ -24,7 +24,7 @@ def _parse_dt(value):
 # ── Study Rooms ───────────────────────────────────────────────────────────────
 
 @bp.route('/study-rooms', methods=['GET'])
-@explorer_required
+@jwt_required()
 def get_study_rooms():
     uid  = current_user_id()
     conn = get_db(); cur = conn.cursor(dictionary=True)
@@ -62,18 +62,22 @@ def get_study_rooms():
 def create_study_room():
     uid     = current_user_id()
     data    = request.get_json(silent=True) or {}
-    subject = (data.get('subject') or '').strip()
-    start   = _parse_dt(data.get('start_time'))
-    end     = _parse_dt(data.get('end_time'))
+    subject     = str(data.get('subject') or '').strip()
+    description = str(data.get('description') or '').strip()
+    start       = _parse_dt(data.get('start_time'))
+    end         = _parse_dt(data.get('end_time'))
 
     if not subject:
         return jsonify({'error': 'Give the room a subject'}), 400
+    if len(subject) > MAX_SUBJECT_LENGTH or len(description) > MAX_DESCRIPTION_LENGTH:
+        return jsonify({'error': f'Subjects are limited to {MAX_SUBJECT_LENGTH} characters '
+                                 f'and descriptions to {MAX_DESCRIPTION_LENGTH:,}'}), 400
     if not start or not end or end <= start:
         return jsonify({'error': 'Choose a valid start and end time'}), 400
     if end <= datetime.now():
         return jsonify({'error': 'That time has already passed'}), 400
-    link = (data.get('zoom_link') or '').strip()
-    if link and not re.match(r'https?://\S+$', link, re.IGNORECASE):
+    link = str(data.get('zoom_link') or '').strip()
+    if link and (len(link) > MAX_LINK_LENGTH or not re.match(r'https://[^/\s]+\S*$', link, re.IGNORECASE)):
         return jsonify({'error': 'The meeting link must start with https://'}), 400
 
     conn = get_db(); cur = conn.cursor()
@@ -88,8 +92,7 @@ def create_study_room():
         cur.execute("""
             INSERT INTO study_rooms (tutor_id, subject, description, start_time, end_time, zoom_link)
             VALUES (%s, %s, %s, %s, %s, %s)
-        """, (row[0], subject, (data.get('description') or '').strip() or None,
-              start, end, link or None))
+        """, (row[0], subject, description or None, start, end, link or None))
         conn.commit()
         return jsonify({'room': {'id': cur.lastrowid}}), 201
     finally:
@@ -97,7 +100,7 @@ def create_study_room():
 
 
 @bp.route('/study-rooms/<int:room_id>/calendar', methods=['POST'])
-@explorer_required
+@jwt_required()
 def save_room_to_calendar(room_id):
     uid  = current_user_id()
     conn = get_db(); cur = conn.cursor(dictionary=True)
@@ -120,7 +123,7 @@ def save_room_to_calendar(room_id):
         sp = cur.fetchone()
         student_id = sp['id_student'] if sp else None
 
-        # Study rooms are included in Explorer: the calendar copy carries no fee (amount 0),
+        # Study rooms are free: the calendar copy carries no fee (amount 0),
         # so it never shows up as a session to pay for.
         cur.execute("""
             INSERT INTO events (user_id, tutor_id, student_id, title, description, start_time, end_time, status, amount)
