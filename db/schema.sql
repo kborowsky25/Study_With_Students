@@ -236,6 +236,37 @@ CREATE TABLE IF NOT EXISTS lesson_homework (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
+-- Scheduling: a tutor's weekly bookable hours (weekday 0 = Monday … 6 = Sunday)
+CREATE TABLE IF NOT EXISTS tutor_availability (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  tutor_id   INT NOT NULL,
+  weekday    TINYINT NOT NULL,
+  start_time TIME NOT NULL,
+  end_time   TIME NOT NULL,
+  KEY ix_tutor_availability_tutor (tutor_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Days a tutor can't be booked (holidays, exams), inclusive ranges
+CREATE TABLE IF NOT EXISTS tutor_blocked_dates (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  tutor_id   INT NOT NULL,
+  start_date DATE NOT NULL,
+  end_date   DATE NOT NULL,
+  note       VARCHAR(120) NULL,
+  KEY ix_tutor_blocked_dates_tutor (tutor_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Reminder emails already sent, per person and session time (moving a session re-arms them)
+CREATE TABLE IF NOT EXISTS session_reminders (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  event_id   INT NOT NULL,
+  kind       VARCHAR(8) NOT NULL,
+  recipient  VARCHAR(10) NOT NULL,
+  start_time DATETIME NOT NULL,
+  sent_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY ux_session_reminders (event_id, kind, recipient, start_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Tutor background checks (DBS, England & Wales). One row per tutor: a resubmission
 -- replaces a rejected or expired check. certificate_number, date_of_birth and the scan
 -- are admin-only and are deleted once a check is reviewed (certificate_last4 stays).
