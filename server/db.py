@@ -10,7 +10,7 @@ def get_db():
     try:
         return mysql.connector.connect(**Config.DB)
     except Error as e:
-        raise RuntimeError(f'DB connection failed: {e}')
+        raise RuntimeError(f'DB connection failed: {e}') from e
 
 
 def current_user_id():

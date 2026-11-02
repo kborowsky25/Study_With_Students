@@ -6,12 +6,15 @@ import HubLayout from '../components/layout/HubLayout'
 import { Card, DateChip, EmptyState, Icon, SkeletonRows, Stat, StatusPill } from '../components/ui'
 import { createCheckout, getPayments, verifyPayment } from '../api/payments'
 import { errorMessage } from '../api/client'
+import { byStart } from '../lib/dates'
 import { formatMoney, formatTime } from '../lib/format'
+import { bookingFee, needsPayment, totalPrice } from '../lib/sessions'
 
 const HISTORY_PREVIEW = 6
 
-const sum = (list) => list.reduce((s, e) => s + Number(e.amount || 0), 0)
-const byStart = (a, b) => new Date(a.start_time) - new Date(b.start_time)
+// Families pay the tutor's price (`amount`, all of it the tutor's) plus a 5% booking fee.
+const price = (e) => Number(e.amount) || 0
+const sum = (list, value = price) => list.reduce((s, e) => s + value(e), 0)
 
 const Muted = ({ children }) => (
   <span style={{ fontSize: 12, color: 'var(--text-faint)', textAlign: 'right' }}>{children}</span>
@@ -19,22 +22,38 @@ const Muted = ({ children }) => (
 
 function SessionRow({ ev, children }) {
   return (
-    <div className="row">
+    <div className="row row-wrap">
       <DateChip value={ev.start_time} />
       <div className="main">
         <div className="title">{ev.title || 'Tutoring session'}</div>
         <div className="meta">{ev.tutor_name} · {formatTime(ev.start_time)}–{formatTime(ev.end_time)}</div>
       </div>
-      {children}
+      <div className="row-actions">{children}</div>
     </div>
   )
 }
 
-const Amount = ({ value, muted }) => (
-  <span style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap', color: muted ? 'var(--text-muted)' : 'var(--text)' }}>
-    {formatMoney(value)}
-  </span>
-)
+/** The total, with the price and booking fee under it when there is a fee. */
+function Price({ ev, muted }) {
+  const fee = bookingFee(ev)
+  return (
+    <span style={{ textAlign: 'right', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
+      <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: muted ? 'var(--text-muted)' : 'var(--text)' }}>
+        {formatMoney(totalPrice(ev))}
+      </span>
+      {fee > 0 && (
+        <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-faint)' }}>
+          {formatMoney(ev.amount)} + {formatMoney(fee)} fee
+        </span>
+      )}
+    </span>
+  )
+}
+
+const payTitle = (ev) => {
+  const fee = bookingFee(ev)
+  return `${formatMoney(ev.amount)} to ${ev.tutor_name}${fee ? ` + ${formatMoney(fee)} booking fee` : ''}`
+}
 
 export default function Payments() {
   const search = useSearch({ strict: false })
@@ -74,7 +93,7 @@ export default function Payments() {
     }
     if (canceled) toast('Payment cancelled. You haven’t been charged.')
     load()
-  }, [])
+  }, [search, navigate])
 
   async function pay(ev) {
     setPaying(ev.id_event)
@@ -90,7 +109,7 @@ export default function Payments() {
 
   const { events, stripeEnabled } = data
   const now = new Date()
-  const due = events.filter((e) => e.status === 'confirmed' && Number(e.amount) > 0).sort(byStart)
+  const due = events.filter(needsPayment).sort(byStart)
   const waiting = events.filter((e) => e.status === 'pending' && new Date(e.end_time) > now).sort(byStart)
   const paid = events.filter((e) => e.status === 'paid') // newest first, as the API sends them
   const history = showAll ? paid : paid.slice(0, HISTORY_PREVIEW)
@@ -116,10 +135,10 @@ export default function Payments() {
       ) : (
         <>
           <section className="card stat-grid">
-            <Stat label="To pay" value={show(formatMoney(sum(due)))} />
+            <Stat label="To pay" value={show(formatMoney(sum(due, totalPrice)))} />
             <Stat label="Paid to tutors" value={show(formatMoney(sum(paid)))} />
-            <Stat label="Sessions paid" value={show(paid.length)} />
-            <Stat label="Commission" value="0%" />
+            <Stat label="Booking fees" value={show(formatMoney(sum(paid, bookingFee)))} />
+            <Stat label="Total paid" value={show(formatMoney(sum(paid, totalPrice)))} />
           </section>
 
           <div className="dash-grid">
@@ -130,10 +149,9 @@ export default function Payments() {
                   <div className="row-list">
                     {due.map((ev) => (
                       <SessionRow key={ev.id_event} ev={ev}>
-                        <Amount value={ev.amount} />
+                        <Price ev={ev} />
                         <button className="btn btn-coral btn-sm" onClick={() => pay(ev)}
-                          disabled={!stripeEnabled || paying !== null}
-                          title={`Paid directly to ${ev.tutor_name} · 0% commission`}>
+                          disabled={!stripeEnabled || paying !== null} title={payTitle(ev)}>
                           {paying === ev.id_event ? 'Redirecting…' : 'Pay'}
                         </button>
                       </SessionRow>
@@ -147,7 +165,7 @@ export default function Payments() {
                   <div className="row-list">
                     {history.map((ev) => (
                       <SessionRow key={ev.id_event} ev={ev}>
-                        <Amount value={ev.amount} />
+                        <Price ev={ev} />
                         <StatusPill status="paid" />
                       </SessionRow>
                     ))}
@@ -168,7 +186,7 @@ export default function Payments() {
                   <div className="row-list">
                     {waiting.map((ev) => (
                       <SessionRow key={ev.id_event} ev={ev}>
-                        <Amount value={ev.amount} muted />
+                        <Price ev={ev} muted />
                       </SessionRow>
                     ))}
                   </div>

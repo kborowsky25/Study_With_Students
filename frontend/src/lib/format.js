@@ -2,7 +2,12 @@
 
 const DAY = 86_400_000
 
-export const toDate = (value) => (value instanceof Date ? value : new Date(value))
+// Some timestamps arrive as "YYYY-MM-DD HH:MM:SS", which Safari can't parse: read them as ISO.
+export const toDate = (value) => {
+  if (value instanceof Date) return value
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2} \d/.test(value)) return new Date(value.replace(' ', 'T'))
+  return new Date(value)
+}
 
 export function formatMoney(amount, { decimals } = {}) {
   const n = Number(amount || 0)
@@ -29,6 +34,12 @@ export function formatDay(value) {
 }
 
 export const formatWhen = (value) => `${formatDay(value)} · ${formatTime(value)}`
+
+/** "4 Nov 2026, 18:00" — the full timestamp, for tooltips. */
+export const fullDate = (value) => `${formatDate(value, { year: 'numeric' })}, ${formatTime(value)}`
+
+/** "1 reply", "3 replies". */
+export const plural = (n, one, many = `${one}s`) => `${n} ${Number(n) === 1 ? one : many}`
 
 export function timeAgo(value) {
   if (!value) return ''

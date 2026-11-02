@@ -4,10 +4,12 @@ import toast from 'react-hot-toast'
 import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
 import EventCard, { CompactSession, MonthGrid, ScheduleSessionDialog } from '../components/features/EventCard'
-import { Card, Icon, SkeletonRows } from '../components/ui'
+import { Card, EmptyState, Icon, SkeletonRows } from '../components/ui'
 import { getEvents } from '../api/events'
 import { getActiveStudents } from '../api/tutors'
 import { errorMessage } from '../api/client'
+import { byStart, sameDay, startOfDay, startOfMonth } from '../lib/dates'
+import { isStudyRoomCopy } from '../lib/sessions'
 
 const LEGEND = [
   { status: 'pending', label: 'Needs your answer' },
@@ -16,12 +18,6 @@ const LEGEND = [
   { status: 'canceled', label: 'Cancelled' },
 ]
 
-const emptyLine = { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '16px 18px', fontSize: 13, color: 'var(--text-faint)' }
-
-const startOfDay = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x }
-const startOfMonth = (d) => new Date(d.getFullYear(), d.getMonth(), 1)
-const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
-const byStart = (a, b) => new Date(a.start_time) - new Date(b.start_time)
 
 export default function CalendarTutor() {
   const [events, setEvents] = useState([])
@@ -32,7 +28,8 @@ export default function CalendarTutor() {
   const [scheduling, setScheduling] = useState(null) // { date } while the dialog is open
 
   const load = useCallback(() => Promise.allSettled([getEvents(), getActiveStudents()]).then(([ev, st]) => {
-    if (ev.status === 'fulfilled') setEvents((ev.value.data.events ?? []).filter((e) => e.role === 'tutor'))
+    // Students' calendar copies of your study rooms aren't sessions with you: leave them out.
+    if (ev.status === 'fulfilled') setEvents((ev.value.data.events ?? []).filter((e) => e.role === 'tutor' && !isStudyRoomCopy(e)))
     else toast.error(errorMessage(ev.reason, 'Could not load your schedule'))
     if (st.status === 'fulfilled') setStudents(st.value.data.students ?? [])
     setLoading(false)
@@ -97,14 +94,14 @@ export default function CalendarTutor() {
                 {dayEvents.map((ev) => <EventCard key={ev.id_event} event={ev} variant="time" onChanged={load} />)}
               </div>
             ) : (
-              <div style={emptyLine}>
-                Nothing scheduled.
-                {canSchedule && startOfDay(new Date()) <= selected && (
+              <EmptyState
+                title="Nothing scheduled."
+                action={canSchedule && startOfDay(new Date()) <= selected && (
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => setScheduling({ date: selected })}>
                     Schedule a session
                   </button>
                 )}
-              </div>
+              />
             )}
           </Card>
 
@@ -116,7 +113,7 @@ export default function CalendarTutor() {
                 ))}
               </div>
             ) : (
-              <div style={emptyLine}>No confirmed sessions coming up.</div>
+              <EmptyState title="No confirmed sessions coming up." />
             )}
           </Card>
         </div>

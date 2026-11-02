@@ -1,23 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
-import toast from 'react-hot-toast'
 import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
+import CategoryIcon from '../components/features/CategoryIcon'
 import UserBadges from '../components/features/UserBadges'
 import { Avatar, Card, EmptyState, Icon, SkeletonRows } from '../components/ui'
 import { getCategory } from '../api/forum'
-import { errorMessage } from '../api/client'
-import { formatDate, formatTime, timeAgo } from '../lib/format'
-
-const plural = (n, one, many = `${one}s`) => `${n} ${Number(n) === 1 ? one : many}`
-const authorOf = (item) => item.author_name?.trim() || 'Member'
-const fullDate = (value) => `${formatDate(value, { year: 'numeric' })}, ${formatTime(value)}`
-
-// The API client already handles 401 (back to login) and 402 (Explorer upsell toast).
-function notify(err) {
-  const status = err?.response?.status
-  if (status !== 401 && status !== 402) toast.error(errorMessage(err))
-}
+import { notifyError } from '../lib/errors'
+import { authorOf } from '../lib/forum'
+import { fullDate, plural, timeAgo } from '../lib/format'
 
 function ThreadRow({ thread: t }) {
   const author = authorOf(t)
@@ -60,7 +51,7 @@ export default function ForumCategory() {
       .catch((err) => {
         if (id !== request.current) return
         if (err?.response?.status === 404) return setStatus('missing')
-        notify(err)
+        notifyError(err, 'Couldn’t load this category')
         setStatus('error')
       })
   }, [categoryId])
@@ -92,7 +83,7 @@ export default function ForumCategory() {
           <div className="dash-head">
             {category ? (
               <h1 style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                <Icon name={category.icon || 'forum'} size={24} style={{ color: 'var(--coral)' }} />
+                <CategoryIcon icon={category.icon} size={24} style={{ color: 'var(--coral)' }} />
                 {category.name}
               </h1>
             ) : (

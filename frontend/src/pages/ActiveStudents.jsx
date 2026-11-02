@@ -4,13 +4,12 @@ import toast from 'react-hot-toast'
 import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
 import { ScheduleSessionDialog } from '../components/features/EventCard'
-import { Avatar, Card, Icon, SkeletonRows } from '../components/ui'
+import { Avatar, Card, EmptyState, Icon, SkeletonRows } from '../components/ui'
 import { getActiveStudents, getTutorRequestsRec, respondTutorRequest } from '../api/tutors'
 import { getEvents } from '../api/events'
 import { errorMessage } from '../api/client'
 import { firstName, formatMoney, formatWhen, timeAgo } from '../lib/format'
-
-const emptyLine = { padding: '16px 18px', fontSize: 13, color: 'var(--text-faint)' }
+import { isStudyRoomCopy } from '../lib/sessions'
 
 export default function ActiveStudents() {
   const [data, setData] = useState({ students: [], requests: [], events: [] })
@@ -25,7 +24,7 @@ export default function ActiveStudents() {
       setData({
         students: ok(students, 'students'),
         requests: ok(requests, 'requests'),
-        events: ok(events, 'events').filter((e) => e.role === 'tutor'),
+        events: ok(events, 'events').filter((e) => e.role === 'tutor' && !isStudyRoomCopy(e)),
       })
       setLoading(false)
     }), [])
@@ -90,25 +89,27 @@ export default function ActiveStudents() {
                     st.toConfirm ? `${st.toConfirm} to confirm` : null,
                   ].filter(Boolean).join(' · ')
                   return (
-                    <div key={s.id_student} className="row">
+                    <div key={s.id_student} className="row row-wrap">
                       <Avatar name={s.name} size={36} />
                       <Link to="/student/$userId" params={{ userId: String(s.user_id) }} className="main" style={{ color: 'inherit', textDecoration: 'none' }}>
                         <div className="title">{s.name}</div>
                         <div className="meta">{meta}</div>
                       </Link>
-                      {st.earned > 0 && <span className="side hide-mobile">{formatMoney(st.earned)} earned</span>}
-                      <Link to="/messages" search={{ user: s.user_id }} className="icon-btn" title="Message" aria-label={`Message ${s.name}`}>
-                        <Icon name="chat" />
-                      </Link>
-                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => setScheduling({ studentId: s.id_student })}>
-                        <Icon name="event" />Schedule
-                      </button>
+                      <div className="row-actions">
+                        {st.earned > 0 && <span className="side hide-mobile">{formatMoney(st.earned)} earned</span>}
+                        <Link to="/messages" search={{ user: s.user_id }} className="icon-btn" title="Message" aria-label={`Message ${s.name}`}>
+                          <Icon name="chat" />
+                        </Link>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setScheduling({ studentId: s.id_student })}>
+                          <Icon name="event" />Schedule
+                        </button>
+                      </div>
                     </div>
                   )
                 })}
               </div>
             ) : (
-              <div style={emptyLine}>No students yet.</div>
+              <EmptyState title="No students yet." />
             )}
           </Card>
         </div>
@@ -118,19 +119,21 @@ export default function ActiveStudents() {
             {loading ? <SkeletonRows rows={2} /> : requests.length ? (
               <div className="row-list">
                 {requests.map((r) => (
-                  <div key={r.id} className="row">
+                  <div key={r.id} className="row row-wrap">
                     <Avatar name={r.student_name} size={32} />
                     <div className="main">
                       <div className="title">{r.student_name}</div>
                       <div className="meta">{timeAgo(r.created_at)}</div>
                     </div>
-                    <button type="button" className="btn btn-quiet btn-sm" disabled={busy === r.id} onClick={() => respond(r, 'declined')}>Decline</button>
-                    <button type="button" className="btn btn-coral btn-sm" disabled={busy === r.id} onClick={() => respond(r, 'accepted')}>Accept</button>
+                    <div className="row-actions">
+                      <button type="button" className="btn btn-quiet btn-sm" disabled={busy === r.id} onClick={() => respond(r, 'declined')}>Decline</button>
+                      <button type="button" className="btn btn-coral btn-sm" disabled={busy === r.id} onClick={() => respond(r, 'accepted')}>Accept</button>
+                    </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div style={emptyLine}>No pending requests.</div>
+              <EmptyState title="No pending requests." />
             )}
           </Card>
         </div>

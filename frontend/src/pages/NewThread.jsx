@@ -4,23 +4,18 @@ import toast from 'react-hot-toast'
 import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
 import { Icon } from '../components/ui'
+import { useConfirm } from '../components/ui/confirm'
 import { createThread, getCategories } from '../api/forum'
-import { errorMessage } from '../api/client'
+import { notifyError } from '../lib/errors'
+import { isSubmitShortcut, SUBMIT_KEYS } from '../lib/keyboard'
 
 const TITLE_MAX = 200
-const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
-const SUBMIT_KEYS = isMac ? '⌘ Enter' : 'Ctrl + Enter'
 const INVALID = { borderColor: 'var(--red)' }
-
-// The API client already handles 401 (back to login) and 402 (Explorer upsell toast).
-function notify(err) {
-  const status = err?.response?.status
-  if (status !== 401 && status !== 402) toast.error(errorMessage(err))
-}
 
 export default function NewThread() {
   const { categoryId } = useParams({ strict: false })
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const [categories, setCategories] = useState([])
   const [categoriesFailed, setCategoriesFailed] = useState(false)
   const [category, setCategory] = useState(String(categoryId ?? ''))
@@ -35,7 +30,7 @@ export default function NewThread() {
   useEffect(() => {
     getCategories()
       .then(({ data }) => setCategories(data.categories ?? []))
-      .catch((err) => { setCategoriesFailed(true); notify(err) })
+      .catch((err) => { setCategoriesFailed(true); notifyError(err, 'Couldn’t load the categories') })
   }, [])
 
   const origin = categories.find((c) => String(c.id) === String(categoryId))
@@ -64,14 +59,14 @@ export default function NewThread() {
       toast.success('Thread posted')
       navigate({ to: '/forum/thread/$threadId', params: { threadId: String(data.thread.id) }, replace: true })
     } catch (err) {
-      notify(err)
+      notifyError(err, 'Couldn’t post your thread')
       setPosting(false)
     }
   }
 
   function onKeyDown(e) {
     if (e.key !== 'Enter' || e.nativeEvent.isComposing) return
-    if (e.metaKey || e.ctrlKey) {
+    if (isSubmitShortcut(e)) {
       e.preventDefault()
       submit()
     } else if (e.target === fields.title.current) {
@@ -80,8 +75,12 @@ export default function NewThread() {
     }
   }
 
-  function confirmDiscard(e) {
-    if ((title.trim() || content.trim()) && !window.confirm('Discard this thread?')) e.preventDefault()
+  // Cancel goes straight back unless something was typed.
+  async function confirmDiscard(e) {
+    if (!title.trim() && !content.trim()) return
+    e.preventDefault()
+    const ok = await confirm({ title: 'Discard this thread?', confirmLabel: 'Discard', cancelLabel: 'Keep editing', danger: true })
+    if (ok) navigate(back)
   }
 
   return (

@@ -9,66 +9,18 @@ import {
   createClassroom, enrollClassroom, getClassrooms, getClassroomStudents, getMyClassrooms, unenrollClassroom,
 } from '../api/classroom'
 import { errorMessage } from '../api/client'
-import { isVerifiedTutor } from '../lib/access'
+import { useAutoFocus } from '../hooks/useAutoFocus'
+import { useEscape } from '../hooks/useEscape'
+import { useNow } from '../hooks/useNow'
+import { toDateInput, toLocalISO } from '../lib/dates'
 import { formatTime } from '../lib/format'
+import { isOpen, livePhase, meetingUrl, minutesUntil, normaliseLink } from '../lib/meetings'
 
 const MAX_CLASS_SIZE = 20
-const JOIN_WINDOW = 15 * 60_000 // the join link shows from 15 minutes before the start
 const SUBJECTS = [
   'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Computer Science', 'Economics', 'English',
   'History', 'Law', 'Psychology', 'Engineering', 'Medicine', 'Statistics', 'Finance', 'Philosophy',
 ]
-
-/** Classes store whatever the tutor typed — only http(s) links are rendered. */
-function meetingUrl(link) {
-  const s = (link || '').trim()
-  if (/^https?:\/\/\S+$/i.test(s)) return s
-  if (/^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(s)) return `https://${s}`
-  return null
-}
-
-/** Accepts "zoom.us/j/123" as well as full URLs; null for anything that isn't http(s). */
-function normaliseLink(value) {
-  const s = value.trim()
-  if (!s) return null
-  try {
-    const url = new URL(/^[a-z][a-z\d+.-]*:\/\//i.test(s) ? s : `https://${s}`)
-    return /^https?:$/.test(url.protocol) && url.hostname.includes('.') ? url.href : null
-  } catch {
-    return null
-  }
-}
-
-function phaseOf(c, now) {
-  if (!c.start_time) return 'upcoming'
-  const start = new Date(c.start_time).getTime()
-  const end = c.end_time ? new Date(c.end_time).getTime() : start + 3_600_000
-  if (now >= end) return 'past'
-  if (now >= start) return 'live'
-  return start - now <= JOIN_WINDOW ? 'soon' : 'upcoming'
-}
-
-function useNow(every = 30_000) {
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), every)
-    return () => clearInterval(id)
-  }, [every])
-  return now
-}
-
-function useEscape(handler) {
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') handler() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [handler])
-}
-
-const pad = (n) => String(n).padStart(2, '0')
-const dateOnly = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-const localISO = (d) => `${dateOnly(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
-const minutesUntil = (value, now) => Math.max(1, Math.ceil((new Date(value) - now) / 60_000))
 
 function timeRange(c) {
   if (!c.start_time) return 'Time to be confirmed'
@@ -133,7 +85,7 @@ function ClassSpotlight({ c, now, hosting }) {
     <section className="card spotlight">
       <div className="grow">
         <div className="when">
-          {phaseOf(c, now) === 'live'
+          {livePhase(c, now) === 'live'
             ? `Live now${c.end_time ? ` · until ${formatTime(c.end_time)}` : ''}`
             : `Starts in ${minutesUntil(c.start_time, now)} min · ${formatTime(c.start_time)}`}
         </div>
@@ -154,11 +106,11 @@ function ClassSpotlight({ c, now, hosting }) {
 // ── Student view ──────────────────────────────────────────────────────────────
 
 function StudentClassRow({ c, now, userId, busy, onJoin, onLeave }) {
-  const phase = phaseOf(c, now)
+  const phase = livePhase(c, now)
   const { count, capacity } = seats(c)
   const mine = c.tutor_user_id === userId
   const url = meetingUrl(c.zoom_link)
-  const open = phase === 'live' || phase === 'soon'
+  const open = isOpen(phase)
 
   let status = <PhasePill c={c} phase={phase} now={now} />
   let action = null
@@ -190,11 +142,13 @@ function StudentClassRow({ c, now, userId, busy, onJoin, onLeave }) {
   }
 
   return (
-    <div className="row">
+    <div className="row row-wrap">
       <ClassMain c={c} who={mine ? 'You' : c.tutor_name} />
-      {status}
-      <Capacity c={c} />
-      <div style={{ display: 'flex', justifyContent: 'flex-end', minWidth: 72, flexShrink: 0 }}>{action}</div>
+      <div className="row-actions">
+        {status}
+        <Capacity c={c} />
+        {action && <div style={{ display: 'flex', justifyContent: 'flex-end', minWidth: 72 }}>{action}</div>}
+      </div>
     </div>
   )
 }
@@ -247,10 +201,10 @@ function StudentClasses({ user }) {
     }
   }
 
-  const active = classes.filter((c) => phaseOf(c, now) !== 'past') // the API sorts by start time
+  const active = classes.filter((c) => livePhase(c, now) !== 'past') // the API sorts by start time
   const joined = active.filter((c) => c.enrolled)
-  const joinedPast = classes.filter((c) => c.enrolled && phaseOf(c, now) === 'past').reverse()
-  const highlight = joined.find((c) => phaseOf(c, now) !== 'upcoming')
+  const joinedPast = classes.filter((c) => c.enrolled && livePhase(c, now) === 'past').reverse()
+  const highlight = joined.find((c) => livePhase(c, now) !== 'upcoming')
   const shown = tab === 'joined' ? joined : active
 
   const row = (c) => (
@@ -303,23 +257,25 @@ function StudentClasses({ user }) {
 // ── Tutor view ────────────────────────────────────────────────────────────────
 
 function HostedClassRow({ c, now, onRoster }) {
-  const phase = phaseOf(c, now)
+  const phase = livePhase(c, now)
   const url = meetingUrl(c.zoom_link)
 
   return (
-    <div className="row">
+    <div className="row row-wrap">
       <ClassMain c={c} />
-      <PhasePill c={c} phase={phase} now={now} />
-      {phase !== 'past' && !url && <Pill tone="red">No link</Pill>}
-      <Capacity c={c} />
-      <button className="btn btn-ghost btn-sm" onClick={() => onRoster(c)}>
-        <Icon name="group" />Students
-      </button>
-      {(phase === 'live' || phase === 'soon') && url && (
-        <a className="btn btn-coral btn-sm" href={url} target="_blank" rel="noopener noreferrer">
-          <Icon name="videocam" />Start
-        </a>
-      )}
+      <div className="row-actions">
+        <PhasePill c={c} phase={phase} now={now} />
+        {phase !== 'past' && !url && <Pill tone="red">No link</Pill>}
+        <Capacity c={c} />
+        <button className="btn btn-ghost btn-sm" onClick={() => onRoster(c)}>
+          <Icon name="group" />Students
+        </button>
+        {isOpen(phase) && url && (
+          <a className="btn btn-coral btn-sm" href={url} target="_blank" rel="noopener noreferrer">
+            <Icon name="videocam" />Start
+          </a>
+        )}
+      </div>
     </div>
   )
 }
@@ -327,10 +283,11 @@ function HostedClassRow({ c, now, onRoster }) {
 function NewClassDialog({ onClose, onCreated }) {
   const [form, setForm] = useState(() => ({
     title: '', subject: '', description: '', capacity: String(MAX_CLASS_SIZE),
-    date: dateOnly(new Date(Date.now() + 86_400_000)), start: '18:00', end: '19:00', link: '',
+    date: toDateInput(new Date(Date.now() + 86_400_000)), start: '18:00', end: '19:00', link: '',
   }))
   const [saving, setSaving] = useState(false)
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
+  const first = useAutoFocus()
   useEscape(onClose)
 
   async function submit(e) {
@@ -359,8 +316,8 @@ function NewClassDialog({ onClose, onCreated }) {
         subject,
         description: form.description.trim(),
         capacity,
-        start_time: localISO(start),
-        end_time: localISO(end),
+        start_time: toLocalISO(start),
+        end_time: toLocalISO(end),
         zoom_link: link,
       })
       toast.success('Class scheduled')
@@ -389,7 +346,7 @@ function NewClassDialog({ onClose, onCreated }) {
         <div className="dialog-body">
           <label className="field">
             <span>Title</span>
-            <input className="input" value={form.title} onChange={set('title')} maxLength={255} required autoFocus />
+            <input ref={first} className="input" value={form.title} onChange={set('title')} maxLength={255} required />
           </label>
           <div className="field-row">
             <label className="field">
@@ -419,7 +376,7 @@ function NewClassDialog({ onClose, onCreated }) {
           </label>
           <label className="field">
             <span>Date</span>
-            <input className="input" type="date" value={form.date} min={dateOnly(new Date())} onChange={set('date')} required />
+            <input className="input" type="date" value={form.date} min={toDateInput(new Date())} onChange={set('date')} required />
           </label>
           <div className="field-row">
             <label className="field">
@@ -532,7 +489,7 @@ function RosterDialog({ classroom, onClose }) {
 }
 
 function TutorClasses({ user }) {
-  const verified = isVerifiedTutor(user)
+  const verified = Boolean(user?.is_tutor && user.screening_status === 'approved')
   const now = useNow()
   const [classes, setClasses] = useState([])
   const [loading, setLoading] = useState(true)
@@ -551,9 +508,9 @@ function TutorClasses({ user }) {
 
   useEffect(() => { load() }, [])
 
-  const active = classes.filter((c) => phaseOf(c, now) !== 'past')
-  const past = classes.filter((c) => phaseOf(c, now) === 'past').reverse()
-  const highlight = active.find((c) => phaseOf(c, now) !== 'upcoming')
+  const active = classes.filter((c) => livePhase(c, now) !== 'past')
+  const past = classes.filter((c) => livePhase(c, now) === 'past').reverse()
+  const highlight = active.find((c) => livePhase(c, now) !== 'upcoming')
   const list = active.filter((c) => c !== highlight)
   const row = (c) => <HostedClassRow key={c.id} c={c} now={now} onRoster={setRoster} />
 

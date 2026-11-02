@@ -1,0 +1,19 @@
+/* ── Responsive helpers for the hub ──────────────────────────────────────────
+   Additions to the primitives in app.css for phones and narrow windows.     */
+
+/* Touch targets: the hub's controls are sized for a mouse (26–30px). On phones,
+   tablets and narrow windows every tappable control gets at least 32px, without
+   changing the desktop density. Scoped to the shell and to dialogs (which render
+   in an .overlay outside the shell). */
+@media (max-width: 900px), (pointer: coarse) {
+  :is(.shell, .overlay) :is(.btn, .btn-sm) { min-height: 32px; }
+  :is(.shell, .overlay) .icon-btn { min-width: 32px; min-height: 32px; }
+  :is(.shell, .overlay) :is(.mode-switch button, .card-link) { min-height: 32px; }
+}
+
+/* Rows with trailing actions (`.row.row-wrap` + `.row-actions`): when the row runs
+   out of room the actions move onto their own line, right-aligned, instead of
+   squeezing the title down to a few letters. */
+.row.row-wrap { flex-wrap: wrap; row-gap: 6px; }
+.row.row-wrap > .main { flex: 1 1 150px; }
+.row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-left: auto; flex-shrink: 0; }

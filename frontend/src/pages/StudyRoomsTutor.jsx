@@ -6,79 +6,21 @@ import HubLayout from '../components/layout/HubLayout'
 import { Card, DateChip, EmptyState, Icon, Pill, SkeletonRows } from '../components/ui'
 import { createStudyRoom, getStudyRooms } from '../api/studyrooms'
 import { errorMessage } from '../api/client'
+import { useAutoFocus } from '../hooks/useAutoFocus'
+import { useEscape } from '../hooks/useEscape'
+import { useNow } from '../hooks/useNow'
+import { toDateInput, toLocalISO } from '../lib/dates'
 import { formatTime } from '../lib/format'
-
-const JOIN_WINDOW = 15 * 60_000 // students see the join link from 15 minutes before the start
-
-/** Rooms store whatever was typed — only http(s) links are rendered. */
-function meetingUrl(link) {
-  const s = (link || '').trim()
-  if (/^https?:\/\/\S+$/i.test(s)) return s
-  if (/^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(s)) return `https://${s}`
-  return null
-}
-
-/** Accepts "zoom.us/j/123" as well as full URLs; null for anything that isn't http(s). */
-function normaliseLink(value) {
-  const s = value.trim()
-  if (!s) return null
-  try {
-    const url = new URL(/^[a-z][a-z\d+.-]*:\/\//i.test(s) ? s : `https://${s}`)
-    return /^https?:$/.test(url.protocol) && url.hostname.includes('.') ? url.href : null
-  } catch {
-    return null
-  }
-}
-
-function hostOf(url) {
-  try { return new URL(url).hostname.replace(/^www\./, '') } catch { return null }
-}
-
-function phaseOf(room, now) {
-  const start = new Date(room.start_time).getTime()
-  const end = new Date(room.end_time).getTime()
-  if (now >= end) return 'past'
-  if (now >= start) return 'live'
-  return start - now <= JOIN_WINDOW ? 'soon' : 'upcoming'
-}
-
-function useNow(every = 30_000) {
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), every)
-    return () => clearInterval(id)
-  }, [every])
-  return now
-}
-
-function useEscape(handler) {
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') handler() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [handler])
-}
-
-function formatLength(start, end) {
-  const mins = Math.round((new Date(end) - new Date(start)) / 60_000)
-  if (mins < 60) return `${mins} min`
-  return mins % 60 ? `${Math.floor(mins / 60)} h ${mins % 60}` : `${mins / 60} h`
-}
-
-const minutesUntil = (value, now) => Math.max(1, Math.ceil((new Date(value) - now) / 60_000))
-
-const pad = (n) => String(n).padStart(2, '0')
-const dateOnly = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-const localISO = (d) => `${dateOnly(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
+import { formatLength, hostOf, isOpen, livePhase, meetingUrl, minutesUntil, normaliseLink } from '../lib/meetings'
 
 const Optional = () => <span style={{ color: 'var(--text-faint)', fontWeight: 500 }}>(optional)</span>
 
 function HostedRoomRow({ room, now }) {
-  const phase = phaseOf(room, now)
+  const phase = livePhase(room, now)
   const url = meetingUrl(room.zoom_link)
 
   return (
-    <div className="row">
+    <div className="row row-wrap">
       <DateChip value={room.start_time} />
       <div className="main">
         <div className="title">
@@ -90,24 +32,27 @@ function HostedRoomRow({ room, now }) {
           {url && ` · ${hostOf(url) ?? 'Meeting link'}`}
         </div>
       </div>
-      {phase === 'live' && <Pill tone="green">Live now</Pill>}
-      {phase === 'soon' && <Pill>Starts in {minutesUntil(room.start_time, now)} min</Pill>}
-      {phase !== 'past' && !url && <Pill tone="red">No link</Pill>}
-      {(phase === 'live' || phase === 'soon') && url && (
-        <a className="btn btn-coral btn-sm" href={url} target="_blank" rel="noopener noreferrer">
-          <Icon name="videocam" />Start
-        </a>
-      )}
+      <div className="row-actions">
+        {phase === 'live' && <Pill tone="green">Live now</Pill>}
+        {phase === 'soon' && <Pill>Starts in {minutesUntil(room.start_time, now)} min</Pill>}
+        {phase !== 'past' && !url && <Pill tone="red">No link</Pill>}
+        {isOpen(phase) && url && (
+          <a className="btn btn-coral btn-sm" href={url} target="_blank" rel="noopener noreferrer">
+            <Icon name="videocam" />Start
+          </a>
+        )}
+      </div>
     </div>
   )
 }
 
 function HostRoomDialog({ onClose, onCreated }) {
   const [form, setForm] = useState(() => ({
-    subject: '', description: '', date: dateOnly(new Date(Date.now() + 86_400_000)), start: '18:00', end: '19:00', link: '',
+    subject: '', description: '', date: toDateInput(new Date(Date.now() + 86_400_000)), start: '18:00', end: '19:00', link: '',
   }))
   const [saving, setSaving] = useState(false)
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
+  const first = useAutoFocus()
   useEscape(onClose)
 
   async function submit(e) {
@@ -127,8 +72,8 @@ function HostRoomDialog({ onClose, onCreated }) {
       await createStudyRoom({
         subject,
         description: form.description.trim(),
-        start_time: localISO(start),
-        end_time: localISO(end),
+        start_time: toLocalISO(start),
+        end_time: toLocalISO(end),
         zoom_link: link,
       })
       toast.success('Room scheduled')
@@ -157,7 +102,7 @@ function HostRoomDialog({ onClose, onCreated }) {
         <div className="dialog-body">
           <label className="field">
             <span>Subject</span>
-            <input className="input" value={form.subject} onChange={set('subject')} maxLength={150} required autoFocus />
+            <input ref={first} className="input" value={form.subject} onChange={set('subject')} maxLength={150} required />
           </label>
           <label className="field">
             <span>Description <Optional /></span>
@@ -165,7 +110,7 @@ function HostRoomDialog({ onClose, onCreated }) {
           </label>
           <label className="field">
             <span>Date</span>
-            <input className="input" type="date" value={form.date} min={dateOnly(new Date())} onChange={set('date')} required />
+            <input className="input" type="date" value={form.date} min={toDateInput(new Date())} onChange={set('date')} required />
           </label>
           <div className="field-row">
             <label className="field">
@@ -223,9 +168,9 @@ export default function StudyRoomsTutor() {
   useEffect(() => { load() }, [])
 
   const mine = rooms.filter((r) => r.creator_user_id === user?.id)
-  const active = mine.filter((r) => phaseOf(r, now) !== 'past')
-  const past = mine.filter((r) => phaseOf(r, now) === 'past').reverse()
-  const highlight = active.find((r) => phaseOf(r, now) !== 'upcoming')
+  const active = mine.filter((r) => livePhase(r, now) !== 'past')
+  const past = mine.filter((r) => livePhase(r, now) === 'past').reverse()
+  const highlight = active.find((r) => livePhase(r, now) !== 'upcoming')
   const list = active.filter((r) => r !== highlight)
   const highlightUrl = highlight && meetingUrl(highlight.zoom_link)
 
@@ -247,7 +192,7 @@ export default function StudyRoomsTutor() {
           <section className="card spotlight">
             <div className="grow">
               <div className="when">
-                {phaseOf(highlight, now) === 'live'
+                {livePhase(highlight, now) === 'live'
                   ? `Live now · until ${formatTime(highlight.end_time)}`
                   : `Starts in ${minutesUntil(highlight.start_time, now)} min · ${formatTime(highlight.start_time)}`}
               </div>

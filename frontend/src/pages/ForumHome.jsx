@@ -1,29 +1,19 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import toast from 'react-hot-toast'
 import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
+import CategoryIcon from '../components/features/CategoryIcon'
 import { Avatar, Card, EmptyState, Icon, SkeletonRows } from '../components/ui'
 import { getCategories, getRecentThreads } from '../api/forum'
-import { errorMessage } from '../api/client'
-import { timeAgo } from '../lib/format'
-
-const plural = (n, one, many = `${one}s`) => `${n} ${Number(n) === 1 ? one : many}`
-
-// Category activity arrives as "YYYY-MM-DD HH:MM:SS"; Safari only parses the ISO "T" form.
-const isoDate = (value) => (typeof value === 'string' ? value.replace(' ', 'T') : value)
-
-// The API client already handles 401 (back to login) and 402 (Explorer upsell toast).
-function notify(err) {
-  const status = err?.response?.status
-  if (status !== 401 && status !== 402) toast.error(errorMessage(err))
-}
+import { useAutoFocus } from '../hooks/useAutoFocus'
+import { notifyError } from '../lib/errors'
+import { authorOf } from '../lib/forum'
+import { plural, timeAgo } from '../lib/format'
 
 function CategoryRow({ category: c }) {
-  const last = c.last_activity ? isoDate(c.last_activity) : null
   return (
     <Link to="/forum/category/$categoryId" params={{ categoryId: String(c.id) }} className="row">
-      <Icon name={c.icon || 'forum'} size={20} style={{ color: 'var(--coral)', width: 22 }} />
+      <CategoryIcon icon={c.icon} size={20} style={{ color: 'var(--coral)', width: 22 }} />
       <div className="main">
         <div className="title">{c.name}</div>
         {c.description && <div className="meta">{c.description}</div>}
@@ -31,12 +21,13 @@ function CategoryRow({ category: c }) {
       <span className="side hide-mobile">
         {plural(c.thread_count ?? 0, 'thread')} · {plural(c.post_count ?? 0, 'reply', 'replies')}
       </span>
-      <span className="side" style={{ width: 64, textAlign: 'right' }}>{last ? timeAgo(last) : '—'}</span>
+      <span className="side" style={{ width: 64, textAlign: 'right' }}>{c.last_activity ? timeAgo(c.last_activity) : '—'}</span>
     </Link>
   )
 }
 
 function CategoryPicker({ categories, onPick, onClose }) {
+  const first = useAutoFocus()
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
@@ -54,8 +45,8 @@ function CategoryPicker({ categories, onPick, onClose }) {
         <div className="row-list" style={{ marginTop: 14, paddingBottom: 6, borderTop: '1px solid var(--border)' }}>
           {categories.map((c, i) => (
             <button key={c.id} type="button" className="row" style={{ paddingLeft: 18, paddingRight: 18 }}
-              autoFocus={i === 0} onClick={() => onPick(c)}>
-              <Icon name={c.icon || 'forum'} size={18} style={{ color: 'var(--coral)', width: 20 }} />
+              ref={i === 0 ? first : undefined} onClick={() => onPick(c)}>
+              <CategoryIcon icon={c.icon} size={18} style={{ color: 'var(--coral)', width: 20 }} />
               <div className="main"><div className="title">{c.name}</div></div>
             </button>
           ))}
@@ -75,7 +66,7 @@ export default function ForumHome() {
   const load = useCallback(() => {
     setStatus('loading')
     return Promise.allSettled([getCategories(), getRecentThreads(6)]).then(([cats, recent]) => {
-      if (cats.status === 'rejected') notify(cats.reason)
+      if (cats.status === 'rejected') notifyError(cats.reason, 'Couldn’t load the forum')
       setData({
         categories: cats.status === 'fulfilled' ? cats.value.data.categories ?? [] : [],
         recent: recent.status === 'fulfilled' ? recent.value.data.threads ?? [] : [],
@@ -121,11 +112,11 @@ export default function ForumHome() {
             <div className="row-list">
               {recent.map((t) => (
                 <Link key={t.id} to="/forum/thread/$threadId" params={{ threadId: String(t.id) }} className="row">
-                  <Avatar name={t.author_name?.trim() || 'Member'} size={28} />
+                  <Avatar name={authorOf(t)} size={28} />
                   <div className="main">
                     <div className="title">{t.title}</div>
                     <div className="meta">
-                      {t.category_name} · {plural(t.post_count ?? 0, 'reply', 'replies')} · {timeAgo(isoDate(t.last_activity))}
+                      {t.category_name} · {plural(t.post_count ?? 0, 'reply', 'replies')} · {timeAgo(t.last_activity)}
                     </div>
                   </div>
                 </Link>

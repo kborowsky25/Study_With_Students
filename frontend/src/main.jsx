@@ -8,6 +8,7 @@ import { router } from './router'
 import './index.css'
 import './styles/brand.css'
 import './styles/app.css'
+import './styles/responsive.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

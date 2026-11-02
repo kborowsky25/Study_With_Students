@@ -3,8 +3,11 @@ import toast from 'react-hot-toast'
 import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
 import { Card, EmptyState, Icon, Pill, SkeletonRows } from '../components/ui'
+import { useConfirm } from '../components/ui/confirm'
 import { createNote, deleteNote, downloadNote, getNotes } from '../api/notes'
 import { errorMessage } from '../api/client'
+import { useAutoFocus } from '../hooks/useAutoFocus'
+import { useEscape } from '../hooks/useEscape'
 import { timeAgo } from '../lib/format'
 
 const SUBJECTS = [
@@ -37,18 +40,10 @@ const fileSize = (bytes) =>
 
 const Optional = () => <span style={{ color: 'var(--text-faint)', fontWeight: 500 }}>(optional)</span>
 
-function useEscape(handler) {
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') handler() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [handler])
-}
-
 function NoteRow({ note, busy, onDownload, onDelete }) {
   const kind = kindOf(note)
   return (
-    <div className="row">
+    <div className="row row-wrap">
       <span title={kind.label} style={{ display: 'inline-flex', color: kind.tone, flexShrink: 0 }}>
         <Icon name={kind.icon} size={20} />
       </span>
@@ -65,21 +60,23 @@ function NoteRow({ note, busy, onDownload, onDelete }) {
           <span style={{ flexShrink: 0 }}>· {timeAgo(note.created_at)}</span>
         </div>
       </div>
-      {note.has_file && (
-        <button
-          className="btn btn-ghost btn-sm"
-          onClick={() => onDownload(note)}
-          disabled={busy}
-          aria-label={`Download ${note.file_name || note.title}`}
-        >
-          <Icon name="download" /><span className="hide-mobile">Download</span>
-        </button>
-      )}
-      {note.is_mine && (
-        <button className="icon-btn" onClick={() => onDelete(note)} disabled={busy} aria-label={`Delete ${note.title}`} title="Delete">
-          <Icon name="delete" />
-        </button>
-      )}
+      <div className="row-actions">
+        {note.has_file && (
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={() => onDownload(note)}
+            disabled={busy}
+            aria-label={`Download ${note.file_name || note.title}`}
+          >
+            <Icon name="download" /><span className="hide-mobile">Download</span>
+          </button>
+        )}
+        {note.is_mine && (
+          <button className="icon-btn" onClick={() => onDelete(note)} disabled={busy} aria-label={`Delete ${note.title}`} title="Delete">
+            <Icon name="delete" />
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -90,6 +87,7 @@ function ShareNotesDialog({ defaultSubject = '', onClose, onShared }) {
   const [saving, setSaving] = useState(false)
   const fileInput = useRef(null)
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
+  const first = useAutoFocus()
   useEscape(onClose)
 
   function pick(f) {
@@ -148,7 +146,7 @@ function ShareNotesDialog({ defaultSubject = '', onClose, onShared }) {
         <div className="dialog-body">
           <label className="field">
             <span>Title</span>
-            <input className="input" value={form.title} onChange={set('title')} maxLength={255} required autoFocus />
+            <input ref={first} className="input" value={form.title} onChange={set('title')} maxLength={255} required />
           </label>
           <label className="field">
             <span>Subject</span>
@@ -211,33 +209,8 @@ function ShareNotesDialog({ defaultSubject = '', onClose, onShared }) {
   )
 }
 
-function DeleteNoteDialog({ note, busy, onCancel, onConfirm }) {
-  useEscape(onCancel)
-  return (
-    <div className="overlay center" onMouseDown={onCancel}>
-      <div
-        className="dialog"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="delete-note-title"
-        style={{ maxWidth: 420 }}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div className="dialog-head" style={{ paddingBottom: 20 }}>
-          <h2 id="delete-note-title" style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>Delete “{note.title}”?</h2>
-        </div>
-        <div className="dialog-foot">
-          <button type="button" className="btn btn-quiet" onClick={onCancel} autoFocus>Cancel</button>
-          <button type="button" className="btn btn-danger" onClick={onConfirm} disabled={busy}>
-            {busy ? 'Deleting…' : 'Delete'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export default function StudyNotes() {
+  const confirm = useConfirm()
   const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
@@ -246,7 +219,6 @@ export default function StudyNotes() {
   const [scope, setScope] = useState('all')
   const [reloadKey, setReloadKey] = useState(0)
   const [sharing, setSharing] = useState(false)
-  const [deleting, setDeleting] = useState(null)
   const [busy, setBusy] = useState(null)
 
   // The subject filter runs on the API; search and "Mine" filter what's loaded.
@@ -273,13 +245,18 @@ export default function StudyNotes() {
     }
   }
 
-  async function remove() {
-    const note = deleting
+  async function remove(note) {
+    const ok = await confirm({
+      title: `Delete “${note.title}”?`,
+      body: note.has_file ? 'The attached file is deleted too.' : undefined,
+      confirmLabel: 'Delete',
+      danger: true,
+    })
+    if (!ok) return
     setBusy(note.id)
     try {
       await deleteNote(note.id)
       setNotes((list) => list.filter((n) => n.id !== note.id))
-      setDeleting(null)
       toast.success('Note deleted')
     } catch (err) {
       toast.error(errorMessage(err, 'Could not delete the note'))
@@ -362,7 +339,7 @@ export default function StudyNotes() {
         {loading ? <SkeletonRows rows={5} /> : visible.length ? (
           <div className="row-list">
             {visible.map((n) => (
-              <NoteRow key={n.id} note={n} busy={busy === n.id} onDownload={download} onDelete={setDeleting} />
+              <NoteRow key={n.id} note={n} busy={busy === n.id} onDownload={download} onDelete={remove} />
             ))}
           </div>
         ) : empty}
@@ -373,14 +350,6 @@ export default function StudyNotes() {
           defaultSubject={subject}
           onClose={() => setSharing(false)}
           onShared={() => { setSharing(false); reload() }}
-        />
-      )}
-      {deleting && (
-        <DeleteNoteDialog
-          note={deleting}
-          busy={busy === deleting.id}
-          onCancel={() => setDeleting(null)}
-          onConfirm={remove}
         />
       )}
     </HubLayout>
