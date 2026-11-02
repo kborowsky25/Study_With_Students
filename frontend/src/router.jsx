@@ -1,50 +1,54 @@
-import { createRootRoute, createRoute, createRouter, Outlet, redirect } from '@tanstack/react-router'
+import { createRootRoute, createRoute, createRouter, lazyRouteComponent, Outlet, redirect } from '@tanstack/react-router'
 import { AuthProvider } from './context/AuthContext'
 import { hasExplorerAccess } from './lib/access'
 
+// Every page is its own chunk, loaded when its route is first visited (or when a
+// link to it is hovered — see `defaultPreload`), so the first load stays small.
+const lazy = (importer) => lazyRouteComponent(importer)
+
 // Public
-import Home           from './pages/Home'
-import Login          from './pages/Login'
-import Signup         from './pages/Signup'
-import AboutUs        from './pages/AboutUs'
-import HowItWorks     from './pages/HowItWorks'
-import BecomeATutor   from './pages/BecomeATutor'
-import FoundingTutors from './pages/FoundingTutors'
+const Home           = lazy(() => import('./pages/Home'))
+const Login          = lazy(() => import('./pages/Login'))
+const Signup         = lazy(() => import('./pages/Signup'))
+const AboutUs        = lazy(() => import('./pages/AboutUs'))
+const HowItWorks     = lazy(() => import('./pages/HowItWorks'))
+const BecomeATutor   = lazy(() => import('./pages/BecomeATutor'))
+const FoundingTutors = lazy(() => import('./pages/FoundingTutors'))
 
 // Hub — student
-import HubStudent        from './pages/HubStudent'
-import FindTutors        from './pages/FindTutors'
-import TutorInfo         from './pages/TutorInfo'
-import ActiveTutors      from './pages/ActiveTutors'
-import LikedTutors       from './pages/LikedTutors'
-import CalendarStudent   from './pages/CalendarStudent'
-import Payments          from './pages/Payments'
-import StudyRoomsStudent from './pages/StudyRoomsStudent'
+const HubStudent        = lazy(() => import('./pages/HubStudent'))
+const FindTutors        = lazy(() => import('./pages/FindTutors'))
+const TutorInfo         = lazy(() => import('./pages/TutorInfo'))
+const ActiveTutors      = lazy(() => import('./pages/ActiveTutors'))
+const LikedTutors       = lazy(() => import('./pages/LikedTutors'))
+const CalendarStudent   = lazy(() => import('./pages/CalendarStudent'))
+const Payments          = lazy(() => import('./pages/Payments'))
+const StudyRoomsStudent = lazy(() => import('./pages/StudyRoomsStudent'))
 
 // Hub — tutor
-import HubTutor        from './pages/HubTutor'
-import TutorProfile    from './pages/TutorProfile'
-import TutorScreening  from './pages/TutorScreening'
-import ActiveStudents  from './pages/ActiveStudents'
-import CalendarTutor   from './pages/CalendarTutor'
-import Earnings        from './pages/Earnings'
-import StudyRoomsTutor from './pages/StudyRoomsTutor'
+const HubTutor        = lazy(() => import('./pages/HubTutor'))
+const TutorProfile    = lazy(() => import('./pages/TutorProfile'))
+const TutorScreening  = lazy(() => import('./pages/TutorScreening'))
+const ActiveStudents  = lazy(() => import('./pages/ActiveStudents'))
+const CalendarTutor   = lazy(() => import('./pages/CalendarTutor'))
+const Earnings        = lazy(() => import('./pages/Earnings'))
+const StudyRoomsTutor = lazy(() => import('./pages/StudyRoomsTutor'))
 
 // Hub — shared
-import Messages       from './pages/Messages'
-import ForumHome      from './pages/ForumHome'
-import ForumCategory  from './pages/ForumCategory'
-import ForumThread    from './pages/ForumThread'
-import NewThread      from './pages/NewThread'
-import StudyNotes     from './pages/StudyNotes'
-import Classroom      from './pages/Classroom'
-import XP             from './pages/XP'
-import Membership     from './pages/Membership'
-import StudentProfile from './pages/StudentProfile'
+const Messages       = lazy(() => import('./pages/Messages'))
+const ForumHome      = lazy(() => import('./pages/ForumHome'))
+const ForumCategory  = lazy(() => import('./pages/ForumCategory'))
+const ForumThread    = lazy(() => import('./pages/ForumThread'))
+const NewThread      = lazy(() => import('./pages/NewThread'))
+const StudyNotes     = lazy(() => import('./pages/StudyNotes'))
+const Classroom      = lazy(() => import('./pages/Classroom'))
+const XP             = lazy(() => import('./pages/XP'))
+const Membership     = lazy(() => import('./pages/Membership'))
+const StudentProfile = lazy(() => import('./pages/StudentProfile'))
 
 // Admin
-import AdminScreening from './pages/AdminScreening'
-import SuperAdmin     from './pages/SuperAdmin'
+const AdminScreening = lazy(() => import('./pages/AdminScreening'))
+const SuperAdmin     = lazy(() => import('./pages/SuperAdmin'))
 
 // ── Guards (run before a route loads) ─────────────────────────────────────────
 
@@ -148,4 +152,8 @@ const routeTree = rootRoute.addChildren([
   page('/superadmin', SuperAdmin, requireAdmin),
 ])
 
-export const router = createRouter({ routeTree })
+export const router = createRouter({
+  routeTree,
+  // Hovering or focusing a link starts loading that page's chunk.
+  defaultPreload: 'intent',
+})
