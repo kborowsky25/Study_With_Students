@@ -24,6 +24,8 @@ setup and the project layout.
 - Passwords are hashed with werkzeug; legacy plaintext rows are upgraded on next login.
 - JSON: datetimes serialise as ISO-8601 and decimals as numbers (server/json.py).
 - SQL must always be parameterised — never interpolate user input.
+- Logged-out, indexable data (`/tutors`, `/subjects/…`, sitemap) comes only from `server/routes/public.py`:
+  a field allowlist, first name + initial, contact details scrubbed, reviews without reviewer names.
 - Abuse-prone endpoints get `@rate_limit` (server/ratelimit.py), placed *below* `@jwt_required`
   when keyed per user. Uploads go through `services/uploads.read_upload`.
 - Never return Stripe or exception text to the client — log it. See SECURITY.md before touching auth,
@@ -38,7 +40,8 @@ is generated) → student pays via Stripe (`paid`) → student can review once.
 Either side can cancel; only the tutor confirms; only verified Stripe checkouts mark `paid`.
 
 ## Frontend (frontend/src)
-- All API calls go through `api/client.js` (JWT interceptor, 401 → login), with `errorMessage()` for toasts.
+- All API calls go through `api/client.js` (JWT interceptor; a 401 signs the user out and the route
+  guards send protected pages to /login, public pages stay), with `errorMessage()` for toasts.
 - `AuthContext.refreshSession()` re-issues the JWT with live claims — call it after plan/role changes.
 - Navigation lives in `lib/navigation.js` (sidebar, ⌘K palette and `g`+key shortcuts all read it).
 - Hub pages render inside `<HubLayout>` and set the header with `<PageTitle title icon />`.

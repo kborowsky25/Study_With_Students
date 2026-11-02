@@ -22,6 +22,7 @@ Everything here can stay £0 while the project is a hobby.
    | `DB_NAME` | `sws_prod` | `sws_staging` |
    | `SECRET_KEY`, `JWT_SECRET_KEY` | two strings from step 2 | two different strings |
    | `FRONTEND_URL` | `https://www.studywithstudents.co.uk` | `https://staging.studywithstudents.co.uk` |
+   | `VITE_SITE_URL` | `https://www.studywithstudents.co.uk` | `https://staging.studywithstudents.co.uk` |
    | `SUPER_ADMIN_EMAIL` | your email | your email |
    | `STRIPE_SECRET_KEY`, `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe **test** keys while it's a hobby | Stripe test keys |
    | `STRIPE_WEBHOOK_SECRET` | signing secret of the webhook below | the test-mode webhook's secret |
@@ -78,7 +79,18 @@ Stripe's card fees.
 - [ ] Review `docs/SAFEGUARDING.md` (draft, not legal advice) and decide how tutors without an
       enhanced DBS check can get one (umbrella body).
 
-## 6. Housekeeping
+## 6. Search (public tutor and subject pages)
+
+- [ ] Once live, add the site to Google Search Console (free) and submit
+      `https://www.studywithstudents.co.uk/sitemap.xml`. `frontend/public/robots.txt` names that
+      address; change it if the domain differs.
+- [ ] Keep staging behind Vercel's login (the default), or search engines will index it too.
+- [ ] Optional: link previews (WhatsApp, LinkedIn) only see the generic tags in `index.html`. A small
+      Flask route that fills in each tutor page's tags would fix that (no paid service needed).
+- [ ] Optional: "Sign up to book" on a tutor page could bring families back to that tutor after
+      sign-up (a `?redirect=` on login and sign-up).
+
+## 7. Housekeeping
 
 - [ ] Old "Study Room:" sessions created by a fixed bug are still in the local dev database.
       Clean them up with:

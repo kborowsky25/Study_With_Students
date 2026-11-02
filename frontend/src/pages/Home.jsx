@@ -25,6 +25,9 @@ const UNIVERSITIES = [
   { name: 'University of Oxford',    src: '/static/images/homepage/oxf.jpg' },
 ]
 
+// 'Computer Science' → 'computer-science', the slug of its public subject page
+const subjectSlug = (subject) => subject.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+
 const SUBJECTS = [
   ['Mathematics', 'calculate'],
   ['Physics', 'atom'],
@@ -71,7 +74,7 @@ export default function Home() {
             </p>
             <div className="mk-actions mk-center">
               <Link to="/signup" className="mk-btn mk-btn-coral">Join now</Link>
-              <Link to="/find-tutors" className="mk-btn mk-btn-slate">Find a tutor</Link>
+              <Link to="/tutors" className="mk-btn mk-btn-slate">Find a tutor</Link>
             </div>
           </div>
           {HERO_ART.map(({ area, art, label }) => (
@@ -127,13 +130,13 @@ export default function Home() {
             <ul className="mk-subject-list">
               {SUBJECTS.map(([subject, icon]) => (
                 <li key={subject}>
-                  <Link to="/find-tutors" search={{ subject }} className="mk-subject">
+                  <Link to="/subjects/$subject" params={{ subject: subjectSlug(subject) }} className="mk-subject">
                     <Icon name={icon} />{subject}
                   </Link>
                 </li>
               ))}
               <li className="mk-subject-all">
-                <Link to="/find-tutors" className="mk-subject mk-subject-all">
+                <Link to="/tutors" className="mk-subject mk-subject-all">
                   Explore all<Icon name="arrow_forward" />
                 </Link>
               </li>

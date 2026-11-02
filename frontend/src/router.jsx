@@ -15,6 +15,11 @@ const HowItWorks     = lazy(() => import('./pages/HowItWorks'))
 const BecomeATutor   = lazy(() => import('./pages/BecomeATutor'))
 const FoundingTutors = lazy(() => import('./pages/FoundingTutors'))
 
+// Public tutor and subject pages (indexed by search engines; no login)
+const TutorDirectory = lazy(() => import('./pages/TutorDirectory'))
+const PublicTutor    = lazy(() => import('./pages/PublicTutor'))
+const SubjectPage    = lazy(() => import('./pages/SubjectPage'))
+
 // Hub — student
 const HubStudent        = lazy(() => import('./pages/HubStudent'))
 const FindTutors        = lazy(() => import('./pages/FindTutors'))
@@ -102,13 +107,16 @@ const page = (path, component, beforeLoad) =>
 
 const routeTree = rootRoute.addChildren([
   // Public
-  page('/',                Home),
-  page('/login',           Login),
-  page('/signup',          Signup),
-  page('/about',           AboutUs),
-  page('/how-it-works',    HowItWorks),
-  page('/become-tutor',    BecomeATutor),
-  page('/founding-tutors', FoundingTutors),
+  page('/',                  Home),
+  page('/login',             Login),
+  page('/signup',            Signup),
+  page('/about',             AboutUs),
+  page('/how-it-works',      HowItWorks),
+  page('/become-tutor',      BecomeATutor),
+  page('/founding-tutors',   FoundingTutors),
+  page('/tutors',            TutorDirectory),
+  page('/tutors/$slug',      PublicTutor),
+  page('/subjects/$subject', SubjectPage),
 
   // Hub
   page('/hub',             () => null, redirectToHub),
@@ -157,6 +165,10 @@ export const router = createRouter({
   routeTree,
   // Hovering or focusing a link starts loading that page's chunk.
   defaultPreload: 'intent',
+  // New pages open at the top (instantly, despite the site's smooth scrolling);
+  // Back returns to where you were.
+  scrollRestoration: true,
+  scrollRestorationBehavior: 'instant',
 })
 
 // When the saved session stops working, check the current page again: one that needs a

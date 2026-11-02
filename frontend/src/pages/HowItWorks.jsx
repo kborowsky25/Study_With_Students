@@ -165,7 +165,7 @@ export default function HowItWorks() {
           </div>
           <div className="mk-actions mk-faq-actions">
             <Link to={start} className="mk-btn mk-btn-coral">Join now</Link>
-            <Link to="/find-tutors" className="mk-btn mk-btn-slate">Find a tutor</Link>
+            <Link to="/tutors" className="mk-btn mk-btn-slate">Find a tutor</Link>
           </div>
         </div>
       </section>

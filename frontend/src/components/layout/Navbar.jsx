@@ -9,6 +9,7 @@ import { Logo } from '../brand/Logo'
 // Styles: styles/marketing.css (.mk-nav).
 
 const LINKS = [
+  { to: '/tutors',       label: 'Find a tutor' },
   { to: '/how-it-works', label: 'How it works' },
   { to: '/about',        label: 'About us' },
   { to: '/become-tutor', label: 'Become a tutor' },

@@ -218,7 +218,7 @@ export default function PublicTutor() {
                         <figure className="pub-review">
                           <StarRating rating={r.rating} />
                           <blockquote>“{r.comment}”</blockquote>
-                          <figcaption>{r.reviewer}{r.date && `, ${monthYear(r.date)}`}</figcaption>
+                          <figcaption>A student{r.date && `, ${monthYear(r.date)}`}</figcaption>
                         </figure>
                       </li>
                     ))}

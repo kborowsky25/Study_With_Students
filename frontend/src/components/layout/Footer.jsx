@@ -19,7 +19,7 @@ const COLUMNS = [
     links: [
       { to: '/signup',      label: 'Sign up' },
       { to: '/login',       label: 'Log in' },
-      { to: '/find-tutors', label: 'Find a tutor' },
+      { to: '/tutors',      label: 'Find a tutor' },
       { to: '/hub',         label: 'Your dashboard' },
     ],
   },

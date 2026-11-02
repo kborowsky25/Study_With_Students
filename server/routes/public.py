@@ -4,6 +4,7 @@ Anyone can read these endpoints, so every response is built from an explicit all
 first name + last initial, university, course, subjects, levels, hourly rate, about text,
 avatar, verified flag, rating and a few recent reviews. Never emails, ages, LinkedIn,
 availability, screening or DBS details — and contact details are scrubbed from free text.
+Reviews carry no reviewer name: many reviewers are school pupils.
 """
 import math
 import re
@@ -15,6 +16,7 @@ from flask import Blueprint, Response, jsonify, request
 from ..config import Config
 from ..db import get_db
 from ..matching import LEVELS, SUBJECT_ALIASES, parse_subjects, smoothed_rating
+from ..ratelimit import rate_limit
 from .tutors import TUTOR_JOINS, decorate_tutors
 
 bp = Blueprint('public', __name__, url_prefix='/api')
@@ -226,6 +228,7 @@ def cache_public(response):
 
 
 @bp.route('/public/tutors', methods=['GET'])
+@rate_limit(120, per=60)
 def list_public_tutors():
     """Public directory. `subject`: slug or name, optionally level-first ('a-level-physics');
     `level`: GCSE / A-level / IB / University; `university`: part of the name; `page`: 1-based."""
@@ -271,6 +274,7 @@ def list_public_tutors():
 
 
 @bp.route('/public/tutors/<int:tutor_id>', methods=['GET'])
+@rate_limit(120, per=60)
 def get_public_tutor(tutor_id):
     conn = get_db(); cur = conn.cursor(dictionary=True)
     try:
@@ -292,7 +296,6 @@ def get_public_tutor(tutor_id):
             'rating':   int(r['rating']),
             'comment':  scrub(scrub(r['comment'], r['tutor']), r['reviewer']),
             'date':     r['created_at'].date() if r['created_at'] else None,
-            'reviewer': public_name(r['reviewer'])[0],
         } for r in cur.fetchall()]
         return jsonify({'tutor': tutor})
     finally:
@@ -300,6 +303,7 @@ def get_public_tutor(tutor_id):
 
 
 @bp.route('/public/subjects', methods=['GET'])
+@rate_limit(120, per=60)
 def list_public_subjects():
     """Every subject a public tutor teaches, most tutors first, with the per-level pages."""
     subjects = sorted(subject_index(public_tutors()).values(), key=lambda s: (-s['tutor_count'], s['name']))
@@ -313,6 +317,7 @@ def list_public_subjects():
 
 
 @bp.route('/public/sitemap.xml', methods=['GET'])
+@rate_limit(30, per=60)
 def sitemap():
     """Marketing pages, every public tutor and every subject (and subject + level) page."""
     tutors = public_tutors()
@@ -320,7 +325,8 @@ def sitemap():
     paths = [*STATIC_PAGES, *(f"/tutors/{t['slug']}" for t in sorted(tutors, key=lambda t: t['id']))]
     for slug in sorted(index):
         paths.append(f'/subjects/{slug}')
-        paths += [f'/subjects/{slugify(level)}-{slug}' for level in LEVEL_SLUGS.values() if level in index[slug]['levels']]
+        paths += [f'/subjects/{slugify(level)}-{slug}'
+                  for level in LEVEL_SLUGS.values() if level in index[slug]['levels']]
 
     base = Config.FRONTEND_URL.rstrip('/')
     body = '\n'.join([
