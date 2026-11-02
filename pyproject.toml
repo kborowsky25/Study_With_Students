@@ -1,0 +1,29 @@
+# Python tooling for the API (server/, api/, db/) and its tests.
+#
+#   .venv/bin/pip install -r requirements-dev.txt
+#   .venv/bin/python -m pytest     # needs the local MySQL; runs in its own users_tutoring_test database
+#   .venv/bin/ruff check .
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers"
+# A known bug is marked xfail(strict=True): once it is fixed the test passes and the
+# run fails until the marker is removed, so fixes are never silent.
+xfail_strict = true
+filterwarnings = [
+    # server/ still calls datetime.utcnow() (deprecated in Python 3.12) — tracked in docs/QA-FINDINGS.md.
+    # Silenced only for server code, so any new warning still shows up.
+    "ignore:datetime.datetime.utcnow:DeprecationWarning:server",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+extend-exclude = ["legacy", "frontend", "uploads"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = [
+    "E702",  # `conn = get_db(); cur = conn.cursor()` — the house style for opening a connection
+]
