@@ -28,7 +28,7 @@ export function Trend({ value, previous, from = false }) {
   const label = `${up ? 'Up' : 'Down'} from ${CONFIDENCE[previous]}`
   return (
     <span className={`trend ${up ? 'up' : 'down'}`} title={label}>
-      <Icon name={up ? 'arrow_upward' : 'arrow_downward'} />
+      <Icon name={up ? 'expand_less' : 'expand_more'} />
       {from ? `from ${CONFIDENCE[previous]}` : <span style={srOnly}>{label}</span>}
     </span>
   )
