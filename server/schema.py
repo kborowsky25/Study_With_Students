@@ -47,6 +47,11 @@ COLUMN_MIGRATIONS = [
     ('events',           'canceled_at',            "DATETIME NULL"),
     ('events',           'cancel_type',            "VARCHAR(16) NULL"),
     ('email_verifications', 'attempts',               "INT NOT NULL DEFAULT 0"),
+    # Parents and safer messaging: the parent role, students' dates of birth (under-18 rules) and
+    # the text of a message before its contact details were hidden (kept for moderation)
+    ('users',            'is_parent',              "TINYINT(1) NOT NULL DEFAULT 0"),
+    ('student_profiles', 'date_of_birth',          "DATE NULL"),
+    ('messages',         'original_message',       "TEXT NULL"),
 ]
 
 FORUM_CATEGORIES = [

@@ -292,3 +292,46 @@ CREATE TABLE IF NOT EXISTS background_checks (
   UNIQUE KEY ux_background_checks_tutor (tutor_id),
   KEY ix_background_checks_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Parents: a parent or guardian (users.is_parent) invites their child by email and the child
+-- accepts in the app. A child has at most two accepted parents (server/family.py).
+-- child_user_id is filled in when the child answers; until then the invite waits for whoever
+-- holds child_email, including someone who hasn't signed up yet.
+CREATE TABLE IF NOT EXISTS parent_links (
+  id             INT AUTO_INCREMENT PRIMARY KEY,
+  parent_user_id INT NOT NULL,
+  child_email    VARCHAR(255) NOT NULL,
+  child_user_id  INT NULL,
+  status         ENUM('pending','accepted','declined') NOT NULL DEFAULT 'pending',
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  answered_at    DATETIME NULL,
+  UNIQUE KEY ux_parent_links (parent_user_id, child_email),
+  KEY ix_parent_links_child (child_user_id),
+  KEY ix_parent_links_email (child_email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Messaging: someone a user has blocked can't message them (and they can't message back).
+CREATE TABLE IF NOT EXISTS user_blocks (
+  blocker_id INT NOT NULL,
+  blocked_id INT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (blocker_id, blocked_id),
+  KEY ix_user_blocks_blocked (blocked_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Reports of a user, or of one of their messages, for the admin queue.
+CREATE TABLE IF NOT EXISTS reports (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  reporter_id INT NOT NULL,
+  reported_id INT NOT NULL,
+  message_id  INT NULL,
+  reason      VARCHAR(32) NOT NULL,
+  note        TEXT NULL,
+  status      ENUM('open','resolved','dismissed') NOT NULL DEFAULT 'open',
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  reviewed_at DATETIME NULL,
+  reviewed_by VARCHAR(255) NULL,
+  admin_note  TEXT NULL,
+  KEY ix_reports_status (status),
+  KEY ix_reports_reported (reported_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

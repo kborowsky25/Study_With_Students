@@ -1,5 +1,6 @@
 """Payments: families pay the tutor's price plus a visible booking fee (the platform's only
-revenue); tutors keep 100% of their price."""
+revenue); tutors keep 100% of their price. The student pays, or one of their linked parents
+(server/family.py); either way only a checkout Stripe confirms marks a session paid."""
 import json
 
 from flask import Blueprint, jsonify, request
@@ -8,6 +9,7 @@ from flask_jwt_extended import jwt_required
 from ..config import Config
 from ..db import current_user_id, get_db
 from ..extensions import stripe, stripe_dict, stripe_enabled
+from ..family import is_linked_parent
 from .events import EVENT_COLUMNS, EVENT_JOINS, fetch_event, real_session_sql
 
 bp = Blueprint('payments', __name__, url_prefix='/api')
@@ -69,12 +71,13 @@ def create_checkout_session(event_id):
     conn = get_db(); cur = conn.cursor(dictionary=True)
     try:
         ev = fetch_event(cur, event_id)
+        by_parent = bool(ev) and ev['student_user_id'] != uid and is_linked_parent(cur, uid, ev['student_user_id'])
     finally:
         cur.close(); conn.close()
 
     if not ev:
         return jsonify({'error': 'Session not found'}), 404
-    if ev['student_user_id'] != uid:
+    if ev['student_user_id'] != uid and not by_parent:
         return jsonify({'error': 'Not your session'}), 403
     if ev['status'] == 'paid':
         return jsonify({'error': 'This session is already paid'}), 409
@@ -91,13 +94,18 @@ def create_checkout_session(event_id):
     if fee_pence:
         line_items.append(_line_item('Booking fee', fee_pence))
 
+    # user_id is who pays; a parent paying for their child also records the child
     metadata = {'event_id': str(event_id), 'user_id': str(uid)}
+    page = '/payments'
+    if by_parent:
+        metadata['student_user_id'] = str(ev['student_user_id'])
+        page = '/hub/parent'
     try:
         session = stripe.checkout.Session.create(
             mode='payment',
             line_items=line_items,
-            success_url=f'{Config.FRONTEND_URL}/payments?event_id={event_id}&session_id={{CHECKOUT_SESSION_ID}}',
-            cancel_url=f'{Config.FRONTEND_URL}/payments?canceled=1',
+            success_url=f'{Config.FRONTEND_URL}{page}?event_id={event_id}&session_id={{CHECKOUT_SESSION_ID}}',
+            cancel_url=f'{Config.FRONTEND_URL}{page}?canceled=1',
             client_reference_id=str(uid),
             metadata=metadata,
             payment_intent_data={'metadata': metadata},
@@ -134,7 +142,7 @@ def verify_payment(event_id):
 
     conn = get_db(); cur = conn.cursor()
     try:
-        if not mark_event_paid(cur, event_id, uid):
+        if not mark_event_paid(cur, event_id, _student_in(meta)):
             return jsonify({'error': 'Session not found'}), 404
         conn.commit()
         return jsonify({'message': 'Payment recorded'})
@@ -175,6 +183,11 @@ def stripe_webhook():
     return jsonify({'received': True, 'result': result})
 
 
+def _student_in(metadata):
+    """The student a checkout paid for: the payer, unless a parent paid for their child."""
+    return int(metadata.get('student_user_id') or metadata.get('user_id'))
+
+
 def _record_checkout(session):
     metadata = session.get('metadata') or {}
     if session.get('mode') != 'payment' or not metadata.get('event_id'):
@@ -182,13 +195,13 @@ def _record_checkout(session):
     if session.get('payment_status') != 'paid':
         return 'ignored: not paid yet'  # delayed methods confirm with async_payment_succeeded
     try:
-        event_id, user_id = int(metadata['event_id']), int(metadata.get('user_id'))
+        event_id, student_user_id = int(metadata['event_id']), _student_in(metadata)
     except (TypeError, ValueError):
         return 'ignored: no session in metadata'
 
     conn = get_db(); cur = conn.cursor()
     try:
-        paid = mark_event_paid(cur, event_id, user_id)
+        paid = mark_event_paid(cur, event_id, student_user_id)
         conn.commit()  # an exception rolls back and answers 500, so Stripe retries
     finally:
         cur.close(); conn.close()

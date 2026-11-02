@@ -5,8 +5,9 @@ topics covered with a confidence rating (1–5) for each, a summary, homework an
 Tutors can edit a note for a week; students read their notes and tick off homework.
 Progress per subject comes from each topic's latest rating.
 
-Who sees what: a student sees every note about themself. A tutor sees only the notes they
-wrote, and only for students they have had a confirmed or paid session with.
+Who sees what: a student sees every note about themself, and so do their linked parents
+(server/family.py). A tutor sees only the notes they wrote, and only for students they have had
+a confirmed or paid session with.
 """
 from datetime import date, datetime, timedelta
 
@@ -23,6 +24,7 @@ from ..data.topics import (
     topic_sort_key,
 )
 from ..db import current_user_id, get_db
+from ..family import is_linked_parent
 from .events import fetch_event
 
 bp = Blueprint('progress', __name__, url_prefix='/api')
@@ -65,7 +67,7 @@ def _note_scope(cur, uid, student_uid):
 
     The condition only ever contains fixed fragments; values always go in as parameters.
     """
-    if uid == student_uid:
+    if uid == student_uid or is_linked_parent(cur, uid, student_uid):
         return 'sp.id_user = %s', (student_uid,)
     cur.execute("""
         SELECT 1

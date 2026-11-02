@@ -2,11 +2,13 @@
 
 Run:  .venv/bin/python -m db.seed
 
-Idempotent — existing demo accounts are left alone. Demo logins:
-    student  demo.student@sws.test  /  explorer-demo-1
+Idempotent — existing demo accounts are left alone (the demo parent is added to a database
+seeded before parent accounts existed). Demo logins:
+    student  demo.student@sws.test  /  explorer-demo-1   (Maya, 16)
     tutor    demo.tutor@sws.test    /  explorer-demo-1
+    parent   demo.parent@sws.test   /  explorer-demo-1   (Kate, Maya's mum)
 """
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from werkzeug.security import generate_password_hash
 
@@ -17,6 +19,7 @@ from server.schema import ensure_schema
 PASSWORD = 'explorer-demo-1'
 
 STUDENT = {'name': 'Maya Patel', 'email': 'demo.student@sws.test'}
+PARENT = {'name': 'Kate Patel', 'email': 'demo.parent@sws.test'}
 TUTOR = {
     'name': 'Oliver Grant', 'email': 'demo.tutor@sws.test',
     'profile': {
@@ -51,13 +54,38 @@ def _student_profile(cur, user_id):
     return cur.lastrowid
 
 
+def _seed_family(cur, student_uid, tutor_uid):
+    """Maya is 16, and her mum Kate is linked to her as her parent. False if Kate exists already."""
+    parent_uid, created = _user(cur, PARENT['name'], PARENT['email'])
+    if not created:
+        return False
+    cur.execute("UPDATE users SET is_parent = 1 WHERE id_user = %s", (parent_uid,))
+    sixteen = date.today() - timedelta(days=16 * 365 + 120)
+    cur.execute("UPDATE student_profiles SET date_of_birth = %s WHERE id_user = %s AND date_of_birth IS NULL",
+                (sixteen, student_uid))
+    cur.execute("""
+        INSERT INTO parent_links (parent_user_id, child_email, child_user_id, status, answered_at)
+        VALUES (%s, %s, %s, 'accepted', NOW())
+    """, (parent_uid, STUDENT['email'], student_uid))
+    if tutor_uid:
+        cur.execute("INSERT INTO messages (id_sender, id_receiver, message) VALUES (%s, %s, %s)", (
+            parent_uid, tutor_uid,
+            "Hello Oliver, I'm Maya's mum. Thank you for helping her with mechanics. I'll pay for her sessions.",
+        ))
+    return True
+
+
 def seed():
     ensure_schema()
     conn = get_db(); cur = conn.cursor()
     try:
         student_uid, created = _user(cur, STUDENT['name'], STUDENT['email'])
         if not created:
-            print('Demo data already present — nothing to do.')
+            cur.execute("SELECT id_user FROM users WHERE email = %s", (TUTOR['email'],))
+            tutor = cur.fetchall()
+            added = _seed_family(cur, student_uid, tutor[0][0] if tutor else None)
+            conn.commit()
+            print('Demo data already present — ' + ('added the demo parent.' if added else 'nothing to do.'))
             return
         tutor_uid, _ = _user(cur, TUTOR['name'], TUTOR['email'])
         student_id = _student_profile(cur, student_uid)
@@ -147,8 +175,9 @@ def seed():
                     %s, %s, 'https://zoom.us/j/0000000000')
         """, (tutor_id, room_start, room_start + timedelta(hours=1, minutes=30)))
 
+        _seed_family(cur, student_uid, tutor_uid)
         conn.commit()
-        print('Seeded demo student, demo tutor and their activity.')
+        print('Seeded demo student, demo tutor, demo parent and their activity.')
     finally:
         cur.close(); conn.close()
 
