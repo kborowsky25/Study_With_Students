@@ -35,7 +35,7 @@ def client_ip():
 
 
 def jwt_user():
-    """The JWT user — put the limit below @jwt_required / @explorer_required."""
+    """The JWT user — put the limit below @jwt_required."""
     return get_jwt_identity()
 
 

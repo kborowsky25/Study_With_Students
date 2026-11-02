@@ -34,8 +34,8 @@ def create_app(config=Config):
         if problems:
             raise RuntimeError('Refusing to start in production: ' + '; '.join(problems))
         if not config.STRIPE_WEBHOOK_SECRET:
-            print('[config] STRIPE_WEBHOOK_SECRET is not set — Explorer renewals and '
-                  'cancellations will not be recorded', flush=True)
+            print('[config] STRIPE_WEBHOOK_SECRET is not set — a payment is only recorded '
+                  'if the family comes back to the site after paying', flush=True)
 
     jwt.init_app(app)
     cors.init_app(app, origins=[config.FRONTEND_URL], supports_credentials=True)

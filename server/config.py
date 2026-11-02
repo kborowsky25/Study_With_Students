@@ -53,13 +53,11 @@ class Config:
 
     # Stripe
     STRIPE_SECRET_KEY     = _env('STRIPE_SECRET_KEY')
-    STRIPE_PRICE_ID       = _env('STRIPE_PRICE_ID')  # optional; falls back to inline £5/month price
-    STRIPE_WEBHOOK_SECRET = _env('STRIPE_WEBHOOK_SECRET')  # whsec_… of the /api/membership/webhook endpoint
+    STRIPE_WEBHOOK_SECRET = _env('STRIPE_WEBHOOK_SECRET')  # whsec_… of the /api/payments/webhook endpoint
 
-    # Explorer plan — the only way the platform makes money (0% commission on sessions)
-    MEMBERSHIP_NAME        = 'Explorer'
-    MEMBERSHIP_PRICE_PENCE = 500
-    MEMBERSHIP_CURRENCY    = 'gbp'
+    # The platform's only revenue: families pay a visible booking fee on top of each session,
+    # and tutors keep 100% of their price
+    BOOKING_FEE_PERCENT = 5
 
     # Serverless filesystems are read-only except /tmp (files there don't persist —
     # production should move uploads to object storage).

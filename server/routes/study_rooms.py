@@ -5,7 +5,6 @@ from datetime import datetime
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 
-from ..permissions import explorer_required
 from ..db import current_user_id, get_db
 
 bp = Blueprint('study_rooms', __name__, url_prefix='/api')
@@ -25,7 +24,7 @@ def _parse_dt(value):
 # ── Study Rooms ───────────────────────────────────────────────────────────────
 
 @bp.route('/study-rooms', methods=['GET'])
-@explorer_required
+@jwt_required()
 def get_study_rooms():
     uid  = current_user_id()
     conn = get_db(); cur = conn.cursor(dictionary=True)
@@ -101,7 +100,7 @@ def create_study_room():
 
 
 @bp.route('/study-rooms/<int:room_id>/calendar', methods=['POST'])
-@explorer_required
+@jwt_required()
 def save_room_to_calendar(room_id):
     uid  = current_user_id()
     conn = get_db(); cur = conn.cursor(dictionary=True)
@@ -124,7 +123,7 @@ def save_room_to_calendar(room_id):
         sp = cur.fetchone()
         student_id = sp['id_student'] if sp else None
 
-        # Study rooms are included in Explorer: the calendar copy carries no fee (amount 0),
+        # Study rooms are free: the calendar copy carries no fee (amount 0),
         # so it never shows up as a session to pay for.
         cur.execute("""
             INSERT INTO events (user_id, tutor_id, student_id, title, description, start_time, end_time, status, amount)

@@ -1,11 +1,11 @@
-"""Study notes: shared learning materials (Explorer members and verified tutors)."""
+"""Study notes: shared learning materials (free for every logged-in user)."""
 import os
 import uuid as uuid_lib
 
 from flask import Blueprint, jsonify, request, send_from_directory
+from flask_jwt_extended import jwt_required
 
 from ..config import upload_dir
-from ..permissions import explorer_required
 from ..db import current_user_id, get_db
 from ..services.uploads import UploadError, display_name, read_upload
 
@@ -20,7 +20,7 @@ MAX_TITLE_LENGTH, MAX_SUBJECT_LENGTH, MAX_DESCRIPTION_LENGTH = 255, 100, 5000
 
 
 @bp.route('/study-notes', methods=['GET'])
-@explorer_required
+@jwt_required()
 def get_study_notes():
     uid = current_user_id()
     subject = request.args.get('subject', '').strip()
@@ -56,7 +56,7 @@ def get_study_notes():
 
 
 @bp.route('/study-notes', methods=['POST'])
-@explorer_required
+@jwt_required()
 def create_study_note():
     uid = current_user_id()
     title       = request.form.get('title', '').strip()
@@ -99,7 +99,7 @@ def create_study_note():
 
 
 @bp.route('/study-notes/<int:note_id>', methods=['DELETE'])
-@explorer_required
+@jwt_required()
 def delete_study_note(note_id):
     uid = current_user_id()
     conn = get_db(); cur = conn.cursor(dictionary=True)
@@ -125,7 +125,7 @@ def delete_study_note(note_id):
 
 
 @bp.route('/study-notes/<int:note_id>/file', methods=['GET'])
-@explorer_required
+@jwt_required()
 def download_study_note(note_id):
     conn = get_db(); cur = conn.cursor(dictionary=True)
     try:

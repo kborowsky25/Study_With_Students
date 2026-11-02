@@ -8,7 +8,7 @@ from flask_jwt_extended import create_access_token, jwt_required
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from ..db import current_user_id, get_db
-from ..permissions import dev_shortcuts_allowed, is_admin_email, membership_state
+from ..permissions import dev_shortcuts_allowed, is_admin_email
 from ..ratelimit import json_field, rate_limit
 from ..services.email import mail_configured, send_verification_email
 from ..services.verification import issue_code, redeem_code
@@ -56,18 +56,15 @@ def build_session(cur, user_id):
     is_tutor = tutor_row is not None
     screening_status = (tutor_row[0] or 'none') if is_tutor else None
 
-    is_premium, _ = membership_state(cur, user_id)
-
     user = {
         'id':               user_id,
         'name':             name,
         'email':            email,
         'is_tutor':         is_tutor,
-        'is_premium':       is_premium,
         'screening_status': screening_status,
         'is_admin':         is_admin_email(email),
     }
-    claims = {k: user[k] for k in ('name', 'email', 'is_tutor', 'is_premium', 'screening_status', 'is_admin')}
+    claims = {k: user[k] for k in ('name', 'email', 'is_tutor', 'screening_status', 'is_admin')}
     token = create_access_token(identity=str(user_id), additional_claims=claims)
     return {'access_token': token, 'user': user}
 
@@ -200,7 +197,7 @@ def me():
 @bp.route('/auth/refresh', methods=['POST'])
 @jwt_required()
 def refresh_auth_token():
-    """Issue a new JWT with fresh claims (call after membership or screening changes)."""
+    """Issue a new JWT with fresh claims (call after role or screening changes)."""
     conn = get_db(); cur = conn.cursor()
     try:
         session = build_session(cur, current_user_id())

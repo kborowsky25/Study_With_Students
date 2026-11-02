@@ -5,7 +5,6 @@ from datetime import datetime
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 
-from ..permissions import explorer_required
 from ..db import current_user_id, get_db
 
 bp = Blueprint('classrooms', __name__, url_prefix='/api')
@@ -28,7 +27,7 @@ def _classrooms_missing(e):
 
 
 @bp.route('/classrooms', methods=['GET'])
-@explorer_required
+@jwt_required()
 def get_classrooms():
     uid  = current_user_id()
     conn = get_db(); cur = conn.cursor(dictionary=True)
@@ -168,7 +167,7 @@ def get_my_classrooms():
 
 
 @bp.route('/classrooms/<int:classroom_id>/enroll', methods=['POST'])
-@explorer_required
+@jwt_required()
 def enroll_classroom(classroom_id):
     uid  = current_user_id()
     conn = get_db(); cur = conn.cursor()

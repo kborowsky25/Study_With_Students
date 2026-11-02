@@ -1,8 +1,8 @@
-"""Forum: categories, threads and replies (Explorer members and verified tutors)."""
+"""Forum: categories, threads and replies (free for every logged-in user)."""
 from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required
 
 from ..db import current_user_id, get_db
-from ..permissions import explorer_required
 from ..ratelimit import jwt_user, rate_limit
 
 bp = Blueprint('forum', __name__, url_prefix='/api')
@@ -25,7 +25,7 @@ def _bools(rows, *keys):
 
 
 @bp.route('/forum/categories', methods=['GET'])
-@explorer_required
+@jwt_required()
 def forum_categories():
     conn = get_db(); cur = conn.cursor(dictionary=True)
     try:
@@ -51,7 +51,7 @@ def forum_categories():
 
 
 @bp.route('/forum/recent', methods=['GET'])
-@explorer_required
+@jwt_required()
 def recent_threads():
     """Latest active threads across every category (dashboard feed)."""
     limit = min(max(request.args.get('limit', 5, type=int), 1), 20)
@@ -76,7 +76,7 @@ def recent_threads():
 
 
 @bp.route('/forum/categories/<int:cat_id>', methods=['GET'])
-@explorer_required
+@jwt_required()
 def forum_category(cat_id):
     conn = get_db(); cur = conn.cursor(dictionary=True)
     try:
@@ -102,7 +102,7 @@ def forum_category(cat_id):
 
 
 @bp.route('/forum/categories/<int:cat_id>/threads', methods=['POST'])
-@explorer_required
+@jwt_required()
 @rate_limit(5, per=600, key=jwt_user)
 def create_thread(cat_id):
     data    = request.get_json(silent=True) or {}
@@ -131,7 +131,7 @@ def create_thread(cat_id):
 
 
 @bp.route('/forum/threads/<int:thread_id>', methods=['GET'])
-@explorer_required
+@jwt_required()
 def get_thread(thread_id):
     conn = get_db(); cur = conn.cursor(dictionary=True)
     try:
@@ -161,7 +161,7 @@ def get_thread(thread_id):
 
 
 @bp.route('/forum/threads/<int:thread_id>', methods=['DELETE'])
-@explorer_required
+@jwt_required()
 def delete_thread(thread_id):
     conn = get_db(); cur = conn.cursor()
     try:
@@ -180,7 +180,7 @@ def delete_thread(thread_id):
 
 
 @bp.route('/forum/threads/<int:thread_id>/posts', methods=['POST'])
-@explorer_required
+@jwt_required()
 @rate_limit(20, per=600, key=jwt_user)
 def create_post(thread_id):
     content = str((request.get_json(silent=True) or {}).get('content') or '').strip()
@@ -205,7 +205,7 @@ def create_post(thread_id):
 
 
 @bp.route('/forum/posts/<int:post_id>', methods=['DELETE'])
-@explorer_required
+@jwt_required()
 def delete_post(post_id):
     conn = get_db(); cur = conn.cursor()
     try:

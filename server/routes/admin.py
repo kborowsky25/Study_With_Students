@@ -3,7 +3,6 @@
 from flask import Blueprint, jsonify, request
 
 from ..permissions import check_admin
-from ..config import Config
 from ..db import get_db
 
 bp = Blueprint('admin', __name__, url_prefix='/api')
@@ -89,13 +88,17 @@ def admin_stats():
               (SELECT COUNT(*) FROM tutor_profiles WHERE screening_status = 'pending')  AS pending_screenings,
               (SELECT COUNT(*) FROM tutor_profiles WHERE screening_status = 'approved') AS approved_tutors,
               (SELECT COUNT(*) FROM events WHERE status <> 'canceled')                  AS total_sessions,
-              (SELECT COUNT(*) FROM events WHERE status = 'paid')                       AS completed_sessions,
-              (SELECT COUNT(*) FROM users WHERE is_premium = 1
-                 AND (premium_expires_at IS NULL OR premium_expires_at > UTC_TIMESTAMP())) AS premium_users
+              (SELECT COUNT(*) FROM events WHERE status = 'paid')                       AS completed_sessions
         """)
         stats = {k: int(v or 0) for k, v in cur.fetchone().items()}
-        # The Explorer plan is the platform's only revenue (sessions carry 0% commission)
-        stats['monthly_recurring_revenue'] = stats['premium_users'] * Config.MEMBERSHIP_PRICE_PENCE / 100
+
+        # Booking fees on paid sessions are the platform's only revenue; tutors keep the rest
+        cur.execute("""
+            SELECT COALESCE(SUM(booking_fee), 0) AS booking_fee_revenue,
+                   COALESCE(SUM(amount), 0)      AS tutor_earnings
+            FROM events WHERE status = 'paid'
+        """)
+        stats.update(cur.fetchone())
 
         cur.execute("""
             SELECT DATE(created_at) AS day, COUNT(*) AS signups
@@ -118,7 +121,6 @@ def admin_users():
     try:
         cur.execute("""
             SELECT u.id_user, u.name, u.email,
-                   COALESCE(u.is_premium, 0) AS is_premium,
                    (SELECT COUNT(*) FROM tutor_profiles tp WHERE tp.id_user = u.id_user) AS is_tutor,
                    (SELECT tp.screening_status FROM tutor_profiles tp WHERE tp.id_user = u.id_user LIMIT 1) AS screening_status
             FROM users u
@@ -128,7 +130,6 @@ def admin_users():
         rows = cur.fetchall()
         for r in rows:
             r['is_tutor'] = bool(r['is_tutor'])
-            r['is_premium'] = bool(r['is_premium'])
         return jsonify({'users': rows}), 200
     finally:
         cur.close(); conn.close()
