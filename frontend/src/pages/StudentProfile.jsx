@@ -1,15 +1,12 @@
-import { useState, useEffect } from 'react'
-import { useParams } from '@tanstack/react-router'
+import { useCallback, useEffect, useState } from 'react'
+import { Link, useParams } from '@tanstack/react-router'
 import toast from 'react-hot-toast'
 import HubLayout from '../components/layout/HubLayout'
 import { PageTitle } from '../context/PageTitleContext'
 import { useAuth } from '../context/AuthContext'
+import { Avatar, Card, EmptyState, Icon, SkeletonRows, Stat } from '../components/ui'
 import { getUserProfile, updateStudentBio } from '../api/users'
-
-const CORAL  = '#ff725e'
-const BLUE   = '#60a5fa'
-const GREEN  = '#34d399'
-const AMBER  = '#fbbf24'
+import { errorMessage } from '../api/client'
 
 const EDUCATION_LEVELS = [
   'Secondary School (GCSE)',
@@ -24,330 +21,168 @@ const EDUCATION_LEVELS = [
   'Professional / Other',
 ]
 
-function Stat({ icon, label, value, color }) {
+const FIELDS = ['education_level', 'school_name', 'study_year', 'bio']
+const toForm = (user) => Object.fromEntries(FIELDS.map((k) => [k, user?.[k] ?? '']))
+
+const Optional = () => <span style={{ color: 'var(--text-faint)', fontWeight: 500 }}>(optional)</span>
+
+function Detail({ label, children }) {
   return (
-    <div style={{
-      background: 'var(--bg-card)', border: '1px solid var(--border)',
-      borderRadius: '14px', padding: '18px 20px',
-      display: 'flex', flexDirection: 'column', gap: '6px',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <div style={{
-          width: '32px', height: '32px', borderRadius: '9px',
-          background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '18px', color }}>{icon}</span>
-        </div>
-        <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          {label}
-        </span>
-      </div>
-      <span style={{ fontSize: '26px', fontWeight: '800', color: 'var(--text)', lineHeight: 1 }}>{value}</span>
+    <div className="row">
+      <span style={{ width: 120, flexShrink: 0, fontSize: 13, color: 'var(--text-muted)' }}>{label}</span>
+      <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, overflowWrap: 'anywhere' }}>{children}</span>
     </div>
   )
 }
 
-export default function StudentProfile() {
-  const { userId }  = useParams({ from: '/student/$userId' })
-  const { user: me } = useAuth()
-  const isOwn = me && String(me.id) === String(userId)
+function EditForm({ profile, onSaved, onCancel }) {
+  const [form, setForm] = useState(() => toForm(profile))
+  const [saving, setSaving] = useState(false)
+  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
 
-  const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  // edit state
-  const [editing, setEditing]             = useState(false)
-  const [saving,  setSaving]              = useState(false)
-  const [bioForm, setBioForm]             = useState({
-    education_level: '', school_name: '', study_year: '', bio: '',
-  })
-
-  useEffect(() => {
-    setLoading(true)
-    getUserProfile(userId)
-      .then(({ data }) => {
-        setProfile(data.user)
-        setBioForm({
-          education_level: data.user.education_level || '',
-          school_name:     data.user.school_name     || '',
-          study_year:      data.user.study_year      || '',
-          bio:             data.user.bio             || '',
-        })
-      })
-      .catch(() => toast.error('Could not load profile'))
-      .finally(() => setLoading(false))
-  }, [userId])
-
-  async function handleSaveBio(e) {
+  async function submit(e) {
     e.preventDefault()
+    const data = Object.fromEntries(FIELDS.map((k) => [k, form[k].trim()]))
     setSaving(true)
     try {
-      await updateStudentBio(bioForm)
-      setProfile(p => ({ ...p, ...bioForm }))
-      setEditing(false)
+      await updateStudentBio(data)
       toast.success('Profile updated')
-    } catch {
-      toast.error('Could not save')
-    } finally {
+      onSaved(data)
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not save your profile'))
       setSaving(false)
     }
   }
 
-  // Initials avatar
-  const initials = profile?.name
-    ? profile.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
-    : '?'
+  return (
+    <form className="card" onSubmit={submit}>
+      <header className="card-head"><h3>Edit profile</h3></header>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '14px 16px 16px' }}>
+        <div className="field-row">
+          <label className="field">
+            <span>Education</span>
+            <select className="input" value={form.education_level} onChange={set('education_level')}>
+              <option value="">Not set</option>
+              {EDUCATION_LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
+              {form.education_level && !EDUCATION_LEVELS.includes(form.education_level) && (
+                <option value={form.education_level}>{form.education_level}</option>
+              )}
+            </select>
+          </label>
+          <label className="field">
+            <span>School or university</span>
+            <input className="input" value={form.school_name} onChange={set('school_name')} maxLength={200}
+              placeholder="King’s College London" />
+          </label>
+        </div>
+        <label className="field">
+          <span>Year <Optional /></span>
+          <input className="input" value={form.study_year} onChange={set('study_year')} maxLength={50}
+            placeholder="Year 12, second year…" />
+        </label>
+        <label className="field">
+          <span>About you <Optional /></span>
+          <textarea className="input" rows={5} value={form.bio} onChange={set('bio')} maxLength={1000}
+            placeholder="What you’re studying and what you’d like help with." />
+        </label>
+      </div>
+      <div className="dialog-foot">
+        <button type="button" className="btn btn-quiet" onClick={onCancel} disabled={saving}>Cancel</button>
+        <button type="submit" className="btn btn-coral" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
+      </div>
+    </form>
+  )
+}
 
-  const joinedYear = profile?.created_at
-    ? new Date(profile.created_at).getFullYear()
-    : null
+export default function StudentProfile() {
+  const { userId } = useParams({ from: '/student/$userId' })
+  const { user: me } = useAuth()
+  const isOwn = me != null && String(me.id) === String(userId)
+
+  const [profile, setProfile] = useState(null)
+  const [status, setStatus] = useState('loading') // loading | ready | missing | error
+  const [editing, setEditing] = useState(false)
+
+  const load = useCallback(() => {
+    setStatus('loading')
+    setEditing(false)
+    return getUserProfile(userId)
+      .then(({ data }) => { setProfile(data.user); setStatus('ready') })
+      .catch((err) => setStatus(err?.response?.status === 404 ? 'missing' : 'error'))
+  }, [userId])
+
+  useEffect(() => { load() }, [load])
+
+  const joined = profile?.created_at ? new Date(profile.created_at).getFullYear() : null
+  const education = [profile?.education_level, profile?.school_name, profile?.study_year].filter(Boolean)
+
+  let body
+  if (status === 'loading') {
+    body = <Card><SkeletonRows rows={4} /></Card>
+  } else if (status === 'missing') {
+    body = <Card><EmptyState title="This person doesn’t exist." action={<Link to="/hub" className="btn btn-ghost btn-sm">Back to the hub</Link>} /></Card>
+  } else if (status === 'error') {
+    body = <Card><EmptyState title="Couldn’t load this profile." action={<button className="btn btn-ghost btn-sm" onClick={load}>Try again</button>} /></Card>
+  } else {
+    const stats = profile.stats ?? {}
+    body = (
+      <>
+        <section className="card stat-grid">
+          <Stat label="Sessions" value={stats.sessions ?? 0} />
+          <Stat label="Confirmed" value={stats.confirmed_sessions ?? 0} />
+          <Stat label="Forum posts" value={stats.forum_posts ?? 0} />
+          <Stat label="Member since" value={joined ?? '—'} />
+        </section>
+
+        {editing ? (
+          <EditForm
+            profile={profile}
+            onCancel={() => setEditing(false)}
+            onSaved={(data) => { setProfile((p) => ({ ...p, ...data })); setEditing(false) }}
+          />
+        ) : (
+          <Card title="About">
+            <div className="row-list">
+              <Detail label="Education">{education.length ? education.join(' · ') : <span style={{ color: 'var(--text-faint)' }}>Not added</span>}</Detail>
+              <div className="row" style={{ alignItems: 'flex-start', paddingTop: 12, paddingBottom: 12 }}>
+                <p style={{ fontSize: 13.5, lineHeight: 1.65, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', color: profile.bio ? 'var(--text)' : 'var(--text-faint)' }}>
+                  {profile.bio || (isOwn ? 'Add a few lines about what you’re studying.' : 'No bio yet.')}
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
+      </>
+    )
+  }
 
   return (
     <HubLayout>
-      <PageTitle title="Student Profile" icon="person" />
+      <PageTitle title={profile?.name || 'Profile'} icon="person" />
 
-      {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '20px' }}>
-          <div className="skeleton" style={{ height: '340px', borderRadius: '18px' }} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div className="skeleton" style={{ height: '120px', borderRadius: '14px' }} />
-            <div className="skeleton" style={{ height: '200px', borderRadius: '14px' }} />
+      <div style={{ maxWidth: 760 }}>
+        <div className="dash-head">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <Avatar name={profile?.name || '?'} size={40} />
+            <h1 style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{profile?.name || (status === 'loading' ? '' : 'Profile')}</h1>
           </div>
-        </div>
-      ) : !profile ? (
-        <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '48px', color: 'var(--text-faint)' }}>person_off</span>
-          <p style={{ color: 'var(--text-muted)', marginTop: '12px' }}>User not found</p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '20px', alignItems: 'start' }}>
-
-          {/* ── Left card: avatar + meta ── */}
-          <div style={{
-            background: 'var(--bg-card)', border: '1px solid var(--border)',
-            borderRadius: '18px', padding: '28px 22px',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px',
-            position: 'sticky', top: '20px',
-          }}>
-            {/* Avatar */}
-            <div style={{
-              width: '88px', height: '88px', borderRadius: '50%',
-              background: `linear-gradient(135deg, ${CORAL}44, ${BLUE}44)`,
-              border: `3px solid ${CORAL}40`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '32px', fontWeight: '800', color: 'var(--text)',
-              flexShrink: 0,
-            }}>
-              {initials}
-            </div>
-
-            {/* Name */}
-            <div style={{ textAlign: 'center' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text)', margin: '0 0 4px' }}>
-                {profile.name}
-              </h2>
-              {joinedYear && (
-                <p style={{ fontSize: '11px', color: 'var(--text-faint)', margin: 0 }}>
-                  Member since {joinedYear}
-                </p>
+          {status === 'ready' && (
+            <div className="dash-actions">
+              {profile.id_tutor && (
+                <Link to="/tutor/$tutorId" params={{ tutorId: String(profile.id_tutor) }} className="btn btn-ghost">
+                  <Icon name="school" />Tutor profile
+                </Link>
+              )}
+              {isOwn ? (
+                !editing && <button className="btn btn-ghost" onClick={() => setEditing(true)}><Icon name="edit" />Edit profile</button>
+              ) : (
+                <Link to="/messages" search={{ user: profile.id_user }} className="btn btn-coral"><Icon name="chat" />Message</Link>
               )}
             </div>
-
-            {/* Education badge */}
-            {(profile.education_level || profile.school_name) && (
-              <div style={{
-                width: '100%', background: `${BLUE}10`, border: `1px solid ${BLUE}25`,
-                borderRadius: '10px', padding: '10px 12px',
-              }}>
-                {profile.education_level && (
-                  <p style={{ fontSize: '11px', fontWeight: '700', color: BLUE, margin: '0 0 2px' }}>
-                    {profile.education_level}
-                  </p>
-                )}
-                {profile.school_name && (
-                  <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>
-                    {profile.school_name}
-                    {profile.study_year ? ` · ${profile.study_year}` : ''}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Edit button (own profile only) */}
-            {isOwn && !editing && (
-              <button
-                onClick={() => setEditing(true)}
-                style={{
-                  width: '100%', padding: '9px', borderRadius: '10px',
-                  background: 'rgb(var(--fg) / 0.06)', border: '1px solid var(--border)',
-                  color: 'var(--text-muted)', fontSize: '12px', fontWeight: '700',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '15px' }}>edit</span>
-                Edit Profile
-              </button>
-            )}
-          </div>
-
-          {/* ── Right column ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-            {/* Stats row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-              <Stat icon="school"       label="Sessions"           value={profile.stats?.sessions ?? 0}           color={CORAL} />
-              <Stat icon="check_circle" label="Confirmed"          value={profile.stats?.confirmed_sessions ?? 0} color={GREEN} />
-              <Stat icon="forum"        label="Forum Posts"        value={profile.stats?.forum_posts ?? 0}        color={BLUE}  />
-            </div>
-
-            {/* Bio / About */}
-            {editing ? (
-              <form onSubmit={handleSaveBio} style={{
-                background: 'var(--bg-card)', border: `1px solid ${CORAL}28`,
-                borderRadius: '18px', padding: '24px',
-              }}>
-                <h3 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text)', margin: '0 0 18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '18px', color: CORAL }}>edit</span>
-                  Edit your profile
-                </h3>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                      Education Level
-                    </label>
-                    <select
-                      value={bioForm.education_level}
-                      onChange={e => setBioForm(f => ({ ...f, education_level: e.target.value }))}
-                      style={{
-                        width: '100%', background: 'var(--input-bg, rgb(var(--fg) / 0.06))',
-                        border: '1px solid var(--border)', borderRadius: '10px',
-                        color: 'var(--text)', fontSize: '12px', padding: '9px 10px', outline: 'none',
-                      }}
-                    >
-                      <option value="">— Select —</option>
-                      {EDUCATION_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                      School / University
-                    </label>
-                    <input
-                      type="text"
-                      value={bioForm.school_name}
-                      onChange={e => setBioForm(f => ({ ...f, school_name: e.target.value }))}
-                      placeholder="e.g. King's College London"
-                      style={{
-                        width: '100%', background: 'var(--input-bg, rgb(var(--fg) / 0.06))',
-                        border: '1px solid var(--border)', borderRadius: '10px',
-                        color: 'var(--text)', fontSize: '12px', padding: '9px 10px', outline: 'none',
-                        boxSizing: 'border-box',
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: '14px' }}>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    Year / Stage (optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={bioForm.study_year}
-                    onChange={e => setBioForm(f => ({ ...f, study_year: e.target.value }))}
-                    placeholder="e.g. Year 2, Final Year, Year 11…"
-                    style={{
-                      width: '100%', background: 'var(--input-bg, rgb(var(--fg) / 0.06))',
-                      border: '1px solid var(--border)', borderRadius: '10px',
-                      color: 'var(--text)', fontSize: '12px', padding: '9px 10px', outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    About Me
-                  </label>
-                  <textarea
-                    value={bioForm.bio}
-                    onChange={e => setBioForm(f => ({ ...f, bio: e.target.value }))}
-                    rows={4}
-                    placeholder="Tell others what subjects you're studying, what you're working on, or what you're looking for in a tutor…"
-                    style={{
-                      width: '100%', background: 'var(--input-bg, rgb(var(--fg) / 0.06))',
-                      border: '1px solid var(--border)', borderRadius: '10px',
-                      color: 'var(--text)', fontSize: '13px', padding: '10px 12px', outline: 'none',
-                      resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    style={{
-                      flex: 1, padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: '800',
-                      background: CORAL, color: '#fff', border: 'none',
-                      cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1,
-                    }}
-                  >
-                    {saving ? 'Saving…' : 'Save Profile'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditing(false)}
-                    style={{
-                      padding: '10px 18px', borderRadius: '10px', fontSize: '13px', fontWeight: '700',
-                      background: 'var(--btn-secondary-bg)', color: 'var(--text)',
-                      border: '1px solid var(--border)', cursor: 'pointer',
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <div style={{
-                background: 'var(--bg-card)', border: '1px solid var(--border)',
-                borderRadius: '18px', padding: '24px',
-              }}>
-                <h3 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text)', margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '18px', color: CORAL }}>person</span>
-                  About
-                </h3>
-
-                {profile.bio ? (
-                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.7, margin: 0 }}>
-                    {profile.bio}
-                  </p>
-                ) : (
-                  <p style={{ fontSize: '13px', color: 'var(--text-faint)', fontStyle: 'italic', margin: 0 }}>
-                    {isOwn ? 'Add a bio so other students know who you are.' : 'No bio yet.'}
-                  </p>
-                )}
-
-                {isOwn && (
-                  <button
-                    onClick={() => setEditing(true)}
-                    style={{
-                      marginTop: '14px', padding: '7px 14px', borderRadius: '8px',
-                      background: 'transparent', border: `1px solid ${CORAL}30`,
-                      color: CORAL, fontSize: '11px', fontWeight: '700', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', gap: '5px',
-                    }}
-                  >
-                    <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>edit</span>
-                    {profile.bio ? 'Edit bio' : 'Add bio'}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+          )}
         </div>
-      )}
+        {body}
+      </div>
     </HubLayout>
   )
 }
