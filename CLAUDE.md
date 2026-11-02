@@ -1,8 +1,9 @@
 # Study With Students — CLAUDE.md
 
-Peer tutoring platform with **0% commission**. Revenue comes only from the
-**Explorer plan: £5/month**, which unlocks the forum, study notes (materials),
-study rooms and live classes. Verified tutors get those free. See README.md for
+Peer tutoring platform. **Tutors keep 100%** of their hourly rate; families pay a
+visible **5% booking fee** per session — the platform's only revenue. The community
+(forum, study notes, study rooms, live classes) is **free** for every member. Tutors
+are verified university students with background (DBS) checks. See README.md for
 setup and the project layout.
 
 ## Running locally
@@ -16,7 +17,10 @@ setup and the project layout.
 - App factory in `server/__init__.py`; one blueprint per domain in `server/routes/`, all under `/api`.
 - `server/schema.py` runs on startup: applies `db/schema.sql` (CREATE IF NOT EXISTS) and adds
   missing columns from `COLUMN_MIGRATIONS`. It must never drop or rewrite data — add new columns there.
-- Community endpoints use `@explorer_required` (server/permissions.py) → 402 `{code: 'explorer_required'}`.
+- Booking fee: `events.booking_fee` = `BOOKING_FEE_PERCENT` (5%) of `events.amount`, stored when a
+  session is booked; the tutor earns `amount`, the family pays `amount + booking_fee`.
+- Matching: `server/matching.py` scores tutors 0–100 against the student's learning profile
+  (`/api/learning-profile`, `/api/tutors/recommended`); reasons are shown to the student.
 - Passwords are hashed with werkzeug; legacy plaintext rows are upgraded on next login.
 - JSON: datetimes serialise as ISO-8601 and decimals as numbers (server/json.py).
 - SQL must always be parameterised — never interpolate user input.
@@ -25,27 +29,29 @@ setup and the project layout.
 
 ## Session lifecycle
 request tutor → tutor accepts (active_tutors + active_students) → student books (`pending`,
-amount = hourly_rate × hours) → tutor confirms (`confirmed`) → student pays via Stripe (`paid`).
+amount = hourly_rate × hours, booking_fee = 5%) → tutor confirms (`confirmed`, a video room link
+is generated) → student pays via Stripe (`paid`) → student can review once.
 Either side can cancel; only the tutor confirms; only verified Stripe checkouts mark `paid`.
 
 ## Frontend (frontend/src)
-- All API calls go through `api/client.js` (JWT interceptor, 401 → login, 402 → Explorer toast).
+- All API calls go through `api/client.js` (JWT interceptor, 401 → login), with `errorMessage()` for toasts.
 - `AuthContext.refreshSession()` re-issues the JWT with live claims — call it after plan/role changes.
 - Navigation lives in `lib/navigation.js` (sidebar, ⌘K palette and `g`+key shortcuts all read it).
 - Hub pages render inside `<HubLayout>` and set the header with `<PageTitle title icon />`.
-- Access rules: `lib/access.js` (`hasExplorerAccess`) mirrors the API.
+- Data: `lib/query.js` (stale-while-revalidate cache, `useQuery`, `invalidate`) with keys in
+  `lib/queries.js`; session rules (join/review/payment) in `lib/sessions.js`; levels in `lib/xp.js`.
+- Confirmations are dialogs: `useConfirm()` from `components/ui/confirm.jsx` — never inline text.
 - Feedback via `react-hot-toast`.
 
-## Design system — keep the homepage's aesthetic
-- Navy `#1b263b`, coral `#ff725e`, Noto Sans JP, flat surfaces with 1px borders,
-  small uppercase coral eyebrows (`.eyebrow`), heavy tight headings.
-- Colours only through tokens in `index.css` (`--text`, `--text-muted`, `--surface`, `--border`,
-  `--coral`, …). For neutral tints use `rgb(var(--fg) / 0.06)` — never `rgba(255,255,255,…)`,
-  so light mode keeps working.
-- Reuse the classes in `styles/app.css` (card, row, btn, pill, stat, dialog, …) and the
-  components in `components/ui/`. No `onMouseEnter` style hacks — use CSS `:hover`.
-- Public marketing pages (Home, HowItWorks, AboutUs, BecomeATutor) handle the theme
-  with `useTheme()` ternaries; keep their structure when editing copy.
+## Design system — Linear structure, our identity
+- Linear-like structure: dense lists with hairline dividers, small radii (6–12px), calm type
+  (13.5px base, weights 500–600), group headers, status glyphs (not coloured pills).
+- Our twist: deep navy, coral accents, slate secondary text, Noto Sans JP, our own rocket logo,
+  icons and illustrations (`components/brand/` — never use downloaded/stock art or icon fonts).
+- Colours only through tokens in `index.css`; neutral tints via `rgb(var(--fg) / 0.06)`.
+- Reuse the classes in `styles/app.css` and components in `components/ui/` (Icon, StatusPill,
+  Stars, Card, …). No helper text under everything, no callout boxes, no emoji, no gradients.
+- Public marketing pages use the original homepage look (heavy uppercase hero, illustrations).
 
 ## Legacy
 `legacy/` holds the original Jinja/Flask app and its templates. Nothing imports it.
