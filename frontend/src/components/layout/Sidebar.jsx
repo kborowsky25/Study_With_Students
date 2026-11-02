@@ -3,8 +3,8 @@ import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { navFor } from '../../lib/navigation'
-import { hasExplorerAccess } from '../../lib/access'
 import { prefetchRoute } from '../../lib/queries'
+import { LogoMark } from '../brand/Logo'
 import { Avatar, Icon } from '../ui'
 
 export const SIDEBAR_MIN = 208
@@ -29,7 +29,6 @@ function UserMenu({ mode, onClose }) {
   return (
     <div className="menu" ref={ref} style={{ bottom: 'calc(100% + 8px)', left: 0, right: 0 }}>
       <button className="menu-item" onClick={go(mode === 'tutor' ? '/tutor-profile' : `/student/${user?.id}`)}><Icon name="person" />Your profile</button>
-      <button className="menu-item" onClick={go('/membership')}><Icon name="workspace_premium" />Membership</button>
       {!user?.is_tutor && <button className="menu-item" onClick={go('/become-tutor')}><Icon name="school" />Become a tutor</button>}
       <button className="menu-item" onClick={toggle}><Icon name={dark ? 'light_mode' : 'dark_mode'} />{dark ? 'Light mode' : 'Dark mode'}</button>
       {user?.is_admin && <button className="menu-item" onClick={go('/superadmin')}><Icon name="admin_panel_settings" />Admin</button>}
@@ -45,7 +44,6 @@ export default function Sidebar({
   const { user } = useAuth()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const [menuOpen, setMenuOpen] = useState(false)
-  const explorer = hasExplorerAccess(user)
   const canTutor = user?.is_tutor && user?.screening_status === 'approved'
 
   const isActive = (to) => pathname === to || pathname.startsWith(`${to}/`)
@@ -60,7 +58,7 @@ export default function Sidebar({
       >
         <div className="sidebar-top">
           <Link to="/" className="sidebar-brand">
-            <Icon name="rocket_launch" style={{ color: '#ff725e' }} />
+            <LogoMark size={18} />
             <span>Study with <em>Students</em></span>
           </Link>
           <button className="icon-btn" onClick={onOpenPalette} title="Search (⌘K)" aria-label="Search"><Icon name="search" /></button>
@@ -71,27 +69,22 @@ export default function Sidebar({
           {navFor(mode).map((group, i) => (
             <div className="sidebar-group" key={group.title ?? i}>
               {group.title && (
-                <div className="sidebar-label">
-                  <span>{group.title}</span>
-                  {group.explorer && !explorer && <span className="price">£5/mo</span>}
-                </div>
+                <div className="sidebar-label"><span>{group.title}</span></div>
               )}
               {group.items.map((item) => {
-                const locked = item.explorer && !explorer
                 const badge = item.badge === 'unread' ? unread : 0
                 return (
                   <Link
                     key={item.to}
-                    to={locked ? '/membership' : item.to}
+                    to={item.to}
                     className={`nav-item ${isActive(item.to) ? 'active' : ''}`}
                     data-tour={item.tour}
-                    onMouseEnter={() => !locked && prefetchRoute(item.to, { explorer })}
+                    onMouseEnter={() => prefetchRoute(item.to)}
                     onClick={onClose}
                   >
                     <Icon name={item.icon} />
                     <span className="grow">{item.label}</span>
                     {badge > 0 && <span className="nav-badge">{badge > 99 ? '99+' : badge}</span>}
-                    {locked && <Icon name="lock" className="nav-lock" size={15} />}
                   </Link>
                 )
               })}
@@ -100,12 +93,6 @@ export default function Sidebar({
         </nav>
 
         <div className="sidebar-footer">
-          {mode === 'student' && !explorer && (
-            <Link to="/membership" className="upgrade-card" onClick={onClose}>
-              <Icon name="rocket_launch" size={20} />
-              <div><b>Go Explorer</b><span>£5 a month</span></div>
-            </Link>
-          )}
 
           {canTutor && (
             <button className="mode-btn" onClick={() => onSwitchMode(mode === 'tutor' ? 'student' : 'tutor')}>
@@ -120,7 +107,7 @@ export default function Sidebar({
               <Avatar name={user?.name} size={32} />
               <span className="who">
                 <div className="name">{user?.name}</div>
-                <div className="sub">{mode === 'tutor' ? 'Tutor' : user?.is_premium ? 'Explorer' : 'Student'}</div>
+                <div className="sub">{mode === 'tutor' ? 'Tutor' : 'Student'}</div>
               </span>
               <Icon name="unfold_more" size={16} />
             </button>

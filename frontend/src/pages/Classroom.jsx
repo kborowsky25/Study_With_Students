@@ -4,13 +4,13 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
 import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
-import { Avatar, DateChip, Icon, Pill, SkeletonRows } from '../components/ui'
+import { Avatar, Card, DateChip, EmptyState, Icon, Pill, SkeletonRows } from '../components/ui'
 import {
   createClassroom, enrollClassroom, getClassrooms, getClassroomStudents, getMyClassrooms, unenrollClassroom,
 } from '../api/classroom'
 import { errorMessage } from '../api/client'
 import { isVerifiedTutor } from '../lib/access'
-import { formatDay, formatTime } from '../lib/format'
+import { formatTime } from '../lib/format'
 
 const MAX_CLASS_SIZE = 20
 const JOIN_WINDOW = 15 * 60_000 // the join link shows from 15 minutes before the start
@@ -68,11 +68,11 @@ function useEscape(handler) {
 const pad = (n) => String(n).padStart(2, '0')
 const dateOnly = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 const localISO = (d) => `${dateOnly(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
+const minutesUntil = (value, now) => Math.max(1, Math.ceil((new Date(value) - now) / 60_000))
 
-function classTime(c) {
+function timeRange(c) {
   if (!c.start_time) return 'Time to be confirmed'
-  const range = c.end_time ? `${formatTime(c.start_time)}–${formatTime(c.end_time)}` : formatTime(c.start_time)
-  return `${formatDay(c.start_time)}, ${range}`
+  return c.end_time ? `${formatTime(c.start_time)}–${formatTime(c.end_time)}` : formatTime(c.start_time)
 }
 
 const seats = (c) => ({
@@ -82,18 +82,6 @@ const seats = (c) => ({
 
 const Optional = () => <span style={{ color: 'var(--text-faint)', fontWeight: 500 }}>(optional)</span>
 
-function Section({ title, count, action, children }) {
-  return (
-    <section>
-      <header className="card-head">
-        <h3>{title}{count > 0 && <span className="count">{count}</span>}</h3>
-        {action}
-      </header>
-      {children}
-    </section>
-  )
-}
-
 function PastToggle({ open, onToggle }) {
   return (
     <button className="btn btn-quiet btn-sm" onClick={onToggle} aria-expanded={open}>
@@ -102,18 +90,9 @@ function PastToggle({ open, onToggle }) {
   )
 }
 
-function ClassDate({ c }) {
-  return c.start_time ? <DateChip value={c.start_time} /> : (
-    <div className="date-chip" aria-hidden="true"><div className="m">TBC</div><div className="d">–</div></div>
-  )
-}
-
 function PhasePill({ c, phase, now }) {
-  if (phase === 'live') return <Pill tone="green" plain={false}>Live now</Pill>
-  if (phase === 'soon') {
-    const mins = Math.max(1, Math.ceil((new Date(c.start_time) - now) / 60_000))
-    return <Pill tone="amber">Starts in {mins} min</Pill>
-  }
+  if (phase === 'live') return <Pill tone="green">Live now</Pill>
+  if (phase === 'soon') return <Pill>Starts in {minutesUntil(c.start_time, now)} min</Pill>
   return null
 }
 
@@ -135,13 +114,40 @@ function Capacity({ c }) {
 
 function ClassMain({ c, who }) {
   return (
-    <div className="main">
-      <div className="title">
-        {c.title}
-        {c.description && <span style={{ color: 'var(--text-faint)', fontWeight: 400, marginLeft: 8 }}>{c.description}</span>}
+    <>
+      {c.start_time ? <DateChip value={c.start_time} /> : <span className="date-col">TBC</span>}
+      <div className="main">
+        <div className="title">
+          {c.title}
+          {c.description && <span style={{ color: 'var(--text-faint)', fontWeight: 400, marginLeft: 8 }}>{c.description}</span>}
+        </div>
+        <div className="meta">{[c.subject, who, timeRange(c)].filter(Boolean).join(' · ')}</div>
       </div>
-      <div className="meta">{[c.subject, who, classTime(c)].filter(Boolean).join(' · ')}</div>
-    </div>
+    </>
+  )
+}
+
+function ClassSpotlight({ c, now, hosting }) {
+  const url = meetingUrl(c.zoom_link)
+  return (
+    <section className="card spotlight">
+      <div className="grow">
+        <div className="when">
+          {phaseOf(c, now) === 'live'
+            ? `Live now${c.end_time ? ` · until ${formatTime(c.end_time)}` : ''}`
+            : `Starts in ${minutesUntil(c.start_time, now)} min · ${formatTime(c.start_time)}`}
+        </div>
+        <h2>{c.title}</h2>
+        <div className="who">
+          {hosting ? `${seats(c).count} enrolled` : [c.subject, c.tutor_name && `with ${c.tutor_name}`].filter(Boolean).join(' · ')}
+        </div>
+      </div>
+      {url ? (
+        <a className="btn btn-coral" href={url} target="_blank" rel="noopener noreferrer">
+          <Icon name="videocam" />{hosting ? 'Start class' : 'Join class'}
+        </a>
+      ) : <span className="side">No link yet</span>}
+    </section>
   )
 }
 
@@ -169,9 +175,9 @@ function StudentClassRow({ c, now, userId, busy, onJoin, onLeave }) {
       )
     } else {
       if (!open) status = <Pill tone="green">Joined</Pill>
-      action = phase !== 'live' && (
-        <button className="btn btn-quiet btn-sm" onClick={() => onLeave(c)} disabled={busy}>Leave</button>
-      )
+      if (phase !== 'live') {
+        action = <button className="btn btn-quiet btn-sm" onClick={() => onLeave(c)} disabled={busy}>Leave</button>
+      }
     }
   } else if (count >= capacity) {
     action = <button className="btn btn-ghost btn-sm" disabled>Full</button>
@@ -185,7 +191,6 @@ function StudentClassRow({ c, now, userId, busy, onJoin, onLeave }) {
 
   return (
     <div className="row">
-      <ClassDate c={c} />
       <ClassMain c={c} who={mine ? 'You' : c.tutor_name} />
       {status}
       <Capacity c={c} />
@@ -242,9 +247,10 @@ function StudentClasses({ user }) {
     }
   }
 
-  const active = classes.filter((c) => phaseOf(c, now) !== 'past')
+  const active = classes.filter((c) => phaseOf(c, now) !== 'past') // the API sorts by start time
   const joined = active.filter((c) => c.enrolled)
   const joinedPast = classes.filter((c) => c.enrolled && phaseOf(c, now) === 'past').reverse()
+  const highlight = joined.find((c) => phaseOf(c, now) !== 'upcoming')
   const shown = tab === 'joined' ? joined : active
 
   const row = (c) => (
@@ -255,39 +261,39 @@ function StudentClasses({ user }) {
     <>
       <div className="dash-head">
         <h1>Classes</h1>
-        <div className="mode-switch" role="tablist" aria-label="Classes" style={{ minWidth: 240 }}>
-          <button role="tab" aria-selected={tab === 'all'} className={tab === 'all' ? 'on' : ''} onClick={() => setTab('all')}>
-            All classes{!loading && <span style={{ color: 'var(--text-faint)' }}>{active.length}</span>}
-          </button>
-          <button role="tab" aria-selected={tab === 'joined'} className={tab === 'joined' ? 'on' : ''} onClick={() => setTab('joined')}>
-            Joined{!loading && <span style={{ color: 'var(--text-faint)' }}>{joined.length}</span>}
-          </button>
-        </div>
       </div>
 
       <div className="dash-col">
-        <Section title="Upcoming" count={shown.length}>
-          {loading ? <SkeletonRows rows={3} /> : shown.length ? (
-            <div className="row-list">{shown.map(row)}</div>
-          ) : failed ? (
-            <div className="empty">
-              <p>Couldn’t load classes</p>
-              <button className="btn btn-ghost btn-sm" onClick={load}>Try again</button>
-            </div>
-          ) : tab === 'joined' ? (
-            <div className="empty">
-              <p>You haven’t joined any classes</p>
-              <button className="btn btn-ghost btn-sm" onClick={() => setTab('all')}>Browse classes</button>
-            </div>
-          ) : (
-            <div className="empty"><p>No classes scheduled</p></div>
-          )}
-        </Section>
+        {highlight && <ClassSpotlight c={highlight} now={now} />}
+
+        <section>
+          <div className="tabs" role="tablist" aria-label="Classes">
+            {[['all', 'All classes', active.length], ['joined', 'Joined', joined.length]].map(([key, label, count]) => (
+              <button key={key} role="tab" aria-selected={tab === key} className={tab === key ? 'on' : ''} onClick={() => setTab(key)}>
+                {label}{!loading && <span className="count">{count}</span>}
+              </button>
+            ))}
+          </div>
+          <Card>
+            {loading ? <SkeletonRows rows={3} /> : shown.length ? (
+              <div className="row-list">{shown.map(row)}</div>
+            ) : failed ? (
+              <EmptyState title="Couldn’t load classes." action={<button className="btn btn-ghost btn-sm" onClick={load}>Try again</button>} />
+            ) : tab === 'joined' ? (
+              <EmptyState
+                title="You haven’t joined any classes."
+                action={<button className="btn btn-ghost btn-sm" onClick={() => setTab('all')}>Browse classes</button>}
+              />
+            ) : (
+              <EmptyState title="No classes scheduled." />
+            )}
+          </Card>
+        </section>
 
         {tab === 'joined' && joinedPast.length > 0 && (
-          <Section title="Past" count={joinedPast.length} action={<PastToggle open={showPast} onToggle={() => setShowPast((v) => !v)} />}>
+          <Card title="Past" count={joinedPast.length} action={<PastToggle open={showPast} onToggle={() => setShowPast((v) => !v)} />}>
             {showPast && <div className="row-list">{joinedPast.slice(0, 20).map(row)}</div>}
-          </Section>
+          </Card>
         )}
       </div>
     </>
@@ -299,19 +305,17 @@ function StudentClasses({ user }) {
 function HostedClassRow({ c, now, onRoster }) {
   const phase = phaseOf(c, now)
   const url = meetingUrl(c.zoom_link)
-  const open = phase === 'live' || phase === 'soon'
 
   return (
     <div className="row">
-      <ClassDate c={c} />
       <ClassMain c={c} />
       <PhasePill c={c} phase={phase} now={now} />
-      {phase !== 'past' && !url && <Pill tone="amber">No link</Pill>}
+      {phase !== 'past' && !url && <Pill tone="red">No link</Pill>}
       <Capacity c={c} />
       <button className="btn btn-ghost btn-sm" onClick={() => onRoster(c)}>
         <Icon name="group" />Students
       </button>
-      {open && url && (
+      {(phase === 'live' || phase === 'soon') && url && (
         <a className="btn btn-coral btn-sm" href={url} target="_blank" rel="noopener noreferrer">
           <Icon name="videocam" />Start
         </a>
@@ -378,7 +382,7 @@ function NewClassDialog({ onClose, onCreated }) {
         onSubmit={submit}
       >
         <div className="dialog-head">
-          <h2 id="new-class-title" style={{ flex: 1 }}>New class</h2>
+          <h2 id="new-class-title">New class</h2>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="close" /></button>
         </div>
 
@@ -488,31 +492,33 @@ function RosterDialog({ classroom, onClose }) {
         aria-labelledby="roster-title"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="dialog-head" style={{ paddingBottom: 14 }}>
-          <h2 id="roster-title" style={{ flex: 1, minWidth: 0 }}>
+        <div className="dialog-head">
+          <h2 id="roster-title" style={{ minWidth: 0 }}>
             {classroom.title} <span style={{ color: 'var(--text-faint)', fontWeight: 500 }}>{count}/{capacity}</span>
           </h2>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="close" /></button>
         </div>
 
-        {students === null ? <SkeletonRows rows={3} /> : students.length ? (
-          <div className="row-list" style={{ borderTop: '1px solid var(--border)' }}>
-            {students.map((s) => (
-              <div className="row" key={s.id_user}>
-                <Avatar name={s.name} size={28} />
-                <div className="main">
-                  <div className="title">{s.name}</div>
-                  <div className="meta">{s.email}</div>
+        <div style={{ padding: '10px 4px 6px' }}>
+          {students === null ? <SkeletonRows rows={3} /> : students.length ? (
+            <div className="row-list">
+              {students.map((s) => (
+                <div className="row" key={s.id_user}>
+                  <Avatar name={s.name} size={28} />
+                  <div className="main">
+                    <div className="title">{s.name}</div>
+                    <div className="meta">{s.email}</div>
+                  </div>
+                  <Link to="/messages" search={{ user: s.id_user }} className="icon-btn" aria-label={`Message ${s.name}`}>
+                    <Icon name="chat" />
+                  </Link>
                 </div>
-                <Link to="/messages" search={{ user: s.id_user }} className="icon-btn" aria-label={`Message ${s.name}`}>
-                  <Icon name="chat" />
-                </Link>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="empty"><p>No students yet</p></div>
-        )}
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="No students yet." />
+          )}
+        </div>
 
         <div className="dialog-foot">
           {students?.length > 0 && (
@@ -545,8 +551,10 @@ function TutorClasses({ user }) {
 
   useEffect(() => { load() }, [])
 
-  const upcoming = classes.filter((c) => phaseOf(c, now) !== 'past')
+  const active = classes.filter((c) => phaseOf(c, now) !== 'past')
   const past = classes.filter((c) => phaseOf(c, now) === 'past').reverse()
+  const highlight = active.find((c) => phaseOf(c, now) !== 'upcoming')
+  const list = active.filter((c) => c !== highlight)
   const row = (c) => <HostedClassRow key={c.id} c={c} now={now} onRoster={setRoster} />
 
   return (
@@ -563,23 +571,22 @@ function TutorClasses({ user }) {
       </div>
 
       <div className="dash-col">
-        <Section title="Upcoming" count={upcoming.length}>
-          {loading ? <SkeletonRows rows={2} /> : upcoming.length ? (
-            <div className="row-list">{upcoming.map(row)}</div>
+        {highlight && <ClassSpotlight c={highlight} now={now} hosting />}
+
+        <Card title="Upcoming" count={list.length || null}>
+          {loading ? <SkeletonRows rows={2} /> : list.length ? (
+            <div className="row-list">{list.map(row)}</div>
           ) : failed ? (
-            <div className="empty">
-              <p>Couldn’t load your classes</p>
-              <button className="btn btn-ghost btn-sm" onClick={load}>Try again</button>
-            </div>
+            <EmptyState title="Couldn’t load your classes." action={<button className="btn btn-ghost btn-sm" onClick={load}>Try again</button>} />
           ) : (
-            <div className="empty"><p>No classes scheduled</p></div>
+            <EmptyState title={highlight ? 'Nothing else scheduled.' : 'No classes scheduled.'} />
           )}
-        </Section>
+        </Card>
 
         {past.length > 0 && (
-          <Section title="Past" count={past.length} action={<PastToggle open={showPast} onToggle={() => setShowPast((v) => !v)} />}>
+          <Card title="Past" count={past.length} action={<PastToggle open={showPast} onToggle={() => setShowPast((v) => !v)} />}>
             {showPast && <div className="row-list">{past.slice(0, 20).map(row)}</div>}
-          </Section>
+          </Card>
         )}
       </div>
 

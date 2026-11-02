@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
-import { Icon, Pill, SkeletonRows } from '../components/ui'
+import { Card, EmptyState, Icon, Pill, SkeletonRows } from '../components/ui'
 import { createNote, deleteNote, downloadNote, getNotes } from '../api/notes'
 import { errorMessage } from '../api/client'
 import { timeAgo } from '../lib/format'
@@ -141,7 +141,7 @@ function ShareNotesDialog({ defaultSubject = '', onClose, onShared }) {
         onSubmit={submit}
       >
         <div className="dialog-head">
-          <h2 id="share-notes-title" style={{ flex: 1 }}>Share notes</h2>
+          <h2 id="share-notes-title">Share notes</h2>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="close" /></button>
         </div>
 
@@ -187,29 +187,17 @@ function ShareNotesDialog({ defaultSubject = '', onClose, onShared }) {
               />
             </div>
           </div>
-          <div className="field">
-            <span>Visibility</span>
-            <div className="mode-switch" role="radiogroup" aria-label="Visibility">
-              <button
-                type="button"
-                role="radio"
-                aria-checked={form.isPublic}
-                className={form.isPublic ? 'on' : ''}
-                onClick={() => setForm((f) => ({ ...f, isPublic: true }))}
-              >
-                <Icon name="public" />Everyone
-              </button>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={!form.isPublic}
-                className={form.isPublic ? '' : 'on'}
-                onClick={() => setForm((f) => ({ ...f, isPublic: false }))}
-              >
-                <Icon name="lock" />Only me
-              </button>
-            </div>
-          </div>
+          <label className="field">
+            <span>Visible to</span>
+            <select
+              className="input"
+              value={form.isPublic ? 'everyone' : 'me'}
+              onChange={(e) => setForm((f) => ({ ...f, isPublic: e.target.value === 'everyone' }))}
+            >
+              <option value="everyone">Everyone</option>
+              <option value="me">Only me</option>
+            </select>
+          </label>
         </div>
 
         <div className="dialog-foot">
@@ -307,21 +295,20 @@ export default function StudyNotes() {
   }
 
   const q = query.trim().toLowerCase()
+  const mineCount = notes.filter((n) => n.is_mine).length
   const visible = notes.filter((n) => (scope === 'all' || n.is_mine)
     && (!q || [n.title, n.description, n.author_name, n.file_name].some((v) => v?.toLowerCase().includes(q))))
 
+  const shareButton = <button className="btn btn-ghost btn-sm" onClick={() => setSharing(true)}>Share notes</button>
   let empty
   if (failed) {
-    empty = { text: 'Couldn’t load notes', action: <button className="btn btn-ghost btn-sm" onClick={reload}>Try again</button> }
+    empty = <EmptyState title="Couldn’t load notes." action={<button className="btn btn-ghost btn-sm" onClick={reload}>Try again</button>} />
   } else if (scope === 'mine' && !q) {
-    empty = {
-      text: subject ? `You haven’t shared any ${subject} notes` : 'You haven’t shared any notes',
-      action: <button className="btn btn-ghost btn-sm" onClick={() => setSharing(true)}>Share notes</button>,
-    }
+    empty = <EmptyState title={subject ? `You haven’t shared any ${subject} notes.` : 'You haven’t shared any notes.'} action={shareButton} />
   } else if (q || subject) {
-    empty = { text: 'No notes match', action: <button className="btn btn-ghost btn-sm" onClick={clearFilters}>Clear filters</button> }
+    empty = <EmptyState title="No notes match." action={<button className="btn btn-ghost btn-sm" onClick={clearFilters}>Clear filters</button>} />
   } else {
-    empty = { text: 'No notes yet', action: <button className="btn btn-ghost btn-sm" onClick={() => setSharing(true)}>Share notes</button> }
+    empty = <EmptyState title="No notes yet." action={shareButton} />
   }
 
   return (
@@ -336,11 +323,18 @@ export default function StudyNotes() {
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-        <div style={{ position: 'relative', flex: '1 1 240px', minWidth: 0 }}>
+        <div className="tabs" role="tablist" aria-label="Whose notes" style={{ marginBottom: 0, flex: '1 1 auto' }}>
+          {[['all', 'All notes', notes.length], ['mine', 'Mine', mineCount]].map(([key, label, count]) => (
+            <button key={key} role="tab" aria-selected={scope === key} className={scope === key ? 'on' : ''} onClick={() => setScope(key)}>
+              {label}{!loading && <span className="count">{count}</span>}
+            </button>
+          ))}
+        </div>
+        <div style={{ position: 'relative', flex: '1 1 200px', maxWidth: 280 }}>
           <Icon
             name="search"
             size={18}
-            style={{ position: 'absolute', left: 11, top: 10, color: 'var(--text-faint)', pointerEvents: 'none' }}
+            style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none' }}
           />
           <input
             className="input"
@@ -349,7 +343,7 @@ export default function StudyNotes() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search"
             aria-label="Search notes"
-            style={{ paddingLeft: 36 }}
+            style={{ paddingLeft: 38 }}
           />
         </div>
         <select
@@ -362,33 +356,17 @@ export default function StudyNotes() {
           <option value="">All subjects</option>
           {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
-        <div className="mode-switch" role="tablist" aria-label="Whose notes" style={{ minWidth: 150 }}>
-          <button role="tab" aria-selected={scope === 'all'} className={scope === 'all' ? 'on' : ''} onClick={() => setScope('all')}>
-            All
-          </button>
-          <button role="tab" aria-selected={scope === 'mine'} className={scope === 'mine' ? 'on' : ''} onClick={() => setScope('mine')}>
-            Mine
-          </button>
-        </div>
       </div>
 
-      <section>
-        <header className="card-head">
-          <h3>
-            {scope === 'mine' ? 'Your notes' : subject || 'All notes'}
-            {!loading && visible.length > 0 && <span className="count">{visible.length}</span>}
-          </h3>
-        </header>
+      <Card>
         {loading ? <SkeletonRows rows={5} /> : visible.length ? (
           <div className="row-list">
             {visible.map((n) => (
               <NoteRow key={n.id} note={n} busy={busy === n.id} onDownload={download} onDelete={setDeleting} />
             ))}
           </div>
-        ) : (
-          <div className="empty"><p>{empty.text}</p>{empty.action}</div>
-        )}
-      </section>
+        ) : empty}
+      </Card>
 
       {sharing && (
         <ShareNotesDialog

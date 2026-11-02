@@ -27,6 +27,7 @@ COLUMN_MIGRATIONS = [
     ('tutor_profiles',   'avatar_path',            "VARCHAR(500) NULL"),
     ('messages',         'read_at',                "DATETIME NULL"),
     ('events',           'meeting_url',            "VARCHAR(500) NULL"),
+    ('events',           'booking_fee',            "DECIMAL(10,2) NOT NULL DEFAULT 0.00"),
     ('student_profiles', 'subjects',               "VARCHAR(255) NULL"),
     ('student_profiles', 'level',                  "VARCHAR(40) NULL"),
     ('student_profiles', 'budget',                 "DECIMAL(6,2) NULL"),

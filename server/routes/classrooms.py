@@ -66,9 +66,8 @@ def get_classrooms():
 
         for c in classrooms:
             c['enrolled'] = c['id'] in enrolled_ids
-            # Seats are limited: only the host and enrolled students get the meeting link
-            if not c['enrolled'] and c['tutor_user_id'] != uid:
-                c['zoom_link'] = None
+            if not (c['enrolled'] or c['tutor_user_id'] == uid):
+                c['zoom_link'] = None  # the class link is only for people who joined
             for key in ('start_time', 'end_time'):
                 if c.get(key) and hasattr(c[key], 'isoformat'):
                     c[key] = c[key].isoformat()

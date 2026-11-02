@@ -10,8 +10,11 @@ import toast from 'react-hot-toast'
 import { createEvent, updateStatus } from '../../api/events'
 import { getTutorProfile } from '../../api/tutors'
 import { errorMessage } from '../../api/client'
-import { firstName, formatMoney, formatTime } from '../../lib/format'
+import { firstName, formatMoney, formatTime, formatWhen } from '../../lib/format'
+import { canJoin, canReview } from '../../lib/sessions'
 import { Avatar, DateChip, Icon, StatusPill } from '../ui'
+import { useConfirm } from '../ui/confirm'
+import ReviewDialog from './ReviewDialog'
 
 const TONE = {
   pending:   'var(--amber)',
@@ -55,7 +58,8 @@ function durationLabel(ev) {
  */
 export default function EventCard({ event: ev, onChanged, variant = 'date', showMessage = true }) {
   const [busy, setBusy] = useState(false)
-  const [confirmingCancel, setConfirmingCancel] = useState(false)
+  const [reviewing, setReviewing] = useState(false)
+  const confirm = useConfirm()
 
   const asTutor = ev.role === 'tutor'
   const upcoming = new Date(ev.start_time) > new Date()
@@ -66,14 +70,27 @@ export default function EventCard({ event: ev, onChanged, variant = 'date', show
   const canAnswer = asTutor && ev.status === 'pending' && upcoming
   const canPay = !asTutor && ev.status === 'confirmed'
   const canCancel = upcoming && (ev.status === 'confirmed' || (ev.status === 'pending' && !asTutor))
-  const hasActions = canAnswer || canPay || canCancel || (showMessage && otherUserId && !canceled)
+  const joinable = canJoin(ev)
+  const reviewable = canReview(ev)
+  const hasActions = canAnswer || canPay || canCancel || joinable || reviewable || (showMessage && otherUserId && !canceled)
+
+  async function cancel() {
+    const withdrawing = ev.status === 'pending'
+    const ok = await confirm({
+      title: withdrawing ? 'Withdraw this request?' : 'Cancel this session?',
+      body: `${ev.title || 'Tutoring session'} · ${formatWhen(ev.start_time)}`,
+      confirmLabel: withdrawing ? 'Withdraw' : 'Cancel session',
+      cancelLabel: 'Keep',
+      danger: true,
+    })
+    if (ok) change('canceled', withdrawing ? 'Request withdrawn' : 'Session cancelled')
+  }
 
   async function change(status, message) {
     setBusy(true)
     try {
       await updateStatus(ev.id_event, status)
       toast.success(message)
-      setConfirmingCancel(false)
       await onChanged?.()
     } catch (err) {
       toast.error(errorMessage(err, 'Could not update the session'))
@@ -87,7 +104,8 @@ export default function EventCard({ event: ev, onChanged, variant = 'date', show
     : `${formatTime(ev.start_time)}–${formatTime(ev.end_time)}`
 
   return (
-    <div className="row" style={{ alignItems: 'flex-start' }}>
+    // Grid so the actions can use the full width under the text, even in narrow side panels.
+    <div className="row" style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr) auto', alignItems: 'start', rowGap: 10 }}>
       {variant === 'time' ? (
         <div style={{ width: 44, flexShrink: 0, paddingTop: 1, textAlign: 'center' }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: canceled ? 'var(--text-faint)' : 'var(--text)' }}>{formatTime(ev.start_time)}</div>
@@ -106,52 +124,44 @@ export default function EventCard({ event: ev, onChanged, variant = 'date', show
           {variant === 'time' ? '' : ` · ${when}`} · {formatMoney(ev.amount)}
         </div>
         {ev.description && <div className="meta" title={ev.description}>“{ev.description}”</div>}
-
-        {hasActions && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 10 }}>
-            {confirmingCancel ? (
-              <>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 2 }}>
-                  {ev.status === 'pending' ? 'Withdraw this request?' : 'Cancel this session?'}
-                </span>
-                <button type="button" className="btn btn-quiet btn-sm" disabled={busy} onClick={() => setConfirmingCancel(false)}>Keep</button>
-                <button type="button" className="btn btn-danger btn-sm" disabled={busy}
-                  onClick={() => change('canceled', ev.status === 'pending' ? 'Request withdrawn' : 'Session cancelled')}>
-                  {busy ? 'Cancelling…' : 'Yes, cancel'}
-                </button>
-              </>
-            ) : (
-              <>
-                {canAnswer && (
-                  <>
-                    <button type="button" className="btn btn-coral btn-sm" disabled={busy}
-                      onClick={() => change('confirmed', 'Session confirmed')}>
-                      <Icon name="check" />Confirm
-                    </button>
-                    <button type="button" className="btn btn-ghost btn-sm" disabled={busy}
-                      onClick={() => change('canceled', 'Session declined')}>
-                      Decline
-                    </button>
-                  </>
-                )}
-                {canPay && (
-                  <Link to="/payments" className="btn btn-coral btn-sm"><Icon name="credit_card" />Pay {formatMoney(ev.amount)}</Link>
-                )}
-                {showMessage && otherUserId && !canceled && (
-                  <Link to="/messages" search={{ user: otherUserId }} className="btn btn-ghost btn-sm"><Icon name="chat" />Message</Link>
-                )}
-                {canCancel && (
-                  <button type="button" className="btn btn-quiet btn-sm" disabled={busy} onClick={() => setConfirmingCancel(true)}>
-                    {ev.status === 'pending' ? 'Withdraw' : 'Cancel'}
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-        )}
       </div>
 
       <SessionStatus event={ev} />
+
+      {hasActions && (
+        <div style={{ gridColumn: '2 / -1', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+          {joinable && (
+            <a href={ev.meeting_url} target="_blank" rel="noreferrer" className="btn btn-coral btn-sm"><Icon name="videocam" />Join</a>
+          )}
+          {canAnswer && (
+            <>
+              <button type="button" className="btn btn-coral btn-sm" disabled={busy}
+                onClick={() => change('confirmed', 'Session confirmed')}>
+                <Icon name="check" />Confirm
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" disabled={busy}
+                onClick={() => change('canceled', 'Session declined')}>
+                Decline
+              </button>
+            </>
+          )}
+          {canPay && (
+            <Link to="/payments" className="btn btn-coral btn-sm"><Icon name="credit_card" />Pay {formatMoney(ev.amount)}</Link>
+          )}
+          {reviewable && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setReviewing(true)}><Icon name="star" />Rate</button>
+          )}
+          {showMessage && otherUserId && !canceled && (
+            <Link to="/messages" search={{ user: otherUserId }} className="btn btn-ghost btn-sm"><Icon name="chat" />Message</Link>
+          )}
+          {canCancel && (
+            <button type="button" className="btn btn-quiet btn-sm" disabled={busy} onClick={cancel}>
+              {ev.status === 'pending' ? 'Withdraw' : 'Cancel'}
+            </button>
+          )}
+        </div>
+      )}
+      {reviewing && <ReviewDialog event={ev} onClose={() => setReviewing(false)} onDone={onChanged} />}
     </div>
   )
 }
