@@ -24,6 +24,7 @@ Everything here can stay £0 while the project is a hobby.
    | `FRONTEND_URL` | `https://www.studywithstudents.co.uk` | `https://staging.studywithstudents.co.uk` |
    | `SUPER_ADMIN_EMAIL` | your email | your email |
    | `STRIPE_SECRET_KEY`, `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe **test** keys while it's a hobby | Stripe test keys |
+   | `STRIPE_WEBHOOK_SECRET` | signing secret of the webhook below | the test-mode webhook's secret |
    | `CRON_SECRET` | random string (reminder emails) | a different random string |
 
 4. **Vercel → Settings → Domains** — add `staging.studywithstudents.co.uk`, assign it to
@@ -53,15 +54,19 @@ Notes:
 - [ ] Change the old MySQL root password — it is in the public GitHub history — and any
       account that reuses it or something similar.
 - [ ] Optional: rewrite the git history to remove it (e.g. `git filter-repo`); needs a force-push.
-- [ ] Set `ADMIN_SECRET` in Vercel if you want header-based admin access.
+- [ ] Set `ADMIN_SECRET` in Vercel if you want header-based admin access (32+ characters —
+      production refuses to start with a shorter one, or with missing/weak `SECRET_KEY`s).
 
 ## 4. Payments (when going commercial)
 
 Model: tutors keep 100% of their price; families pay a 5% booking fee, which also covers
 Stripe's card fees.
 
-- [ ] Register the Stripe webhook URL for session payments and set `STRIPE_WEBHOOK_SECRET`
-      in Vercel (see SECURITY.md once the security branch is merged).
+- [ ] Register the Stripe webhook for session payments (Stripe Dashboard → Developers →
+      Webhooks): URL `https://www.studywithstudents.co.uk/api/payments/webhook`, events
+      `checkout.session.completed` and `checkout.session.async_payment_succeeded`; put its
+      signing secret in `STRIPE_WEBHOOK_SECRET` in Vercel. Do the same in test mode for
+      staging. Details in SECURITY.md.
 - [ ] Build Stripe Connect payouts so session payments reach tutors (not built yet).
 - [ ] Switch to Stripe live keys and Vercel Pro (Hobby is for non-commercial use only).
 

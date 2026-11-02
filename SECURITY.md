@@ -22,7 +22,7 @@ outside the code before (and after) going live.
 
 ### Rate limits (`server/ratelimit.py`)
 Over a limit the API answers **429** `{error}` with a `Retry-After` header, and the app shows
-one toast.
+a toast.
 
 | Endpoint | Limit |
 |---|---|
@@ -46,21 +46,23 @@ When `VERCEL_ENV=production` (or `FLASK_ENV=production`) the API **refuses to st
 `ADMIN_SECRET` is set but shorter than 32 characters, debug mode is on, or `FRONTEND_URL`
 isn't `https://`. It logs a warning if `STRIPE_WEBHOOK_SECRET` is missing.
 
-Developer shortcuts — verification codes returned in API responses (`dev_code`) and
-`POST /api/membership/demo-activate` — only work in a local debug run: never on any Vercel
-deployment (production or preview), whatever `FLASK_DEBUG` says.
+Verification codes are returned in API responses (`dev_code`) only in a local debug run
+without SMTP — never on any Vercel deployment (production or preview), whatever
+`FLASK_DEBUG` says.
 
 ### Who can do what
 - **Admin endpoints** need the `X-Admin-Secret` header (compared in constant time) or a JWT
   for `SUPER_ADMIN_EMAIL`. Tutor proof documents are admin-only and sent with
   `Cache-Control: private, no-store`.
 - **Sessions and payments:** only the two participants see a session; only the tutor
-  confirms; only the student pays, and a session is marked `paid` only from a verified
-  Stripe Checkout (the return URL check or the webhook).
-- **Explorer features** (forum, study notes, study rooms, classes) need the plan or a
-  verified tutor. Only verified tutors create study rooms and classes. A class's meeting link
-  is shown only to its host and enrolled students (seats are limited); the roster, with
-  emails, only to the host. Private study notes are visible to their author only.
+  confirms; only the student pays. Checkout shows the tutor's price and the 5% booking fee
+  as separate lines, both taken from the stored session (`events.amount`,
+  `events.booking_fee`), never from the browser. A session is marked `paid` only from a
+  verified Stripe Checkout — the return-URL check or the webhook.
+- **Community** (forum, study notes, study rooms, classes) is open to every logged-in user.
+  Only verified tutors create study rooms and classes. A class's meeting link is shown only
+  to its host and enrolled students (seats are limited); the roster, with emails, only to
+  the host. Private study notes are visible to their author only.
 - Users can delete only their own threads, replies and notes, and only read their own
   conversations.
 
@@ -89,22 +91,21 @@ served with a type derived from the validated extension, notes as downloads, all
   full policy in **report-only** mode (`Content-Security-Policy-Report-Only`) that allows
   only the app itself, Google Fonts, Stripe.js/Checkout and the LordIcon script.
 
-  The full policy was checked against a production build — home, login, hub, messages,
-  calendar, tutors, payments and membership, with Stripe.js loaded — and reported no
-  violations. The Stripe Checkout iframe itself needs real test keys to render, so check it
-  once on a preview deployment (open the browser console on `/membership` and start a
-  checkout: there should be no `[Report Only]` CSP messages), then rename the header to
-  `Content-Security-Policy` in `vercel.json` (merging in the four enforced directives).
+  The full policy was checked against production builds of the app — public pages, login,
+  dashboards, messages, calendar, tutors, payments, and Stripe.js — and reported no
+  violations. Session payments use Stripe's hosted Checkout page (a redirect, which CSP
+  doesn't restrict). To enforce it, rename the header to `Content-Security-Policy` in
+  `vercel.json` (merging in the four enforced directives), after a last look at the browser
+  console for `[Report Only]` messages on a preview deployment — new third-party content
+  (embeds, analytics, images from another host) has to be added to the policy first.
 
 ### Stripe
-- `POST /api/membership/webhook` accepts only deliveries signed with `STRIPE_WEBHOOK_SECRET`
-  and less than 5 minutes old.
-- Handlers are idempotent and safe out of order: access only moves forward to a paid
-  period's end (+1 day grace), an ended subscription stays ended, and a subscription only
-  affects the user it's on file for. Checkout sessions and subscriptions carry the user id in
-  their metadata.
-- The return-from-checkout check reads the subscription's live state from Stripe, so an old
-  or unrelated checkout session can't unlock or extend Explorer.
+- `POST /api/payments/webhook` accepts only deliveries signed with `STRIPE_WEBHOOK_SECRET`
+  and less than 5 minutes old. On `checkout.session.completed` and
+  `checkout.session.async_payment_succeeded` it marks the session named in the Checkout's
+  metadata as paid — only for the student named there, and idempotently, as Stripe retries.
+- The return-URL check (`POST /api/payments/verify/<id>`) re-reads the Checkout Session from
+  Stripe and requires a paid, payment-mode checkout for that session and that student.
 
 ## Operational to-dos for the owner
 
@@ -112,27 +113,28 @@ served with a type derived from the validated extension, notes as downloads, all
    database server and **everywhere else it was reused** (other databases, hosting panels,
    email, …). Removing it from the files doesn't remove it from history or from anyone's
    clone, so rotation is what matters. While you're there, give the app's database user only
-   the privileges it needs on `users_tutoring`.
+   the privileges it needs on its database.
 2. **Set the secrets in Vercel per environment** (Project → Settings → Environment
    Variables), with different values for *Production* and *Preview*:
    `SECRET_KEY`, `JWT_SECRET_KEY` and `ADMIN_SECRET` (generate each with
    `python3 -c "import secrets; print(secrets.token_hex(32))"`), `DB_*`, `MAIL_*`,
-   `FRONTEND_URL`, `SUPER_ADMIN_EMAIL`, `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`,
-   `STRIPE_WEBHOOK_SECRET` and `VITE_STRIPE_PUBLISHABLE_KEY`. Preview deployments should
-   use Stripe **test** keys and a separate database. Never put these in the repository.
+   `FRONTEND_URL`, `SUPER_ADMIN_EMAIL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and
+   `VITE_STRIPE_PUBLISHABLE_KEY`. Preview deployments should use Stripe **test** keys and a
+   separate database. Never put these in the repository.
 3. **Register the Stripe webhook** (Stripe Dashboard → Developers → Webhooks → Add endpoint):
-   URL `https://www.studywithstudents.co.uk/api/membership/webhook`, events
-   `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `invoice.paid`,
-   `customer.subscription.updated` and `customer.subscription.deleted`. Copy its signing
-   secret (`whsec_…`) into `STRIPE_WEBHOOK_SECRET` for Production; create a second endpoint
-   in test mode for Preview. Without it, Explorer renewals are never recorded and members
-   lose access after their first month.
-4. **Stripe Connect for tutor payouts is not built yet.** Session payments currently land in
-   the platform's own Stripe account, and tutors would have to be paid out by hand. Paying
-   tutors directly with 0% commission needs Stripe Connect (connected accounts for tutors,
-   with onboarding/KYC, and destination charges or transfers), plus the matching terms and
-   accounting. Until then, don't take live session payments at scale.
-5. **Turn the frontend CSP on** after the preview check described under *Headers*.
+   URL `https://www.studywithstudents.co.uk/api/payments/webhook`, events
+   `checkout.session.completed` and `checkout.session.async_payment_succeeded`. Copy its
+   signing secret (`whsec_…`) into `STRIPE_WEBHOOK_SECRET` for Production; create a second
+   endpoint in test mode for Preview. Without it, a payment is only recorded if the family
+   comes back to the site after paying — close the tab on Stripe's page and the session
+   stays unpaid.
+4. **Stripe Connect for tutor payouts is not built yet.** Session payments (price + booking
+   fee) currently land in the platform's own Stripe account, and tutors would have to be paid
+   by hand. With Connect, each tutor gets a connected account (with Stripe's onboarding/KYC)
+   and the Checkout sets `payment_intent_data.transfer_data.destination` to it and
+   `application_fee_amount` to the booking fee, so the tutor receives 100% of their price
+   automatically. Until then, don't take live session payments at scale.
+5. **Turn the frontend CSP on** as described under *Headers*.
 6. **Remove the LordIcon script** from `frontend/index.html`: nothing uses `<lord-icon>`, and
    it's third-party code running with full access to every page.
 7. **Move uploads to object storage.** On Vercel they go to `/tmp` and disappear; keep tutor
