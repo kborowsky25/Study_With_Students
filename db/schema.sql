@@ -202,3 +202,29 @@ CREATE TABLE IF NOT EXISTS reviews (
   created_at      TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   KEY ix_reviews_tutor (tutor_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Tutor background checks (DBS, England & Wales). One row per tutor: a resubmission
+-- replaces a rejected or expired check. certificate_number, date_of_birth and the scan
+-- are admin-only and are deleted once a check is reviewed (certificate_last4 stays).
+CREATE TABLE IF NOT EXISTS background_checks (
+  id                 INT AUTO_INCREMENT PRIMARY KEY,
+  tutor_id           INT NOT NULL,
+  check_type         ENUM('enhanced_barred','enhanced','standard','basic') NOT NULL,
+  certificate_number CHAR(12) NULL,
+  certificate_last4  CHAR(4) NOT NULL,
+  issue_date         DATE NOT NULL,
+  legal_name         VARCHAR(255) NOT NULL,
+  date_of_birth      DATE NULL,
+  on_update_service  TINYINT(1) NOT NULL DEFAULT 0,
+  document_path      VARCHAR(255) NULL,
+  consent_at         DATETIME NOT NULL,
+  status             ENUM('pending','verified','rejected','expired') NOT NULL DEFAULT 'pending',
+  reviewer_note      TEXT NULL,
+  reviewed_by        VARCHAR(255) NULL,
+  submitted_at       DATETIME NOT NULL,
+  reviewed_at        DATETIME NULL,
+  verified_at        DATETIME NULL,
+  recheck_due        DATE NULL,
+  UNIQUE KEY ux_background_checks_tutor (tutor_id),
+  KEY ix_background_checks_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
