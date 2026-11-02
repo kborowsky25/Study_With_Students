@@ -1,4 +1,5 @@
 """Events: 1-to-1 sessions. Students request, tutors confirm, students pay the tutor."""
+import secrets
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request
@@ -10,7 +11,8 @@ bp = Blueprint('events', __name__, url_prefix='/api')
 
 EVENT_COLUMNS = """
     e.id_event, e.title, e.description, e.start_time, e.end_time, e.status, e.amount,
-    e.tutor_id, e.student_id, e.created_at,
+    e.tutor_id, e.student_id, e.created_at, e.meeting_url,
+    rv.rating AS my_rating,
     u_t.name AS tutor_name,   tp.id_user AS tutor_user_id,
     u_s.name AS student_name, sp.id_user AS student_user_id
 """
@@ -20,7 +22,13 @@ EVENT_JOINS = """
     LEFT JOIN users            u_t ON u_t.id_user   = tp.id_user
     LEFT JOIN student_profiles sp  ON sp.id_student = e.student_id
     LEFT JOIN users            u_s ON u_s.id_user   = sp.id_user
+    LEFT JOIN reviews          rv  ON rv.event_id   = e.id_event
 """
+
+
+def new_meeting_url(event_id):
+    """A private video room for the session (Jitsi Meet — free, no account needed to join)."""
+    return f'https://meet.jit.si/StudyWithStudents-{event_id}-{secrets.token_hex(5)}'
 
 
 def _parse_dt(value):
@@ -121,8 +129,10 @@ def create_event():
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (uid, tutor_id, student_id, title, (data.get('description') or '').strip(),
               start, end, status, amount))
-        conn.commit()
         event_id = cur.lastrowid
+        if status == 'confirmed':
+            cur.execute("UPDATE events SET meeting_url = %s WHERE id_event = %s", (new_meeting_url(event_id), event_id))
+        conn.commit()
     finally:
         cur.close(); conn.close()
 
@@ -156,8 +166,34 @@ def update_event_status(event_id):
         if ev['status'] == 'paid':
             return jsonify({'error': 'Paid sessions can no longer be changed'}), 400
 
-        cur.execute("UPDATE events SET status = %s WHERE id_event = %s", (status, event_id))
+        if status == 'confirmed' and not ev['meeting_url']:
+            cur.execute("UPDATE events SET status = %s, meeting_url = %s WHERE id_event = %s",
+                        (status, new_meeting_url(event_id), event_id))
+        else:
+            cur.execute("UPDATE events SET status = %s WHERE id_event = %s", (status, event_id))
         conn.commit()
         return jsonify({'message': 'Session updated', 'event': fetch_event(cur, event_id)})
+    finally:
+        cur.close(); conn.close()
+
+
+@bp.route('/events/<int:event_id>/meeting', methods=['PUT'])
+@jwt_required()
+def set_meeting_link(event_id):
+    """The tutor can swap the generated video room for their own link (Zoom, Meet, Teams…)."""
+    url = ((request.get_json(silent=True) or {}).get('meeting_url') or '').strip()
+    if url and (not url.startswith(('https://', 'http://')) or len(url) > 500):
+        return jsonify({'error': 'Use a full https:// link'}), 400
+
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        ev = fetch_event(cur, event_id)
+        if not ev:
+            return jsonify({'error': 'Session not found'}), 404
+        if ev['tutor_user_id'] != current_user_id():
+            return jsonify({'error': 'Only the tutor can change the session link'}), 403
+        cur.execute("UPDATE events SET meeting_url = %s WHERE id_event = %s", (url or new_meeting_url(event_id), event_id))
+        conn.commit()
+        return jsonify({'event': fetch_event(cur, event_id)})
     finally:
         cur.close(); conn.close()

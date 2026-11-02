@@ -3,3 +3,4 @@ import client from './client'
 export const getEvents    = ()           => client.get('/events')
 export const createEvent  = (data)       => client.post('/events', data)
 export const updateStatus = (id, status) => client.put(`/events/${id}/status`, { status })
+export const setMeetingLink = (id, url) => client.put(`/events/${id}/meeting`, { meeting_url: url })

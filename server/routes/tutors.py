@@ -51,14 +51,35 @@ def serve_tutor_avatar(filename):
 
 TUTOR_COLUMNS = """
     tp.id_tutor, tp.id_user, u.name, tp.age, tp.university, tp.course,
-    tp.about_me, tp.subjects, tp.availability, tp.hourly_rate, tp.avatar_path,
-    tp.screening_status = 'approved' AS verified
+    tp.about_me, tp.subjects, tp.levels, tp.availability, tp.hourly_rate, tp.avatar_path,
+    tp.screening_status = 'approved' AS verified,
+    rv.rating, COALESCE(rv.review_count, 0) AS review_count,
+    COALESCE(ev.sessions_done, 0) AS sessions_done
 """
 
+# FROM clause shared by every tutor listing: profile, name, rating and experience
+TUTOR_JOINS = """
+    FROM tutor_profiles tp
+    JOIN users u ON u.id_user = tp.id_user
+    LEFT JOIN (SELECT tutor_id, ROUND(AVG(rating), 2) AS rating, COUNT(*) AS review_count
+               FROM reviews GROUP BY tutor_id) rv ON rv.tutor_id = tp.id_tutor
+    LEFT JOIN (SELECT tutor_id, COUNT(*) AS sessions_done FROM events
+               WHERE status = 'paid' OR (status = 'confirmed' AND end_time < NOW())
+               GROUP BY tutor_id) ev ON ev.tutor_id = tp.id_tutor
+"""
 
-def _decorate(tutors):
+SORTS = {
+    'rating':     lambda t: (-(t.get('rating') or 0), -t['review_count'], t['name']),
+    'price_low':  lambda t: (float(t.get('hourly_rate') or 0), t['name']),
+    'price_high': lambda t: (-float(t.get('hourly_rate') or 0), t['name']),
+    'name':       lambda t: t['name'].lower(),
+}
+
+
+def decorate_tutors(tutors):
     for t in tutors:
         t['verified']   = bool(t.get('verified'))
+        t['rating']     = float(t['rating']) if t.get('rating') is not None else None
         t['avatar_url'] = f"/api/uploads/tutor-avatars/{t['avatar_path']}" if t.get('avatar_path') else None
     return tutors
 
@@ -74,14 +95,20 @@ def _tutor_id_for(cur, user_id):
 @bp.route('/tutors', methods=['GET'])
 @jwt_required()
 def get_tutors():
-    """Directory of tutors with a complete profile, verified tutors first."""
+    """Directory of tutors with a complete profile.
+
+    `sort`: match (default when the student has a learning profile), rating, price_low, price_high, name.
+    """
+    from ..matching import profile_complete
+    from .learning import load_learning_profile, rank_tutors
+
     university = request.args.get('university', '').strip()
     subject    = request.args.get('subject', '').strip()
+    sort       = request.args.get('sort', '')
 
     query = f"""
         SELECT {TUTOR_COLUMNS}
-        FROM tutor_profiles tp
-        JOIN users u ON u.id_user = tp.id_user
+        {TUTOR_JOINS}
         WHERE u.name <> '' AND COALESCE(tp.university, '') <> '' AND tp.screening_status <> 'rejected'
     """
     params = []
@@ -89,14 +116,21 @@ def get_tutors():
         query += " AND tp.university LIKE %s"
         params.append(f'%{university}%')
     if subject:
-        query += " AND tp.subjects LIKE %s"
-        params.append(f'%{subject}%')
-    query += " ORDER BY verified DESC, u.name ASC"
+        query += " AND (tp.subjects LIKE %s OR u.name LIKE %s)"
+        params += [f'%{subject}%', f'%{subject}%']
 
     conn = get_db(); cur = conn.cursor(dictionary=True)
     try:
         cur.execute(query, params)
-        return jsonify({'tutors': _decorate(cur.fetchall())})
+        tutors = decorate_tutors(cur.fetchall())
+        learner = load_learning_profile(cur, current_user_id())
+        if profile_complete(learner):
+            rank_tutors(learner, tutors)          # adds match + reasons, best first
+        if sort in SORTS:
+            tutors.sort(key=SORTS[sort])
+        elif not profile_complete(learner):
+            tutors.sort(key=lambda t: (not t['verified'], -(t.get('rating') or 0), t['name']))
+        return jsonify({'tutors': tutors, 'matched': profile_complete(learner)})
     finally:
         cur.close(); conn.close()
 
@@ -109,14 +143,13 @@ def get_tutor(tutor_id):
     try:
         cur.execute(f"""
             SELECT {TUTOR_COLUMNS}, COALESCE(tp.linkedin_url, '') AS linkedin_url
-            FROM tutor_profiles tp
-            JOIN users u ON u.id_user = tp.id_user
+            {TUTOR_JOINS}
             WHERE tp.id_tutor = %s
         """, (tutor_id,))
         tutor = cur.fetchone()
         if not tutor:
             return jsonify({'error': 'Tutor not found'}), 404
-        _decorate([tutor])
+        decorate_tutors([tutor])
 
         cur.execute("SELECT liked FROM liked_tutors WHERE id_user = %s AND id_tutor = %s", (uid, tutor_id))
         liked_row = cur.fetchone()
@@ -168,12 +201,11 @@ def liked_tutors():
     try:
         cur.execute(f"""
             SELECT {TUTOR_COLUMNS}
-            FROM liked_tutors lt
-            JOIN tutor_profiles tp ON tp.id_tutor = lt.id_tutor
-            JOIN users u ON u.id_user = tp.id_user
+            {TUTOR_JOINS}
+            JOIN liked_tutors lt ON lt.id_tutor = tp.id_tutor
             WHERE lt.id_user = %s AND lt.liked = 1
         """, (current_user_id(),))
-        return jsonify({'tutors': _decorate(cur.fetchall())})
+        return jsonify({'tutors': decorate_tutors(cur.fetchall())})
     finally:
         cur.close(); conn.close()
 
@@ -186,12 +218,11 @@ def active_tutors():
     try:
         cur.execute(f"""
             SELECT DISTINCT {TUTOR_COLUMNS}
-            FROM active_tutors at2
-            JOIN tutor_profiles tp ON tp.id_tutor = at2.id_tutor
-            JOIN users u ON u.id_user = tp.id_user
+            {TUTOR_JOINS}
+            JOIN active_tutors at2 ON at2.id_tutor = tp.id_tutor
             WHERE at2.id_user = %s
         """, (current_user_id(),))
-        return jsonify({'tutors': _decorate(cur.fetchall())})
+        return jsonify({'tutors': decorate_tutors(cur.fetchall())})
     finally:
         cur.close(); conn.close()
 
@@ -217,7 +248,7 @@ def deactivate_tutor(tutor_id):
 
 # ── Tutor profile (self) ──────────────────────────────────────────────────────
 
-PROFILE_FIELDS = ('age', 'university', 'course', 'about_me', 'subjects', 'availability', 'linkedin_url', 'hourly_rate')
+PROFILE_FIELDS = ('age', 'university', 'course', 'about_me', 'subjects', 'levels', 'availability', 'linkedin_url', 'hourly_rate')
 
 
 @bp.route('/tutor-profile', methods=['GET'])

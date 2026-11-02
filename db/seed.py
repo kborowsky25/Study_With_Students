@@ -61,12 +61,18 @@ def seed():
         tutor_uid, _ = _user(cur, TUTOR['name'], TUTOR['email'])
         student_id = _student_profile(cur, student_uid)
         _student_profile(cur, tutor_uid)
+        cur.execute("""
+            UPDATE student_profiles
+            SET subjects = 'Maths, Physics', level = 'A-level', budget = 25,
+                availability = 'Weekday evenings', goals = 'A* in Maths'
+            WHERE id_student = %s
+        """, (student_id,))
 
         p = TUTOR['profile']
         cur.execute("""
             INSERT INTO tutor_profiles (id_user, age, university, course, about_me, subjects,
-                                        availability, hourly_rate, screening_status, uni_email_verified)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'approved', 1)
+                                        levels, availability, hourly_rate, screening_status, uni_email_verified)
+            VALUES (%s, %s, %s, %s, %s, %s, 'GCSE, A-level', %s, %s, 'approved', 1)
         """, (tutor_uid, p['age'], p['university'], p['course'], p['about_me'], p['subjects'],
               p['availability'], p['hourly_rate']))
         tutor_id = cur.lastrowid
@@ -92,6 +98,12 @@ def seed():
                 VALUES (%s, %s, %s, %s, '', %s, %s, %s, %s)
             """, (student_uid, tutor_id, student_id, title, start, start + timedelta(hours=1),
                   status, p['hourly_rate']))
+            if status == 'paid':
+                cur.execute(
+                    "INSERT INTO reviews (event_id, tutor_id, student_user_id, rating, comment) VALUES (%s, %s, %s, 5, %s)",
+                    (cur.lastrowid, tutor_id, student_uid,
+                     'Oliver made integration by parts finally click. Clear, patient and quick.'),
+                )
 
         # A short conversation
         for sender, receiver, text in [

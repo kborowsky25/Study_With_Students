@@ -7,6 +7,7 @@ import BookSessionModal from '../components/features/BookSessionModal'
 import EventCard from '../components/features/EventCard'
 import { BookSessionButton, VerifiedPill } from '../components/features/TutorCard'
 import { Avatar, Card, CardLink, Icon, SkeletonRows, StatusPill } from '../components/ui'
+import { useConfirm } from '../components/ui/confirm'
 import { deactivateTutor, getActiveTutors, getTutorRequestsSent, requestTutor } from '../api/tutors'
 import { getEvents } from '../api/events'
 import { errorMessage } from '../api/client'
@@ -21,7 +22,7 @@ export default function ActiveTutors() {
   const [data, setData] = useState({ tutors: [], requests: [], events: [] })
   const [loading, setLoading] = useState(true)
   const [booking, setBooking] = useState(null)
-  const [removing, setRemoving] = useState(null)
+  const confirm = useConfirm()
   const [busy, setBusy] = useState(null)
 
   const load = useCallback(() => Promise.allSettled([getActiveTutors(), getTutorRequestsSent(), getEvents()])
@@ -39,11 +40,17 @@ export default function ActiveTutors() {
   useEffect(() => { load() }, [load])
 
   async function remove(t) {
+    const ok = await confirm({
+      title: `Remove ${firstName(t.name)} from your tutors?`,
+      body: 'You can send them a request again later.',
+      confirmLabel: 'Remove',
+      danger: true,
+    })
+    if (!ok) return
     setBusy(`t${t.id_tutor}`)
     try {
       await deactivateTutor(t.id_tutor)
       toast.success(`${firstName(t.name)} removed`)
-      setRemoving(null)
       await load()
     } catch (err) {
       toast.error(errorMessage(err, 'Could not remove this tutor'))
@@ -92,7 +99,6 @@ export default function ActiveTutors() {
               <div className="row-list">
                 {tutors.map((t) => {
                   const next = nextWith(t)
-                  const confirming = removing === t.id_tutor
                   return (
                     <div key={t.id_tutor} className="row" style={{ flexWrap: 'wrap', rowGap: 10 }}>
                       <div style={{ flex: '1 1 240px', minWidth: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -111,18 +117,12 @@ export default function ActiveTutors() {
                         </div>
                       </div>
                       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {confirming ? (
-                          <>
-                            <span style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 2 }}>Remove {firstName(t.name)}?</span>
-                            <button type="button" className="btn btn-quiet btn-sm" onClick={() => setRemoving(null)} disabled={busy === `t${t.id_tutor}`}>Keep</button>
-                            <button type="button" className="btn btn-danger btn-sm" onClick={() => remove(t)} disabled={busy === `t${t.id_tutor}`}>Remove</button>
-                          </>
-                        ) : (
+                        {(
                           <>
                             <Link to="/messages" search={{ user: t.id_user }} className="icon-btn" title="Message" aria-label={`Message ${t.name}`}>
                               <Icon name="chat" />
                             </Link>
-                            <button type="button" className="icon-btn" title="Remove tutor" aria-label={`Remove ${t.name}`} onClick={() => setRemoving(t.id_tutor)}>
+                            <button type="button" className="icon-btn" title="Remove tutor" aria-label={`Remove ${t.name}`} disabled={busy === `t${t.id_tutor}`} onClick={() => remove(t)}>
                               <Icon name="person_remove" />
                             </button>
                             <button type="button" className="btn btn-ghost btn-sm" onClick={() => setBooking(t)}>

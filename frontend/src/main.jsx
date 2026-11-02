@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { RouterProvider } from '@tanstack/react-router'
 import { Toaster } from 'react-hot-toast'
 import { ThemeProvider } from './context/ThemeContext'
+import { ConfirmProvider } from './components/ui/confirm'
 import { router } from './router'
 import './index.css'
 import './styles/app.css'
@@ -10,7 +11,9 @@ import './styles/app.css'
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ThemeProvider>
-      <RouterProvider router={router} />
+      <ConfirmProvider>
+        <RouterProvider router={router} />
+      </ConfirmProvider>
       <Toaster
         position="top-right"
         gutter={8}
