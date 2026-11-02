@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
-import client from '../api/client'
+import client, { onSessionExpired } from '../api/client'
 import { clearQueries } from '../lib/query'
 
 const AuthContext = createContext(null)
@@ -55,6 +55,8 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (getStoredToken()) refreshSession().catch(() => {})
   }, [refreshSession])
+
+  useEffect(() => onSessionExpired(logout), [logout])
 
   const isAuthenticated = Boolean(token)
   const isTutor    = Boolean(user?.is_tutor)

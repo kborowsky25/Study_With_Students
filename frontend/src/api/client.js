@@ -13,15 +13,22 @@ client.interceptors.request.use((config) => {
   return config
 })
 
+// Told when the server rejects the saved session: AuthContext clears its state and the
+// router re-runs its guards, so pages that need a login go to /login and public pages stay.
+const sessionExpiredListeners = new Set()
+export function onSessionExpired(listener) {
+  sessionExpiredListeners.add(listener)
+  return () => sessionExpiredListeners.delete(listener)
+}
+
 client.interceptors.response.use(
   (res) => res,
   (err) => {
     const status = err.response?.status
-    if (status === 401) {
-      // Session expired — clear it and send the user to log in
+    if (status === 401 && err.config?.url !== '/auth/login' && localStorage.getItem('sws_token')) {
       localStorage.removeItem('sws_token')
       localStorage.removeItem('sws_user')
-      if (!window.location.pathname.startsWith('/login')) window.location.href = '/login'
+      sessionExpiredListeners.forEach((listener) => listener())
     } else if (status === 429) {
       // Rate limited (login, sign-up codes, messages, forum posts) — one toast however many requests hit it
       toast.error(err.response?.data?.error || 'Too many attempts — please wait a moment and try again', { id: 'rate-limited' })

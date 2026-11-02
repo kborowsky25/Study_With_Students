@@ -1,4 +1,5 @@
 import { createRootRoute, createRoute, createRouter, lazyRouteComponent, Outlet, redirect } from '@tanstack/react-router'
+import { onSessionExpired } from './api/client'
 import { AuthProvider } from './context/AuthContext'
 
 // Every page is its own chunk, loaded when its route is first visited (or when a
@@ -157,3 +158,7 @@ export const router = createRouter({
   // Hovering or focusing a link starts loading that page's chunk.
   defaultPreload: 'intent',
 })
+
+// When the saved session stops working, check the current page again: one that needs a
+// login redirects to /login, a public page (homepage, tutor pages) just carries on.
+onSessionExpired(() => router.invalidate())
