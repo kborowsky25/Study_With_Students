@@ -203,3 +203,34 @@ CREATE TABLE IF NOT EXISTS reviews (
   created_at      TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   KEY ix_reviews_tutor (tutor_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Lesson notes: one per session, written by the tutor once it has started.
+-- `subject` is a key from server/data/topics.py (NULL when the subject isn't listed there).
+CREATE TABLE IF NOT EXISTS lesson_notes (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  event_id   INT NOT NULL UNIQUE,
+  subject    VARCHAR(40) NULL,
+  summary    TEXT NULL,
+  next_steps TEXT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Topics covered in a lesson, each with the tutor's confidence rating for the student (1–5).
+CREATE TABLE IF NOT EXISTS lesson_note_topics (
+  note_id    INT NOT NULL,
+  subject    VARCHAR(40) NOT NULL,
+  topic      VARCHAR(60) NOT NULL,
+  confidence TINYINT NOT NULL,
+  PRIMARY KEY (note_id, subject, topic)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Homework set in a lesson; the student ticks it off.
+CREATE TABLE IF NOT EXISTS lesson_homework (
+  id       INT AUTO_INCREMENT PRIMARY KEY,
+  note_id  INT NOT NULL,
+  task     VARCHAR(300) NOT NULL,
+  due_date DATE NULL,
+  done_at  DATETIME NULL,
+  KEY ix_lesson_homework_note (note_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
