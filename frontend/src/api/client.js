@@ -1,5 +1,4 @@
 import axios from 'axios'
-import toast from 'react-hot-toast'
 
 const client = axios.create({
   baseURL: '/api',
@@ -22,8 +21,6 @@ client.interceptors.response.use(
       localStorage.removeItem('sws_token')
       localStorage.removeItem('sws_user')
       if (!window.location.pathname.startsWith('/login')) window.location.href = '/login'
-    } else if (status === 402 && err.response?.data?.code === 'explorer_required') {
-      toast('That’s part of the Explorer plan — £5/month', { icon: '🚀', id: 'explorer-required' })
     }
     return Promise.reject(err)
   },

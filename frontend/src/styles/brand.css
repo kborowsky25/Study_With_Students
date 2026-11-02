@@ -1,0 +1,87 @@
+/* ── Brand artwork tokens ─────────────────────────────────────────────────────
+   Colours for the hand-drawn illustrations in components/brand/illustrations.jsx.
+   Each token is a role, not a fixed colour, so a scene keeps the same hierarchy
+   in both themes:
+     paper*  – focal surfaces (pages, screens, cards): bright in both themes
+     slate*  – furniture and props: recede into the page
+     ink*    – hair, trousers, small dark details
+     cloth*  – a second garment colour that reads on either background
+   Dark mode sits on navy #1b263b, light mode on white. `.brand-dark` and
+   `.brand-light` force a theme on one container (used by the brand gallery). */
+
+:root,
+html.dark,
+.brand-dark {
+  --ill-coral:       #ff725e;
+  --ill-coral-deep:  #e2563f;
+  --ill-coral-soft:  #f2c0b6;
+  --ill-ink:         #0d1524;
+  --ill-ink-deep:    #070c17;
+  --ill-ink-soft:    #4a5d82;
+  --ill-skin-1:      #f3caae;
+  --ill-skin-2:      #cf946b;
+  --ill-skin-3:      #9a6444;
+  --ill-paper:       #e3e9ed;
+  --ill-paper-shade: #c4d0d7;
+  --ill-paper-line:  #a5b4be;
+  --ill-slate:       #3a4a67;
+  --ill-slate-light: #465879;
+  --ill-slate-deep:  #2f3d58;
+  --ill-cloth:       #a7b7c2;
+  --ill-cloth-deep:  #8b9dab;
+  --ill-line:        #3d4d6a;
+  --ill-plant:       #63a487;
+  --ill-plant-deep:  #4a876c;
+  --ill-backdrop:    #223049;
+  --ill-sparkle:     #cfd8dc;
+}
+
+html.light,
+.brand-light {
+  --ill-coral:       #ff725e;
+  --ill-coral-deep:  #e8573f;
+  --ill-coral-soft:  #ffd6ce;
+  --ill-ink:         #1b263b;
+  --ill-ink-deep:    #0f1727;
+  --ill-ink-soft:    #3d4d6a;
+  --ill-skin-1:      #f6cdb1;
+  --ill-skin-2:      #d39a72;
+  --ill-skin-3:      #8d5a3b;
+  --ill-paper:       #ffffff;
+  --ill-paper-shade: #e9eef1;
+  --ill-paper-line:  #d3dce1;
+  --ill-slate:       #b0bec5;
+  --ill-slate-light: #cfd8dc;
+  --ill-slate-deep:  #8e9fa9;
+  --ill-cloth:       #a6b6c1;
+  --ill-cloth-deep:  #8a9dab;
+  --ill-line:        #cfd8dc;
+  --ill-plant:       #7db699;
+  --ill-plant-deep:  #5c9a7d;
+  --ill-backdrop:    #f0f3f6;
+  --ill-sparkle:     #b0bec5;
+}
+
+/* Illustrations fill their container's width; zero specificity so any class wins. */
+:where(.sws-ill) {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Icons sit in a line of text like a glyph. `svg:where()` ties with Tailwind's
+   preflight `svg { display: block }`, so this file must load after index.css;
+   utility classes (e.g. `hidden`) still win. */
+svg:where(.sws-icon) {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+/* Logo lockup: mark + wordmark. */
+:where(.sws-logo) {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  white-space: nowrap;
+}
