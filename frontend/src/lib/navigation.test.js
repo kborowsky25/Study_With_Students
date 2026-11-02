@@ -15,12 +15,6 @@ describe('navigation', () => {
     expect(navFor(undefined)).toBe(STUDENT_NAV)
   })
 
-  it('community items are marked as part of the Explorer plan for students', () => {
-    const community = STUDENT_NAV.find((g) => g.title === 'Community')
-    expect(community.explorer).toBe(true)
-    expect(community.items.every((i) => i.explorer)).toBe(true)
-  })
-
   it('matches nested paths to their section', () => {
     expect(matchNav('student', '/forum').item.to).toBe('/forum')
     expect(matchNav('student', '/forum/thread/12').item.to).toBe('/forum')

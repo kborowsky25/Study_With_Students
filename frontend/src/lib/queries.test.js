@@ -15,13 +15,6 @@ describe('prefetchRoute', () => {
     expect(prefetchedKeys()).toEqual([Q.conversations[0]])
   })
 
-  it('never prefetches Explorer-only data for free accounts (that would be a 402)', () => {
-    prefetchRoute('/forum')
-    expect(prefetchQuery).not.toHaveBeenCalled()
-    prefetchRoute('/forum', { explorer: true })
-    expect(prefetchedKeys()).toEqual([Q.forumCategories[0]])
-  })
-
   it('ignores routes without prefetch data', () => {
     prefetchRoute('/xp')
     expect(prefetchQuery).not.toHaveBeenCalled()

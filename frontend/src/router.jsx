@@ -1,6 +1,5 @@
 import { createRootRoute, createRoute, createRouter, lazyRouteComponent, Outlet, redirect } from '@tanstack/react-router'
 import { AuthProvider } from './context/AuthContext'
-import { hasExplorerAccess } from './lib/access'
 
 // Every page is its own chunk, loaded when its route is first visited (or when a
 // link to it is hovered — see `defaultPreload`), so the first load stays small.
@@ -43,7 +42,6 @@ const NewThread      = lazy(() => import('./pages/NewThread'))
 const StudyNotes     = lazy(() => import('./pages/StudyNotes'))
 const Classroom      = lazy(() => import('./pages/Classroom'))
 const XP             = lazy(() => import('./pages/XP'))
-const Membership     = lazy(() => import('./pages/Membership'))
 const StudentProfile = lazy(() => import('./pages/StudentProfile'))
 
 // Admin
@@ -67,12 +65,6 @@ function requireVerifiedTutor() {
   const user = requireAuth()
   if (!user.is_tutor) throw redirect({ to: '/tutor-profile' })
   if (user.screening_status !== 'approved') throw redirect({ to: '/tutor-screening' })
-}
-
-/** Community features: Explorer members (£5/month) and verified tutors. */
-function requireExplorer() {
-  const user = requireAuth()
-  if (!hasExplorerAccess(user)) throw redirect({ to: '/membership' })
 }
 
 function requireAdmin() {
@@ -136,16 +128,15 @@ const routeTree = rootRoute.addChildren([
   // Shared
   page('/messages',   Messages,   requireAuth),
   page('/xp',         XP,         requireAuth),
-  page('/membership', Membership, requireAuth),
 
-  // Community (Explorer plan)
-  page('/forum',                            ForumHome,         requireExplorer),
-  page('/forum/category/$categoryId',       ForumCategory,     requireExplorer),
-  page('/forum/category/$categoryId/new',   NewThread,         requireExplorer),
-  page('/forum/thread/$threadId',           ForumThread,       requireExplorer),
-  page('/study-notes',                      StudyNotes,        requireExplorer),
-  page('/study-rooms/student',              StudyRoomsStudent, requireExplorer),
-  page('/classroom',                        Classroom,         requireExplorer),
+  // Community: free for everyone who is logged in
+  page('/forum',                            ForumHome,         requireAuth),
+  page('/forum/category/$categoryId',       ForumCategory,     requireAuth),
+  page('/forum/category/$categoryId/new',   NewThread,         requireAuth),
+  page('/forum/thread/$threadId',           ForumThread,       requireAuth),
+  page('/study-notes',                      StudyNotes,        requireAuth),
+  page('/study-rooms/student',              StudyRoomsStudent, requireAuth),
+  page('/classroom',                        Classroom,         requireAuth),
 
   // Admin
   page('/admin',      AdminScreening),

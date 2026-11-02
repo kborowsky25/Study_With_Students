@@ -18,14 +18,15 @@ describe('notifyError', () => {
 
   it('shows the API message, or the fallback', () => {
     notifyError(httpError(400, 'Title is required'), 'Could not post')
+    notifyError(httpError(402, 'Payment not completed'), 'Could not pay')
     notifyError(httpError(500), 'Could not post')
     notifyError(new Error('Network Error'), 'Could not post')
-    expect(toast.error.mock.calls.map(([m]) => m)).toEqual(['Title is required', 'Could not post', 'Could not post'])
+    expect(toast.error.mock.calls.map(([m]) => m)).toEqual([
+      'Title is required', 'Payment not completed', 'Could not post', 'Could not post'])
   })
 
-  it('stays quiet for 401 and 402, which the API client handles', () => {
+  it('stays quiet for 401, which sends the user to log in', () => {
     notifyError(httpError(401, 'Token expired'))
-    notifyError(httpError(402, 'Explorer plan required'))
     expect(toast.error).not.toHaveBeenCalled()
   })
 })
