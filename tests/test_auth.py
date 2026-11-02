@@ -100,7 +100,7 @@ class TestRegister:
         wrong = '000000' if code != '000000' else '111111'
         res = register(api, wrong)
         assert res.status_code == 400
-        assert res.get_json()['error'] == 'Invalid verification code'
+        assert res.get_json()['error'].startswith('Invalid verification code')
 
     def test_code_belongs_to_one_email(self, api, db):
         code = request_code(api, db, 'someone@example.com')

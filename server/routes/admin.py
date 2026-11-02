@@ -2,8 +2,8 @@
 
 from flask import Blueprint, jsonify, request
 
-from ..permissions import check_admin
 from ..db import get_db
+from ..permissions import check_admin
 
 bp = Blueprint('admin', __name__, url_prefix='/api')
 
@@ -122,7 +122,8 @@ def admin_users():
         cur.execute("""
             SELECT u.id_user, u.name, u.email,
                    (SELECT COUNT(*) FROM tutor_profiles tp WHERE tp.id_user = u.id_user) AS is_tutor,
-                   (SELECT tp.screening_status FROM tutor_profiles tp WHERE tp.id_user = u.id_user LIMIT 1) AS screening_status
+                   (SELECT tp.screening_status FROM tutor_profiles tp
+                     WHERE tp.id_user = u.id_user LIMIT 1) AS screening_status
             FROM users u
             ORDER BY u.id_user DESC
             LIMIT 200

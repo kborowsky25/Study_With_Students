@@ -64,7 +64,8 @@ TUTOR_JOINS = """
     LEFT JOIN (SELECT tutor_id, ROUND(AVG(rating), 2) AS rating, COUNT(*) AS review_count
                FROM reviews GROUP BY tutor_id) rv ON rv.tutor_id = tp.id_tutor
     LEFT JOIN (SELECT tutor_id, COUNT(*) AS sessions_done FROM events
-               WHERE status = 'paid' OR (status = 'confirmed' AND end_time < NOW())
+               WHERE (status = 'paid' OR (status = 'confirmed' AND end_time < NOW()))
+                 AND kind <> 'room' AND LEFT(COALESCE(title, ''), 12) <> 'Study Room: '
                GROUP BY tutor_id) ev ON ev.tutor_id = tp.id_tutor
 """
 
@@ -248,7 +249,10 @@ def deactivate_tutor(tutor_id):
 
 # ── Tutor profile (self) ──────────────────────────────────────────────────────
 
-PROFILE_FIELDS = ('age', 'university', 'course', 'about_me', 'subjects', 'levels', 'availability', 'linkedin_url', 'hourly_rate')
+PROFILE_FIELDS = (
+    'age', 'university', 'course', 'about_me', 'subjects', 'levels',
+    'availability', 'linkedin_url', 'hourly_rate',
+)
 
 
 @bp.route('/tutor-profile', methods=['GET'])
@@ -336,6 +340,13 @@ def send_tutor_request(tutor_id):
     uid  = current_user_id()
     conn = get_db(); cur = conn.cursor()
     try:
+        cur.execute("SELECT id_user FROM tutor_profiles WHERE id_tutor = %s", (tutor_id,))
+        tutor = cur.fetchone()
+        if not tutor:
+            return jsonify({'error': 'Tutor not found'}), 404
+        if tutor[0] == uid:
+            return jsonify({'error': "You can't send a request to yourself"}), 400
+
         # Get or auto-create student profile
         cur.execute("SELECT id_student FROM student_profiles WHERE id_user = %s", (uid,))
         row = cur.fetchone()

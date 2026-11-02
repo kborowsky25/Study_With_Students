@@ -100,7 +100,8 @@ def seed():
                   status, p['hourly_rate']))
             if status == 'paid':
                 cur.execute(
-                    "INSERT INTO reviews (event_id, tutor_id, student_user_id, rating, comment) VALUES (%s, %s, %s, 5, %s)",
+                    "INSERT INTO reviews (event_id, tutor_id, student_user_id, rating, comment) "
+                    "VALUES (%s, %s, %s, 5, %s)",
                     (cur.lastrowid, tutor_id, student_uid,
                      'Oliver made integration by parts finally click. Clear, patient and quick.'),
                 )

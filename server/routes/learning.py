@@ -19,7 +19,7 @@ def load_learning_profile(cur, user_id):
     row = cur.fetchone()
     if not row:
         return {k: None for k in PROFILE_FIELDS}
-    return dict(zip(PROFILE_FIELDS, row)) if not isinstance(row, dict) else row
+    return dict(zip(PROFILE_FIELDS, row, strict=True)) if not isinstance(row, dict) else row
 
 
 def rank_tutors(learner, tutors):

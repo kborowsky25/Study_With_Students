@@ -39,6 +39,18 @@ bp.register_blueprint(cron_bp)
 BOOKING_FEE_PERCENT = getattr(Config, 'BOOKING_FEE_PERCENT', 5)
 
 
+def real_session_sql(alias='e'):
+    """SQL condition: a 1-to-1 session, not a study room a student saved to their calendar.
+
+    Calendar copies are tagged kind = 'room'; older ones are recognised by their title.
+    """
+    return (f"({alias}.kind <> 'room' AND LEFT(COALESCE({alias}.title, ''), 12) <> 'Study Room: ')")
+
+
+def is_room_copy(ev):
+    return ev.get('kind') == 'room' or str(ev.get('title') or '').startswith('Study Room: ')
+
+
 def booking_fee(amount):
     return round(float(amount) * BOOKING_FEE_PERCENT / 100, 2)
 
@@ -244,7 +256,10 @@ def create_event():
         student_user = (cur.fetchone() or {}).get('id_user')
         tutor_id = tutor['id_tutor']
         if intro and not intro_call_available(cur, tutor_id, student_id):
-            return jsonify({'error': 'You’ve already had your free intro call with this tutor', 'code': 'intro_used'}), 409
+            return jsonify({
+                'error': 'You’ve already had your free intro call with this tutor',
+                'code':  'intro_used',
+            }), 409
 
         cur.execute("SELECT id_user, name FROM users WHERE id_user IN (%s, %s)", (tutor['id_user'], student_user))
         names = {r['id_user']: r['name'] for r in cur.fetchall()}

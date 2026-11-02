@@ -23,6 +23,15 @@ _lock    = threading.Lock()
 _last_sweep = 0.0
 
 
+def reset_limits():
+    """Forget every counter (used between tests)."""
+    global _last_sweep
+    with _lock:
+        _hits.clear()
+        _windows.clear()
+        _last_sweep = 0.0
+
+
 # ── Keys ──────────────────────────────────────────────────────────────────────
 
 def client_ip():

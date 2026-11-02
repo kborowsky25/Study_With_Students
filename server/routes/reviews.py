@@ -5,7 +5,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 
 from ..db import current_user_id, get_db
-from .events import fetch_event
+from .events import fetch_event, is_room_copy
 
 bp = Blueprint('reviews', __name__, url_prefix='/api')
 
@@ -40,8 +40,9 @@ def review_session(event_id):
             return jsonify({'error': 'Session not found'}), 404
         if ev['student_user_id'] != uid:
             return jsonify({'error': 'Only the student can review this session'}), 403
-        finished = ev['status'] == 'paid' or (ev['status'] == 'confirmed' and ev['end_time'] < datetime.now())
-        if not finished:
+        if is_room_copy(ev) or ev.get('kind') == 'intro':
+            return jsonify({'error': 'Only 1-to-1 sessions can be reviewed'}), 400
+        if ev['status'] not in ('confirmed', 'paid') or ev['end_time'] >= datetime.now():
             return jsonify({'error': 'You can review a session once it has happened'}), 400
 
         cur.execute("SELECT id FROM reviews WHERE event_id = %s", (event_id,))

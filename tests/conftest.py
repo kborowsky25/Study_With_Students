@@ -43,6 +43,7 @@ import mysql.connector
 
 from server import create_app, extensions
 from server.config import Config
+from server.ratelimit import reset_limits
 from server.schema import ensure_schema
 from tests.support import COMMUNITY_IS_FREE, HAS_BOOKING_FEE, Api, Database, Factory
 
@@ -91,6 +92,7 @@ def db(app):
     """Direct SQL access to the test database, emptied before each test."""
     database = Database()
     database.reset()
+    reset_limits()
     yield database
     database.close()
 

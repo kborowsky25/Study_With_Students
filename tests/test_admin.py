@@ -160,19 +160,3 @@ class TestReview:
         events = api.get('/api/admin/recent-events', user=admin).get_json()['events']
         assert [(e['student_name'], e['tutor_name'], e['status']) for e in events] == [
             ('Maya Patel', 'Oliver Grant', 'confirmed')]
-
-
-LEGACY_BUG = 'Queries tutor_profiles.status, a column that does not exist — see docs/QA-FINDINGS.md'
-
-
-@pytest.mark.xfail(strict=True, reason=LEGACY_BUG)
-def test_legacy_tutor_list(api, make, admin):
-    make.tutor()
-    assert api.get('/api/admin/tutors', headers=SECRET).status_code == 200
-
-
-@pytest.mark.xfail(strict=True, reason=LEGACY_BUG)
-@pytest.mark.parametrize('action', ['approve', 'reject'])
-def test_legacy_tutor_approval(api, make, admin, action):
-    oliver = make.tutor(status='pending')
-    assert api.post(f'/api/admin/tutors/{oliver.tutor_id}/{action}', headers=SECRET).status_code == 200

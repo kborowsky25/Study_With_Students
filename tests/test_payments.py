@@ -81,7 +81,7 @@ class TestSessionCheckout:
 
     @pytest.mark.parametrize(('status', 'amount', 'expected'), [
         ('pending', 22, 400),     # the tutor hasn't confirmed yet
-        ('paid', 22, 400),
+        ('paid', 22, 409),  # already paid
         ('canceled', 22, 400),
         ('confirmed', 0, 400),    # free (e.g. a saved study room) — nothing to pay
     ])
@@ -104,11 +104,11 @@ class TestSessionCheckout:
         metadata = {'event_id': str(event_id), 'user_id': str(maya.id)}
         verify = f'/api/payments/verify/{event_id}'
 
-        stripe.sessions['cs_open'] = SimpleNamespace(metadata=metadata, payment_status='unpaid')
+        stripe.sessions['cs_open'] = {'mode': 'payment', 'metadata': metadata, 'payment_status': 'unpaid'}
         assert api.post(verify, user=maya, json={'session_id': 'cs_open'}).status_code == 402
         assert db.value('SELECT status FROM events') == 'confirmed'
 
-        stripe.sessions['cs_paid'] = SimpleNamespace(metadata=metadata, payment_status='paid')
+        stripe.sessions['cs_paid'] = {'mode': 'payment', 'metadata': metadata, 'payment_status': 'paid'}
         assert api.post(verify, user=maya, json={'session_id': 'cs_paid'}).status_code == 200
         assert db.value('SELECT status FROM events') == 'paid'
 
@@ -116,10 +116,12 @@ class TestSessionCheckout:
         maya, oliver, sam = people
         event_id = make.session(maya, oliver, status='confirmed')
         other_event = make.session(maya, oliver, status='confirmed')
-        stripe.sessions['cs_other'] = SimpleNamespace(
-            metadata={'event_id': str(other_event), 'user_id': str(maya.id)}, payment_status='paid')
-        stripe.sessions['cs_sam'] = SimpleNamespace(
-            metadata={'event_id': str(event_id), 'user_id': str(sam.id)}, payment_status='paid')
+        stripe.sessions['cs_other'] = {
+            'mode': 'payment', 'payment_status': 'paid',
+            'metadata': {'event_id': str(other_event), 'user_id': str(maya.id)}}
+        stripe.sessions['cs_sam'] = {
+            'mode': 'payment', 'payment_status': 'paid',
+            'metadata': {'event_id': str(event_id), 'user_id': str(sam.id)}}
 
         verify = f'/api/payments/verify/{event_id}'
         assert api.post(verify, user=maya, json={'session_id': 'cs_other'}).status_code == 403

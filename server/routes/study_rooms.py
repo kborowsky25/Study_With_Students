@@ -126,8 +126,9 @@ def save_room_to_calendar(room_id):
         # Study rooms are free: the calendar copy carries no fee (amount 0),
         # so it never shows up as a session to pay for.
         cur.execute("""
-            INSERT INTO events (user_id, tutor_id, student_id, title, description, start_time, end_time, status, amount)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, 'confirmed', 0)
+            INSERT INTO events (user_id, tutor_id, student_id, title, description, start_time, end_time,
+                                status, amount, kind)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, 'confirmed', 0, 'room')
         """, (uid, room['tutor_id'], student_id,
               CALENDAR_PREFIX + room['subject'], room['description'],
               room['start_time'], room['end_time']))

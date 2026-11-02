@@ -59,8 +59,7 @@ def test_only_the_student_reviews(api, people, paid, who):
     (2, 'pending'),
     (-2, 'pending'),      # the tutor never confirmed it
     (-2, 'canceled'),
-    pytest.param(2, 'paid', marks=pytest.mark.xfail(
-        strict=True, reason='A session paid in advance can be reviewed before it happens — see docs/QA-FINDINGS.md')),
+    (2, 'paid'),          # paid in advance, hasn't happened yet
 ])
 def test_only_sessions_that_happened(api, db, make, people, days, status):
     maya, oliver, _ = people

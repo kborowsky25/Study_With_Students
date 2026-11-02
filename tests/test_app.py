@@ -26,7 +26,7 @@ def test_wrong_method_answers_in_json(api):
 def test_protected_routes_need_a_token(api):
     assert api.get('/api/events').status_code == 401
     bad = api.get('/api/events', headers={'Authorization': 'Bearer not-a-jwt'})
-    assert bad.status_code == 422
+    assert bad.status_code == 401  # every token problem is a 401 so the app signs the user out
 
 
 def test_dates_serialise_as_iso_and_decimals_as_numbers():

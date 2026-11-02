@@ -1,14 +1,12 @@
 """Study rooms: verified tutors host them, members save them to their calendar.
 
-A saved room becomes a free (£0) 'confirmed' event titled "Study Room: <subject>" in the
-member's calendar. Those copies currently leak into places meant for paid 1-to-1 sessions;
-the xfail tests below pin that down.
+A saved room becomes a free (£0) 'confirmed' calendar entry (kind 'room', titled
+"Study Room: <subject>"). It must never count as a paid 1-to-1 session: not in earnings,
+payments, a tutor's sessions taught, or reviews.
 """
 import pytest
 
 from tests.support import iso, local
-
-ROOM_COPY_BUG = 'Study-room calendar copies are treated as 1-to-1 sessions — see docs/QA-FINDINGS.md'
 
 
 def host(api, tutor, days=3, **changes):
@@ -70,7 +68,6 @@ def test_unknown_room(api, people):
     assert api.post('/api/study-rooms/999/calendar', user=maya).status_code == 404
 
 
-@pytest.mark.xfail(strict=True, reason=ROOM_COPY_BUG)
 def test_room_copies_are_not_earnings(api, people):
     maya, oliver = people
     room_id = host(api, oliver).get_json()['room']['id']
@@ -78,14 +75,12 @@ def test_room_copies_are_not_earnings(api, people):
     assert api.get('/api/payments?role=tutor', user=oliver).get_json()['events'] == []
 
 
-@pytest.mark.xfail(strict=True, reason=ROOM_COPY_BUG)
 def test_room_copies_are_not_sessions_taught(api, db, people):
     maya, oliver = people
     api.post(f'/api/study-rooms/{past_room(db, oliver)}/calendar', user=maya)
     assert api.get(f'/api/tutors/{oliver.tutor_id}', user=maya).get_json()['tutor']['sessions_done'] == 0
 
 
-@pytest.mark.xfail(strict=True, reason=ROOM_COPY_BUG)
 def test_room_copies_cannot_be_reviewed(api, db, people):
     maya, oliver = people
     api.post(f'/api/study-rooms/{past_room(db, oliver)}/calendar', user=maya)

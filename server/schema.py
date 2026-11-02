@@ -63,7 +63,7 @@ FORUM_CATEGORIES = [
 
 
 def _statements(sql):
-    lines = [l for l in sql.splitlines() if not l.strip().startswith('--')]
+    lines = [line for line in sql.splitlines() if not line.strip().startswith('--')]
     return [s.strip() for s in '\n'.join(lines).split(';') if s.strip()]
 
 

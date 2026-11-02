@@ -138,7 +138,6 @@ def test_confirming_keeps_a_custom_meeting_link(api, make, connected):
     assert set_status(api, oliver, event_id, 'confirmed').get_json()['event']['meeting_url'] == 'https://zoom.us/j/123'
 
 
-@pytest.mark.xfail(strict=True, reason='A tutor can re-confirm a cancelled session — see docs/QA-FINDINGS.md')
 def test_a_cancelled_session_cannot_be_revived(api, db, make, connected):
     maya, oliver, _ = connected
     event_id = make.session(maya, oliver, status='canceled')
@@ -311,12 +310,10 @@ class TestTutorRequests:
         assert db.value('SELECT COUNT(*) FROM tutor_requests') == 0
         assert book(api, maya, oliver).status_code == 403
 
-    @pytest.mark.xfail(strict=True, reason='A tutor can send a request to their own profile — see docs/QA-FINDINGS.md')
     def test_tutor_cannot_request_themselves(self, api, make):
         oliver = make.tutor()
         assert self.send(api, oliver, oliver).status_code == 400
 
-    @pytest.mark.xfail(strict=True, reason='Requests to a missing tutor id are stored — see docs/QA-FINDINGS.md')
     def test_unknown_tutor(self, api, db, people):
         maya, _, _ = people
         assert api.post('/api/tutors/999/request', user=maya).status_code == 404

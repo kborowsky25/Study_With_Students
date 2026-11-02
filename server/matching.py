@@ -113,7 +113,7 @@ def score_tutor(learner, tutor):
 
     # Level (15)
     level = learner.get('level')
-    tutor_levels = {l.strip().lower() for l in (tutor.get('levels') or '').split(',') if l.strip()}
+    tutor_levels = {lv.strip().lower() for lv in (tutor.get('levels') or '').split(',') if lv.strip()}
     if not level:
         points += 9
     elif tutor_levels:

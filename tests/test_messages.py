@@ -48,7 +48,6 @@ class TestSend:
         assert send(api, maya, oliver, 'x' * 4000).status_code == 201
         assert send(api, maya, oliver, 'x' * 4001).status_code == 400
 
-    @pytest.mark.xfail(strict=True, reason='A non-numeric receiver_id crashes with a 500 — see docs/QA-FINDINGS.md')
     def test_receiver_id_must_be_a_number(self, api, people):
         maya, _, _ = people
         assert api.post('/api/messages', user=maya, json={'receiver_id': 'abc', 'message': 'Hi'}).status_code == 400

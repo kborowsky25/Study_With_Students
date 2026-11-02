@@ -88,7 +88,8 @@ def create_study_note():
     conn = get_db(); cur = conn.cursor()
     try:
         cur.execute(
-            "INSERT INTO study_notes (user_id, title, subject, description, file_path, file_name, file_type, is_public) "
+            "INSERT INTO study_notes (user_id, title, subject, description, "
+            "file_path, file_name, file_type, is_public) "
             "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
             (uid, title, subject, description, file_path, file_name, file_type, is_public)
         )

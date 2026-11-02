@@ -6,12 +6,12 @@ from flask import Blueprint, jsonify, request, send_from_directory
 from flask_jwt_extended import jwt_required
 
 from ..config import upload_dir
+from ..db import current_user_id, get_db
 from ..permissions import check_admin, dev_shortcuts_allowed
 from ..ratelimit import json_field, jwt_user, rate_limit
 from ..services.email import mail_configured, send_verification_email
 from ..services.uploads import UploadError, read_upload
 from ..services.verification import issue_code, redeem_code
-from ..db import current_user_id, get_db
 
 bp = Blueprint('screening', __name__, url_prefix='/api')
 

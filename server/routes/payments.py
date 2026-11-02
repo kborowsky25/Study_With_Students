@@ -8,7 +8,7 @@ from flask_jwt_extended import jwt_required
 from ..config import Config
 from ..db import current_user_id, get_db
 from ..extensions import stripe, stripe_dict, stripe_enabled
-from .events import EVENT_COLUMNS, EVENT_JOINS, fetch_event
+from .events import EVENT_COLUMNS, EVENT_JOINS, fetch_event, real_session_sql
 
 bp = Blueprint('payments', __name__, url_prefix='/api')
 
@@ -51,7 +51,7 @@ def get_payments():
     try:
         cur.execute(f"""
             SELECT {EVENT_COLUMNS} {EVENT_JOINS}
-            WHERE {owner} = %s
+            WHERE {owner} = %s AND {real_session_sql()}
             ORDER BY e.start_time DESC
         """, (uid,))
         return jsonify({'events': cur.fetchall(), 'stripe_enabled': stripe_enabled()})

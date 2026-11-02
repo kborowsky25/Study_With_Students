@@ -88,7 +88,7 @@ Stripe's card fees.
         WHERE e.title LIKE 'Study Room:%';
       UPDATE events SET amount = 0 WHERE title LIKE 'Study Room:%';
       ```
-- [ ] Decide what to do with old uncommitted files: `frontend/src/api/calendar.js`,
-      `frontend/src/components/features/MonthCalendar.jsx`, and the untracked files in `legacy/`.
+- [ ] Decide what to do with old uncommitted files (moved to `legacy/unused-frontend/`): `calendar.js`,
+      `MonthCalendar.jsx`, and the other untracked files in `legacy/`.
 - [ ] Earlier unsaved edits to `Home.jsx`/`CalendarTutor.jsx` from `main` are in `git stash`
       ("local main WIP") — review or drop.
