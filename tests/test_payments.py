@@ -1,10 +1,10 @@
-"""Paying tutors (0% commission) and the Explorer checkout — only a verified Stripe checkout marks
-anything paid. Stripe is replaced by a fake; nothing leaves the machine."""
+"""Paying for sessions: only a verified Stripe checkout marks a session paid, and tutors keep the
+full price. Stripe is replaced by a fake; nothing leaves the machine."""
 from types import SimpleNamespace
 
 import pytest
 
-from server.routes import membership, payments
+from server.routes import payments
 
 
 class FakeStripe:
@@ -33,9 +33,8 @@ class FakeStripe:
 @pytest.fixture
 def stripe(monkeypatch):
     fake = FakeStripe()
-    for module in (payments, membership):
-        monkeypatch.setattr(module, 'stripe', fake)
-        monkeypatch.setattr(module, 'stripe_enabled', lambda: True)
+    monkeypatch.setattr(payments, 'stripe', fake)
+    monkeypatch.setattr(payments, 'stripe_enabled', lambda: True)
     return fake
 
 
@@ -127,38 +126,3 @@ class TestSessionCheckout:
         assert api.post(verify, user=maya, json={'session_id': 'cs_sam'}).status_code == 403
         assert api.post(verify, user=maya, json={}).status_code == 400
         assert db.column('SELECT status FROM events') == ['confirmed', 'confirmed']
-
-
-class TestExplorerCheckout:
-    def test_checkout_session_is_a_5_pound_subscription(self, api, make, stripe):
-        maya = make.user(email='maya@example.com')
-        res = api.post('/api/membership/checkout-session', user=maya)
-        assert res.get_json() == {'client_secret': 'cs_test_1_secret'}
-        created = stripe.created[0]
-        assert created['mode'] == 'subscription'
-        assert created['line_items'][0]['price_data']['unit_amount'] == 500
-        assert created['line_items'][0]['price_data']['recurring'] == {'interval': 'month'}
-        assert created['metadata'] == {'user_id': maya.id}
-        assert created['customer_email'] == 'maya@example.com'
-
-    def test_completed_checkout_activates_explorer(self, api, db, make, stripe):
-        maya = make.user()
-        stripe.sessions['cs_done'] = SimpleNamespace(metadata={'user_id': str(maya.id)}, status='complete',
-                                                     subscription='sub_1', customer='cus_1')
-        res = api.get('/api/membership/checkout-success?session_id=cs_done', user=maya)
-        assert res.status_code == 200
-        assert (res.get_json()['is_premium'], res.get_json()['managed_by']) == (True, 'stripe')
-        assert db.one('SELECT stripe_subscription_id, stripe_customer_id FROM users') == {
-            'stripe_subscription_id': 'sub_1', 'stripe_customer_id': 'cus_1'}
-        assert api.get('/api/forum/categories', user=maya).status_code == 200
-
-    def test_open_or_foreign_checkouts_change_nothing(self, api, make, stripe):
-        maya, sam = make.user(), make.user('Sam Lee')
-        stripe.sessions['cs_open'] = SimpleNamespace(metadata={'user_id': str(maya.id)}, status='open',
-                                                     subscription=None, customer=None)
-        stripe.sessions['cs_sams'] = SimpleNamespace(metadata={'user_id': str(sam.id)}, status='complete',
-                                                     subscription='sub_2', customer='cus_2')
-        assert api.get('/api/membership/checkout-success?session_id=cs_open', user=maya).status_code == 402
-        assert api.get('/api/membership/checkout-success?session_id=cs_sams', user=maya).status_code == 403
-        assert api.get('/api/membership/checkout-success', user=maya).status_code == 400
-        assert api.get('/api/membership/status', user=maya).get_json()['is_premium'] is False

@@ -5,7 +5,7 @@ import os
 import pytest
 
 from server.config import Config
-from tests.support import ADMIN_EMAIL, ADMIN_SECRET
+from tests.support import ADMIN_EMAIL, ADMIN_SECRET, iso, local
 
 SECRET = {'X-Admin-Secret': ADMIN_SECRET}
 
@@ -110,12 +110,14 @@ class TestReview:
     def test_approving_unlocks_the_tutor_tools(self, api, db, make, admin):
         oliver = make.tutor(status='pending')
         db.run("UPDATE tutor_profiles SET screening_notes = 'Blurry scan' WHERE id_tutor = %s", (oliver.tutor_id,))
-        assert api.get('/api/forum/categories', user=oliver).status_code == 402
+        room = {'subject': 'A-level Maths drop-in', 'start_time': iso(local(3, hour=19)),
+                'end_time': iso(local(3, hour=20)), 'zoom_link': 'https://zoom.us/j/123'}
+        assert api.post('/api/study-rooms', user=oliver, json=room).status_code == 403
 
         assert api.post(f'/api/admin/screening/{oliver.tutor_id}/approve', user=admin).status_code == 200
         assert db.one('SELECT screening_status, screening_notes FROM tutor_profiles') == {
             'screening_status': 'approved', 'screening_notes': None}
-        assert api.get('/api/forum/categories', user=oliver).status_code == 200
+        assert api.post('/api/study-rooms', user=oliver, json=room).status_code == 201
         assert api.post('/api/auth/refresh', user=oliver).get_json()['user']['screening_status'] == 'approved'
 
     def test_rejecting_tells_the_tutor_why(self, api, make, admin):
@@ -131,8 +133,8 @@ class TestReview:
         assert api.post(f'/api/admin/screening/999/{action}', user=admin).status_code == 404
 
     def test_stats(self, api, make, admin):
-        maya, oliver = make.explorer('Maya Patel'), make.tutor('Oliver Grant')
-        make.explorer('Ella Explorer')
+        maya, oliver = make.user('Maya Patel'), make.tutor('Oliver Grant')
+        make.user('Sam Lee')
         make.tutor('Pete Pending', status='pending')
         make.session(maya, oliver, status='paid')
         make.session(maya, oliver, status='confirmed')
@@ -140,11 +142,10 @@ class TestReview:
 
         stats = api.get('/api/admin/stats', user=admin).get_json()['stats']
         assert {k: stats[k] for k in ('total_users', 'total_tutors', 'pending_screenings', 'approved_tutors',
-                                       'total_sessions', 'completed_sessions', 'premium_users')} == {
+                                       'total_sessions', 'completed_sessions')} == {
             'total_users': 5, 'total_tutors': 2, 'pending_screenings': 1, 'approved_tutors': 1,
-            'total_sessions': 2, 'completed_sessions': 1, 'premium_users': 2,
+            'total_sessions': 2, 'completed_sessions': 1,
         }
-        assert stats['monthly_recurring_revenue'] == 10.0   # 2 × £5 — the only revenue (0% commission)
         assert sum(day['signups'] for day in stats['signups_last_30d']) == 5
 
     def test_user_list_never_exposes_passwords(self, api, make, admin):

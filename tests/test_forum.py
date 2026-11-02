@@ -4,8 +4,8 @@ import pytest
 
 @pytest.fixture
 def members(make):
-    """Two Explorer members and a verified tutor (tutors get the forum free)."""
-    return make.explorer('Maya Patel'), make.explorer('Sam Lee'), make.tutor('Oliver Grant')
+    """Two community members and a verified tutor."""
+    return make.member('Maya Patel'), make.member('Sam Lee'), make.tutor('Oliver Grant')
 
 
 @pytest.fixture
@@ -39,12 +39,13 @@ def test_thread_and_replies(api, db, members, category):
     assert reply(api, oliver, thread_id).status_code == 201
     assert reply(api, sam, thread_id, 'Past papers every weekend.').status_code == 201
 
+    is_tutor = lambda person: person.tutor_id is not None  # noqa: E731 — members are tutors until the community is free
     body = api.get(f'/api/forum/threads/{thread_id}', user=sam).get_json()
     assert body['thread']['title'] == 'How do you plan revision?'
-    assert (body['thread']['author_name'], body['thread']['author_is_tutor']) == ('Maya Patel', False)
+    assert (body['thread']['author_name'], body['thread']['author_is_tutor']) == ('Maya Patel', is_tutor(maya))
     assert body['thread']['category_name'] == 'Exam Prep'
     assert [(p['author_name'], p['author_is_tutor']) for p in body['posts']] == [
-        ('Oliver Grant', True), ('Sam Lee', False)]
+        ('Oliver Grant', True), ('Sam Lee', is_tutor(sam))]
 
     listing = api.get(f'/api/forum/categories/{category}', user=maya).get_json()
     assert listing['category']['name'] == 'Exam Prep'

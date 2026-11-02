@@ -2,6 +2,7 @@
 
 Imported by conftest.py after it has pointed the app at the test database.
 """
+import inspect
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from functools import cache
@@ -9,7 +10,9 @@ from functools import cache
 from werkzeug.security import generate_password_hash
 
 from server.db import get_db
+from server.routes import classrooms, forum, notes, study_rooms
 from server.routes.auth import build_session
+from server.schema import COLUMN_MIGRATIONS, SCHEMA_FILE
 
 PASSWORD = 'correct-horse-battery'
 ADMIN_EMAIL = 'admin@sws.test'          # SUPER_ADMIN_EMAIL in conftest.py
@@ -23,10 +26,25 @@ def password_hash():
     return generate_password_hash(PASSWORD)
 
 
+# ── Pricing change ────────────────────────────────────────────────────────────
+# The £5/month Explorer plan is going: the community (forum, study notes, study rooms,
+# classes) becomes free for every logged-in user, and each booked session carries a 5%
+# booking fee paid by the family on top of the tutor's price. That lands in server/ on
+# the main branch. Until this code base has it, the tests of the new contract (markers
+# `free_community` and `booking_fee`) are expected to fail; conftest.py marks them so.
+
+COMMUNITY_IS_FREE = not any('explorer_required' in inspect.getsource(module)
+                            for module in (forum, notes, study_rooms, classrooms))
+
+with open(SCHEMA_FILE) as _fh:
+    HAS_BOOKING_FEE = ('booking_fee' in _fh.read()
+                       or ('events', 'booking_fee') in {(table, column) for table, column, _ in COLUMN_MIGRATIONS})
+
+
 # ── Time ──────────────────────────────────────────────────────────────────────
 
 def utcnow():
-    """Naive UTC — how the API stores premium_expires_at and verification expiry."""
+    """Naive UTC — how the API stores verification-code expiry."""
     return datetime.now(UTC).replace(tzinfo=None)
 
 
@@ -113,25 +131,23 @@ class Factory:
         self.db = db
         self.count = 0
 
-    def user(self, name='Maya Patel', email=None, *, premium=False, premium_until=None,
-             password=None, student_profile=True):
+    def user(self, name='Maya Patel', email=None, *, password=None, student_profile=True):
         """A registered user (with the student profile registration creates). `password` stores it as-is."""
         self.count += 1
         email = email or f'user{self.count}@sws.test'
-        if premium and premium_until is None:
-            premium_until = utcnow() + timedelta(days=30)
         user_id = self.db.run(
-            'INSERT INTO users (name, email, password, is_premium, premium_expires_at) VALUES (%s, %s, %s, %s, %s)',
-            (name, email, password or password_hash(), int(premium), premium_until),
+            'INSERT INTO users (name, email, password) VALUES (%s, %s, %s)',
+            (name, email, password or password_hash()),
         )
         student_id = None
         if student_profile:
             student_id = self.db.run('INSERT INTO student_profiles (id_user) VALUES (%s)', (user_id,))
         return Person(user_id, name, email, student_id)
 
-    def explorer(self, name='Ella Explorer', **kwargs):
-        """A member on the £5/month Explorer plan."""
-        return self.user(name, premium=True, **kwargs)
+    def member(self, name='Maya Patel', **kwargs):
+        """Someone who can use the community: any user once it is free (see COMMUNITY_IS_FREE),
+        a verified tutor before that — so the community tests run on either side of the change."""
+        return self.user(name, **kwargs) if COMMUNITY_IS_FREE else self.tutor(name, **kwargs)
 
     def tutor(self, name='Oliver Grant', *, status='approved', rate=22, subjects='Mathematics, Further Maths, Physics',
               levels='GCSE, A-level', availability='Weekday evenings', university='University College London',

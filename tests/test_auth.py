@@ -69,9 +69,9 @@ class TestRegister:
 
         assert res.status_code == 201
         body = res.get_json()
-        assert body['user'] == {
+        assert {k: body['user'][k] for k in ('id', 'name', 'email', 'is_tutor', 'screening_status', 'is_admin')} == {
             'id': ANY, 'name': 'Maya Patel', 'email': 'maya@example.com', 'is_tutor': False,
-            'is_premium': False, 'screening_status': None, 'is_admin': False,
+            'screening_status': None, 'is_admin': False,
         }
         assert claims(app, body['access_token'])['sub'] == str(body['user']['id'])
 
@@ -194,16 +194,15 @@ class TestSessionClaims:
         assert api.get('/api/auth/me', user=admin).get_json()['user']['is_admin'] is True
 
     def test_refresh_reissues_the_token_with_live_claims(self, app, api, db, make):
-        maya = make.user()
-        api.token(maya)  # a token from before the upgrade
-        db.run('UPDATE users SET is_premium = 1, premium_expires_at = %s WHERE id_user = %s',
-               (utcnow() + timedelta(days=30), maya.id))
+        oliver = make.tutor(status='pending')
+        api.token(oliver)  # a token from before the approval
+        db.run("UPDATE tutor_profiles SET screening_status = 'approved' WHERE id_tutor = %s", (oliver.tutor_id,))
 
-        res = api.post('/api/auth/refresh', user=maya)
+        res = api.post('/api/auth/refresh', user=oliver)
         assert res.status_code == 200
         body = res.get_json()
-        assert body['user']['is_premium'] is True
-        assert claims(app, body['access_token'])['is_premium'] is True
+        assert body['user']['screening_status'] == 'approved'
+        assert claims(app, body['access_token'])['screening_status'] == 'approved'
 
     def test_deleted_account(self, api, db, make):
         maya = make.user()

@@ -1,4 +1,4 @@
-"""Study rooms: verified tutors host them, Explorer members save them to their calendar.
+"""Study rooms: verified tutors host them, members save them to their calendar.
 
 A saved room becomes a free (£0) 'confirmed' event titled "Study Room: <subject>" in the
 member's calendar. Those copies currently leak into places meant for paid 1-to-1 sessions;
@@ -29,7 +29,7 @@ def past_room(db, tutor):
 
 @pytest.fixture
 def people(make):
-    return make.explorer('Maya Patel'), make.tutor('Oliver Grant')
+    return make.member('Maya Patel'), make.tutor('Oliver Grant')
 
 
 def test_host_list_and_save_to_calendar(api, db, people):

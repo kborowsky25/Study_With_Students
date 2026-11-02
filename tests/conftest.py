@@ -44,7 +44,13 @@ import mysql.connector
 from server import create_app, extensions
 from server.config import Config
 from server.schema import ensure_schema
-from tests.support import Api, Database, Factory
+from tests.support import COMMUNITY_IS_FREE, HAS_BOOKING_FEE, Api, Database, Factory
+
+# Tests of the new pricing contract, and whether this code base implements it yet.
+PENDING_CONTRACT = {
+    'free_community': (COMMUNITY_IS_FREE, 'the community is still behind the Explorer gate here'),
+    'booking_fee': (HAS_BOOKING_FEE, 'sessions have no booking_fee here yet'),
+}
 
 
 def _server_connection():
@@ -99,6 +105,15 @@ def api(app, db):
 def make(db):
     """Factories for users, tutors, connections and sessions."""
     return Factory(db)
+
+
+def pytest_collection_modifyitems(config, items):
+    """Until the pricing change is in this code base, its contract tests are expected to fail
+    (strictly: if one passes early, the run says so). Once it is, they run like any other test."""
+    for item in items:
+        for marker, (implemented, why) in PENDING_CONTRACT.items():
+            if item.get_closest_marker(marker) and not implemented:
+                item.add_marker(pytest.mark.xfail(strict=True, reason=f'Pricing change not merged yet: {why}'))
 
 
 def pytest_sessionfinish(session, exitstatus):
