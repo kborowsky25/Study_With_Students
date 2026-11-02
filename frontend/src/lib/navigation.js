@@ -7,6 +7,7 @@ export const STUDENT_NAV = [
       { to: '/hub/student',      label: 'Home',         icon: 'space_dashboard', key: 'h' },
       { to: '/messages',         label: 'Messages',     icon: 'chat',            key: 'm', tour: 'messages', badge: 'unread' },
       { to: '/calendar/student', label: 'Calendar',     icon: 'calendar_month',  key: 'c' },
+      { to: '/progress',         label: 'Progress',     icon: 'insights',        key: 'i' },
     ],
   },
   {
@@ -49,6 +50,8 @@ export const TUTOR_NAV = [
       { to: '/active-students', label: 'My students', icon: 'groups_2',       key: 'u', tour: 'my-students' },
       { to: '/earnings',        label: 'Earnings',    icon: 'account_balance', key: 'p', tour: 'earnings' },
       { to: '/tutor-profile',   label: 'Profile',     icon: 'badge',           key: 'o' },
+      { to: '/availability',    label: 'Availability',     icon: 'schedule',      key: 'a' },
+      { to: '/background-check', label: 'Background check', icon: 'verified_user', key: 'd' },
     ],
   },
   {

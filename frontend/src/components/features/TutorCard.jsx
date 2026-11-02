@@ -29,6 +29,7 @@ export function SubjectPills({ subjects, highlight = '', max = Infinity }) {
 }
 
 export const VerifiedPill = () => <Pill tone="green">Verified</Pill>
+export const DbsPill = () => <Pill tone="green">DBS checked</Pill>
 
 /** Where the viewer stands with this tutor. */
 export function RelationPill({ status }) {
@@ -57,6 +58,7 @@ export default function TutorCard({ tutor, liked = false, onToggleLike, status, 
               {tutor.name}
             </Link>
             {tutor.verified && <VerifiedPill />}
+            {tutor.dbs_verified && <DbsPill />}
             <RelationPill status={status} />
           </div>
           {place && <div className="meta">{place}</div>}

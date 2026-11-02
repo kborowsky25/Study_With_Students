@@ -32,6 +32,8 @@ const ActiveStudents  = lazy(() => import('./pages/ActiveStudents'))
 const CalendarTutor   = lazy(() => import('./pages/CalendarTutor'))
 const Earnings        = lazy(() => import('./pages/Earnings'))
 const StudyRoomsTutor = lazy(() => import('./pages/StudyRoomsTutor'))
+const Availability    = lazy(() => import('./pages/Availability'))
+const BackgroundCheck = lazy(() => import('./pages/BackgroundCheck'))
 
 // Hub — shared
 const Messages       = lazy(() => import('./pages/Messages'))
@@ -43,6 +45,7 @@ const StudyNotes     = lazy(() => import('./pages/StudyNotes'))
 const Classroom      = lazy(() => import('./pages/Classroom'))
 const XP             = lazy(() => import('./pages/XP'))
 const StudentProfile = lazy(() => import('./pages/StudentProfile'))
+const Progress       = lazy(() => import('./pages/Progress'))
 
 // Admin
 const AdminScreening = lazy(() => import('./pages/AdminScreening'))
@@ -124,10 +127,13 @@ const routeTree = rootRoute.addChildren([
   page('/calendar/tutor',    CalendarTutor,   requireVerifiedTutor),
   page('/earnings',          Earnings,        requireVerifiedTutor),
   page('/study-rooms/tutor', StudyRoomsTutor, requireVerifiedTutor),
+  page('/availability',      Availability,    requireAuth),
+  page('/background-check',  BackgroundCheck, requireAuth),
 
   // Shared
   page('/messages',   Messages,   requireAuth),
   page('/xp',         XP,         requireAuth),
+  page('/progress',   Progress,   requireAuth),
 
   // Community: free for everyone who is logged in
   page('/forum',                            ForumHome,         requireAuth),

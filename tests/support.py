@@ -151,8 +151,11 @@ class Factory:
 
     def tutor(self, name='Oliver Grant', *, status='approved', rate=22, subjects='Mathematics, Further Maths, Physics',
               levels='GCSE, A-level', availability='Weekday evenings', university='University College London',
-              **kwargs):
-        """A tutor (screening `status`: approved, pending, none or rejected)."""
+              dbs=None, **kwargs):
+        """A tutor (screening `status`: approved, pending, none or rejected).
+
+        `dbs`: give them a verified, in-date background check — by default only approved tutors have one.
+        """
         person = self.user(name, **kwargs)
         person.tutor_id = self.db.run(
             """
@@ -162,6 +165,17 @@ class Factory:
             """,
             (person.id, university, subjects, levels, availability, rate, status, int(status == 'approved')),
         )
+        if dbs if dbs is not None else status == 'approved':
+            self.db.run(
+                """
+                INSERT INTO background_checks (tutor_id, check_type, certificate_last4, issue_date, legal_name,
+                                               on_update_service, consent_at, status, submitted_at,
+                                               verified_at, recheck_due)
+                VALUES (%s, 'enhanced_barred', '1234', CURDATE() - INTERVAL 1 YEAR, %s, 1, NOW(), 'verified',
+                        NOW(), NOW(), CURDATE() + INTERVAL 1 YEAR)
+                """,
+                (person.tutor_id, name),
+            )
         return person
 
     def connect(self, student, tutor):

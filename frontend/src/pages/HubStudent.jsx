@@ -8,6 +8,8 @@ import BookSessionModal from '../components/features/BookSessionModal'
 import LearningProfileDialog from '../components/features/LearningProfileDialog'
 import ReviewDialog from '../components/features/ReviewDialog'
 import SpotlightTour from '../components/features/SpotlightTour'
+import HomeworkCard from '../components/features/HomeworkCard'
+import LessonNotesButton from '../components/features/LessonNotesButton'
 import { FindTutor } from '../components/brand/illustrations'
 import {
   Avatar, Card, CardLink, DateChip, EmptyState, Icon, SkeletonRows, Stars, StatusPill,
@@ -34,6 +36,7 @@ function SessionActions({ ev, onRate }) {
     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
       {canJoin(ev) && <a className="btn btn-coral btn-sm" href={ev.meeting_url} target="_blank" rel="noreferrer"><Icon name="videocam" />Join</a>}
       {needsPayment(ev) && <Link to="/payments" className="btn btn-coral btn-sm">Pay {formatMoney(total(ev), { decimals: 2 })}</Link>}
+      <LessonNotesButton event={ev} />
       {canReview(ev) && <button className="btn btn-ghost btn-sm" onClick={() => onRate(ev)}><Icon name="star" />Rate</button>}
     </div>
   )
@@ -234,6 +237,8 @@ export default function HubStudent() {
         </div>
 
         <div className="dash-col">
+          <HomeworkCard />
+
           <Card title="Inbox" count={unread ? `${unread} new` : null} action={<CardLink to="/messages">Open</CardLink>}>
             {convLoading ? <SkeletonRows rows={2} /> : conversations.length ? (
               <div className="row-list">

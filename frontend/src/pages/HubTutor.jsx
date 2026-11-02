@@ -8,6 +8,7 @@ import {
   Avatar, Card, CardLink, DateChip, EmptyState, Icon, SkeletonRows, Stars, StatusPill,
 } from '../components/ui'
 import { useConfirm } from '../components/ui/confirm'
+import NotesToWriteCard from '../components/features/NotesToWriteCard'
 import { respondTutorRequest } from '../api/tutors'
 import { updateStatus } from '../api/events'
 import { errorMessage } from '../api/client'
@@ -129,6 +130,8 @@ export default function HubTutor() {
 
       <div className="dash-grid">
         <div className="dash-col">
+          <NotesToWriteCard events={events} />
+
           <Card title="Needs your answer" count={attention || null}>
             {evLoading || reqLoading ? <SkeletonRows rows={2} /> : attention ? (
               <div className="row-list">
@@ -151,7 +154,7 @@ export default function HubTutor() {
                     <DateChip value={e.start_time} />
                     <div className="main">
                       <div className="title">{e.title || 'Tutoring session'}</div>
-                      <div className="meta">{e.student_name} · {formatTime(e.start_time)}–{formatTime(e.end_time)} · {formatMoney(e.amount)}</div>
+                      <div className="meta">{e.student_name} · {formatTime(e.start_time)}–{formatTime(e.end_time)} · {Number(e.amount) > 0 ? formatMoney(e.amount) : 'Free'}</div>
                     </div>
                     <button className="btn btn-quiet btn-sm" disabled={busy === `e${e.id_event}`}
                       onClick={() => decline(`e${e.id_event}`, `Decline ${e.title || 'this session'}?`,

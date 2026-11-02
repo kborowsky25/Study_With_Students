@@ -3,7 +3,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 
 from ..db import current_user_id, get_db
-from ..matching import LEVELS, profile_complete, score_tutor
+from ..matching import LEVELS, profile_complete, score_tutor, slots_from_hours
 from .tutors import TUTOR_COLUMNS, TUTOR_JOINS, decorate_tutors
 
 bp = Blueprint('learning', __name__, url_prefix='/api')
@@ -22,10 +22,34 @@ def load_learning_profile(cur, user_id):
     return dict(zip(PROFILE_FIELDS, row, strict=True)) if not isinstance(row, dict) else row
 
 
-def rank_tutors(learner, tutors):
+def attach_weekly_hours(cur, tutors):
+    """Give each tutor the slots their structured weekly hours cover (see matching.slots_from_hours)."""
+    ids = [t['id_tutor'] for t in tutors]
+    if not ids:
+        return tutors
+    cur.execute(
+        f"SELECT tutor_id, weekday, start_time, end_time FROM tutor_availability "
+        f"WHERE tutor_id IN ({', '.join(['%s'] * len(ids))})",
+        ids,
+    )
+    hours = {}
+    columns = ('tutor_id', 'weekday', 'start_time', 'end_time')
+    for row in cur.fetchall():
+        r = row if isinstance(row, dict) else dict(zip(columns, row, strict=True))
+        hours.setdefault(r['tutor_id'], []).append((r['weekday'], r['start_time'], r['end_time']))
+    for t in tutors:
+        if t['id_tutor'] in hours:
+            t['hours_slots'] = slots_from_hours(hours[t['id_tutor']])
+    return tutors
+
+
+def rank_tutors(learner, tutors, cur=None):
     """Attach match + reasons to each tutor and sort best first."""
+    if cur is not None:
+        attach_weekly_hours(cur, tutors)
     for t in tutors:
         t['match'], t['reasons'] = score_tutor(learner, t)
+        t.pop('hours_slots', None)  # internal; sets aren't JSON
     tutors.sort(key=lambda t: (-t['match'], -(t.get('rating') or 0), t['name']))
     return tutors
 
@@ -102,7 +126,7 @@ def recommended_tutors():
               AND tp.id_user <> %s
               AND tp.id_tutor NOT IN (SELECT id_tutor FROM active_tutors WHERE id_user = %s)
         """, (uid, uid))
-        tutors = rank_tutors(learner, decorate_tutors(cur.fetchall()))
+        tutors = rank_tutors(learner, decorate_tutors(cur.fetchall()), cur)
         return jsonify({'tutors': tutors[:limit], 'profile_complete': profile_complete(learner)})
     finally:
         cur.close(); conn.close()

@@ -97,6 +97,9 @@ export default function ActiveStudents() {
                       </Link>
                       <div className="row-actions">
                         {st.earned > 0 && <span className="side hide-mobile">{formatMoney(st.earned)} earned</span>}
+                        <Link to="/progress" search={{ student: s.user_id }} className="btn btn-quiet btn-sm">
+                          <Icon name="insights" />Progress
+                        </Link>
                         <Link to="/messages" search={{ user: s.user_id }} className="icon-btn" title="Message" aria-label={`Message ${s.name}`}>
                           <Icon name="chat" />
                         </Link>

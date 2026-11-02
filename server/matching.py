@@ -6,7 +6,7 @@ A transparent points model (0–100) so every recommendation can explain itself:
     level         15   tutor teaches the student's level (GCSE, A-level, …)
     budget        15   hourly rate within the student's budget
     availability  10   overlapping days/times
-    quality       15   rating (Bayesian-smoothed), verification, experience
+    quality       18   rating (Bayesian-smoothed), verification, DBS check, experience
 
 Weights are deliberately simple; tune them here as real booking data arrives.
 """
@@ -58,6 +58,31 @@ def parse_subjects(text):
         if name:
             out.add(SUBJECT_ALIASES.get(name, name))
     return out
+
+
+TIME_BANDS = {'morning': (6 * 60, 12 * 60), 'afternoon': (12 * 60, 17 * 60), 'evening': (17 * 60, 22 * 60)}
+
+
+def _minutes(value):
+    """MySQL TIME (timedelta), datetime.time or minutes → minutes after midnight."""
+    if hasattr(value, 'total_seconds'):
+        return int(value.total_seconds() // 60)
+    if hasattr(value, 'hour'):
+        return value.hour * 60 + value.minute
+    return int(value)
+
+
+def slots_from_hours(rows):
+    """A tutor's weekly hours [(weekday 0=Mon…6=Sun, start, end)] → the (day-kind, time-of-day)
+    slots they cover for at least an hour. Used instead of the free-text field when set."""
+    covered = set()
+    for weekday, start, end in rows:
+        s, e = _minutes(start), _minutes(end)
+        day = 'weekend' if int(weekday) >= 5 else 'weekday'
+        for band, (b0, b1) in TIME_BANDS.items():
+            if min(e, b1) - max(s, b0) >= 60:
+                covered.add((day, band))
+    return covered
 
 
 def parse_availability(text):
@@ -140,7 +165,7 @@ def score_tutor(learner, tutor):
 
     # Availability (10)
     want_slots = parse_availability(learner.get('availability'))
-    have_slots = parse_availability(tutor.get('availability'))
+    have_slots = tutor.get('hours_slots') or parse_availability(tutor.get('availability'))
     if not want_slots or not have_slots:
         points += 5
     else:
@@ -158,9 +183,12 @@ def score_tutor(learner, tutor):
     if tutor.get('verified'):
         points += 4
         reasons.append(('verified', 'Verified university student'))
+    if tutor.get('dbs_verified'):
+        points += 3  # only DBS-checked tutors can take bookings
+        reasons.append(('dbs', 'DBS checked'))
     points += min(3.0, math.log2(1 + int(tutor.get('sessions_done') or 0)))
 
-    order = ['subject', 'budget', 'time', 'level', 'rating', 'verified']
+    order = ['subject', 'budget', 'time', 'level', 'rating', 'dbs', 'verified']
     reasons.sort(key=lambda r: order.index(r[0]))
     return round(min(100, points)), [text for _, text in reasons[:3]]
 

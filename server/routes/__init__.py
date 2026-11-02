@@ -1,13 +1,17 @@
 from . import (
     admin,
     auth,
+    availability,
+    background,
     classrooms,
+    cron,
     events,
     forum,
     learning,
     messages,
     notes,
     payments,
+    progress,
     reviews,
     screening,
     study_rooms,
@@ -16,7 +20,7 @@ from . import (
 )
 
 BLUEPRINTS = [
-    auth.bp, tutors.bp, learning.bp, events.bp, reviews.bp, messages.bp, forum.bp,
-    study_rooms.bp, classrooms.bp, notes.bp, payments.bp, users.bp,
-    screening.bp, admin.bp,
+    auth.bp, tutors.bp, learning.bp, availability.bp, events.bp, reviews.bp, progress.bp,
+    messages.bp, forum.bp, study_rooms.bp, classrooms.bp, notes.bp, payments.bp, users.bp,
+    background.bp, screening.bp, admin.bp, cron.bp,
 ]

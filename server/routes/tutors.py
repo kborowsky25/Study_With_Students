@@ -7,6 +7,7 @@ from werkzeug.utils import secure_filename
 
 from ..config import upload_dir
 from ..db import current_user_id, get_db
+from .background import dbs_verified_sql
 
 bp = Blueprint('tutors', __name__, url_prefix='/api')
 
@@ -49,12 +50,13 @@ def serve_tutor_avatar(filename):
 
 # ── Tutors ────────────────────────────────────────────────────────────────────
 
-TUTOR_COLUMNS = """
+TUTOR_COLUMNS = f"""
     tp.id_tutor, tp.id_user, u.name, tp.age, tp.university, tp.course,
     tp.about_me, tp.subjects, tp.levels, tp.availability, tp.hourly_rate, tp.avatar_path,
     tp.screening_status = 'approved' AS verified,
     rv.rating, COALESCE(rv.review_count, 0) AS review_count,
-    COALESCE(ev.sessions_done, 0) AS sessions_done
+    COALESCE(ev.sessions_done, 0) AS sessions_done,
+    {dbs_verified_sql('tp')} AS dbs_verified
 """
 
 # FROM clause shared by every tutor listing: profile, name, rating and experience
@@ -79,7 +81,8 @@ SORTS = {
 
 def decorate_tutors(tutors):
     for t in tutors:
-        t['verified']   = bool(t.get('verified'))
+        t['verified']     = bool(t.get('verified'))
+        t['dbs_verified'] = bool(t.get('dbs_verified'))
         t['rating']     = float(t['rating']) if t.get('rating') is not None else None
         t['avatar_url'] = f"/api/uploads/tutor-avatars/{t['avatar_path']}" if t.get('avatar_path') else None
     return tutors
@@ -126,7 +129,7 @@ def get_tutors():
         tutors = decorate_tutors(cur.fetchall())
         learner = load_learning_profile(cur, current_user_id())
         if profile_complete(learner):
-            rank_tutors(learner, tutors)          # adds match + reasons, best first
+            rank_tutors(learner, tutors, cur)     # adds match + reasons, best first
         if sort in SORTS:
             tutors.sort(key=SORTS[sort])
         elif not profile_complete(learner):

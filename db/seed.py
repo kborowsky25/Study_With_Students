@@ -77,6 +77,15 @@ def seed():
               p['availability'], p['hourly_rate']))
         tutor_id = cur.lastrowid
 
+        # Background check: enhanced DBS on the Update Service, verified by an admin (demo values)
+        cur.execute("""
+            INSERT INTO background_checks (tutor_id, check_type, certificate_last4, issue_date, legal_name,
+                                           on_update_service, consent_at, status, submitted_at,
+                                           reviewed_by, verified_at, recheck_due)
+            VALUES (%s, 'enhanced_barred', '0042', CURDATE() - INTERVAL 1 YEAR, %s, 1, NOW(), 'verified',
+                    NOW(), 'seed', NOW(), CURDATE() + INTERVAL 1 YEAR)
+        """, (tutor_id, TUTOR['name']))
+
         # Connection: request accepted
         cur.execute("INSERT INTO tutor_requests (student_id, tutor_id, status) VALUES (%s, %s, 'accepted')",
                     (student_id, tutor_id))

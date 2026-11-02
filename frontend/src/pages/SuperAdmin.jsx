@@ -9,12 +9,14 @@ import { getScreeningQueue } from '../api/screening'
 import { toDateInput } from '../lib/dates'
 import { formatDate, formatMoney } from '../lib/format'
 import { bookingFee } from '../lib/sessions'
+import DbsReviewPanel from '../components/features/DbsReviewPanel'
 
 const TABS = [
   ['overview', 'Overview'],
   ['applications', 'Applications'],
   ['users', 'Users'],
   ['sessions', 'Sessions'],
+  ['checks', 'Background checks'],
 ]
 
 const ROLES = [
@@ -206,6 +208,7 @@ export default function SuperAdmin() {
       )}
       {tab === 'users' && <Users users={users.data} status={users.status} onRetry={users.load} />}
       {tab === 'sessions' && <Sessions events={events.data} status={events.status} onRetry={events.load} />}
+      {tab === 'checks' && <DbsReviewPanel />}
     </HubLayout>
   )
 }

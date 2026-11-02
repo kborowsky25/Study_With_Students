@@ -236,3 +236,21 @@ def test_profile_complete_needs_a_subject(learner, complete):
 
 def test_levels_offered():
     assert LEVELS == ('GCSE', 'A-level', 'IB', 'University', 'Other')
+
+
+def test_weekly_hours_become_slots():
+    from datetime import timedelta
+
+    from server.matching import slots_from_hours
+    rows = [(1, timedelta(hours=17), timedelta(hours=20)),   # Tuesday evening
+            (6, timedelta(hours=13), timedelta(hours=15)),   # Sunday afternoon
+            (2, timedelta(hours=11, minutes=30), timedelta(hours=12, minutes=15))]  # under an hour: ignored
+    assert slots_from_hours(rows) == {('weekday', 'evening'), ('weekend', 'afternoon')}
+
+
+def test_weekly_hours_win_over_free_text():
+    learner = {'subjects': 'Maths', 'availability': 'Weekend afternoons'}
+    tutor = {'subjects': 'Maths', 'availability': 'Weekday mornings', 'hourly_rate': 20,
+             'hours_slots': {('weekend', 'afternoon')}}
+    score, reasons = score_tutor(learner, tutor)
+    assert any(r.startswith('Free weekend') for r in reasons)

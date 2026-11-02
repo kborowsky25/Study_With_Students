@@ -28,6 +28,7 @@ from ..scheduling import (
 )
 from ..services.ics import calendar_file
 from .availability import bp as availability_bp
+from .background import dbs_required_error, tutor_dbs_verified
 from .cron import bp as cron_bp
 
 bp = Blueprint('events', __name__, url_prefix='/api')
@@ -232,6 +233,8 @@ def create_event():
                 return jsonify({'error': 'Tutor not found'}), 404
             if tutor['id_user'] == uid:
                 return jsonify({'error': "You can't book a session with yourself"}), 400
+            if not tutor_dbs_verified(cur, tutor['id_tutor']):
+                return jsonify(dbs_required_error()), 403
             cur.execute("SELECT 1 FROM active_tutors WHERE id_user = %s AND id_tutor = %s", (uid, tutor['id_tutor']))
             if not cur.fetchall():
                 return jsonify({'error': 'Send this tutor a request first — you can book once they accept'}), 403
@@ -242,6 +245,8 @@ def create_event():
             tutor = _lock_tutor(cur, user_id=uid)
             if not tutor:
                 return jsonify({'error': 'Only tutors can schedule students'}), 403
+            if not tutor_dbs_verified(cur, tutor['id_tutor']):
+                return jsonify(dbs_required_error(own=True)), 403
             student_id = data['student_id']
             cur.execute(
                 "SELECT 1 FROM active_students WHERE id_tutor = %s AND id_student = %s",

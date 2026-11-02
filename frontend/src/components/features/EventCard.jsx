@@ -26,6 +26,8 @@ import { useConfirm } from '../ui/confirm'
 import RescheduleDialog from './RescheduleDialog'
 import ReviewDialog from './ReviewDialog'
 import './scheduling.css'
+import LessonNotesButton from './LessonNotesButton'
+import { notesPossible } from '../../lib/progress'
 
 const TONE = {
   pending:   'var(--amber)',
@@ -142,7 +144,7 @@ export default function EventCard({ event: ev, onChanged, variant = 'date', show
   const joinable = canJoin(ev)
   const reviewable = canReview(ev)
   const hasMenu = movable || calendar || canCancel
-  const hasActions = canAnswer || proposal || cancelAsked || canPay || joinable || reviewable || hasMenu ||
+  const hasActions = canAnswer || proposal || cancelAsked || canPay || joinable || reviewable || hasMenu || notesPossible(ev) ||
     (showMessage && otherUserId && !canceled)
 
   async function run(request, fallback) {
@@ -276,6 +278,7 @@ export default function EventCard({ event: ev, onChanged, variant = 'date', show
           {joinable && (
             <a href={ev.meeting_url} target="_blank" rel="noreferrer" className="btn btn-coral btn-sm"><Icon name="videocam" />Join</a>
           )}
+          <LessonNotesButton event={ev} />
           {canAnswer && (
             <>
               <button type="button" className="btn btn-coral btn-sm" disabled={busy}

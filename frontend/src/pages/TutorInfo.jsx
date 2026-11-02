@@ -6,7 +6,7 @@ import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
 import BookSessionModal from '../components/features/BookSessionModal'
 import EventCard from '../components/features/EventCard'
-import { RelationPill, SubjectPills, VerifiedPill } from '../components/features/TutorCard'
+import { DbsPill, RelationPill, SubjectPills, VerifiedPill } from '../components/features/TutorCard'
 import { Avatar, Card, CardLink, Icon, SkeletonRows } from '../components/ui'
 import { getTutor, likeTutor, requestTutor } from '../api/tutors'
 import { getEvents } from '../api/events'
@@ -123,6 +123,7 @@ export default function TutorInfo() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <h1>{t.name}</h1>
                   {t.verified && <VerifiedPill />}
+                  {t.dbs_verified && <DbsPill />}
                   <RelationPill status={relation} />
                 </div>
                 <div style={{ fontSize: 13.5, color: 'var(--text-muted)', marginTop: 4 }}>
