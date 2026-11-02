@@ -51,6 +51,8 @@ const Progress       = lazy(() => import('./pages/Progress'))
 const AdminScreening = lazy(() => import('./pages/AdminScreening'))
 const SuperAdmin     = lazy(() => import('./pages/SuperAdmin'))
 
+const NotFound = lazy(() => import('./pages/NotFound'))
+
 // ── Guards (run before a route loads) ─────────────────────────────────────────
 
 function storedUser() {
@@ -91,6 +93,7 @@ const rootRoute = createRootRoute({
       <Outlet />
     </AuthProvider>
   ),
+  notFoundComponent: NotFound,
 })
 
 const page = (path, component, beforeLoad) =>

@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash
 
 from server.db import get_db
+from server.routes.events import booking_fee
 from server.schema import ensure_schema
 
 PASSWORD = 'explorer-demo-1'
@@ -103,10 +104,10 @@ def seed():
         for title, start, status in sessions:
             cur.execute("""
                 INSERT INTO events (user_id, tutor_id, student_id, title, description,
-                                    start_time, end_time, status, amount)
-                VALUES (%s, %s, %s, %s, '', %s, %s, %s, %s)
+                                    start_time, end_time, status, amount, booking_fee)
+                VALUES (%s, %s, %s, %s, '', %s, %s, %s, %s, %s)
             """, (student_uid, tutor_id, student_id, title, start, start + timedelta(hours=1),
-                  status, p['hourly_rate']))
+                  status, p['hourly_rate'], booking_fee(p['hourly_rate'])))
             if status == 'paid':
                 cur.execute(
                     "INSERT INTO reviews (event_id, tutor_id, student_user_id, rating, comment) "

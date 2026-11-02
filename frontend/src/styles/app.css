@@ -375,8 +375,8 @@ button.row { width: 100%; border-left: 0; border-right: 0; border-bottom: 0; bac
 }
 
 @media (max-width: 900px) {
-  .sidebar { position: fixed; top: 0; left: 0; bottom: 0; margin-left: 0 !important; transform: translateX(-100%); transition: transform 0.16s ease-out; box-shadow: var(--shadow-pop); width: 272px !important; }
-  .sidebar.open { transform: none; }
+  .sidebar { position: fixed; top: 0; left: 0; bottom: 0; margin-left: 0 !important; transform: translateX(-100%); transition: transform 0.16s ease-out, visibility 0s 0.16s; visibility: hidden; width: 272px !important; }
+  .sidebar.open { transform: none; visibility: visible; transition: transform 0.16s ease-out; box-shadow: var(--shadow-pop); }
   .sidebar-resizer { display: none; }
   .sidebar-backdrop { display: block; position: fixed; inset: 0; z-index: 39; background: var(--overlay); }
   .shell-header { padding: 0 8px 0 10px; --menu-btn-display: inline-flex; }
@@ -390,5 +390,9 @@ button.row { width: 100%; border-left: 0; border-right: 0; border-bottom: 0; bac
 @media (max-width: 520px) {
   .field-row { grid-template-columns: 1fr; }
   .date-col { width: 76px; }
+  /* Phones: rows keep the status glyph only, the up-next card puts its actions on a second line */
+  .row .status-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .spotlight { flex-wrap: wrap; row-gap: 10px; }
+  .spotlight .grow { flex-basis: 100%; }
   .choice-grid { grid-template-columns: 70px repeat(3, 1fr); }
 }

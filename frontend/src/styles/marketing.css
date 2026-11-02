@@ -323,6 +323,8 @@
 /* ── How it works page ───────────────────────────────────────────────────── */
 
 .mk-page-hero { padding: 56px 0 var(--mk-space); }
+.mk-not-found-art { width: min(260px, 64vw); margin: 0 auto 28px; }
+.mk-not-found-actions { margin-top: 36px; }
 .mk-page-title { font-size: clamp(40px, 5.6vw, 70px); }
 .mk-page-lead { max-width: 520px; margin: 22px 0 34px; font-size: 18px; font-weight: 500; line-height: 1.6; }
 

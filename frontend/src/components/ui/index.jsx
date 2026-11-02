@@ -102,10 +102,11 @@ GLYPHS.declined = GLYPHS.canceled
 
 /** Session/request state: a glyph + label, never a coloured pill. */
 export function StatusPill({ status, label }) {
+  const text = label ?? STATUS[status] ?? status
   return (
-    <span className={`status ${status}`}>
+    <span className={`status ${status}`} title={text}>
       <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">{GLYPHS[status] ?? GLYPHS.pending}</svg>
-      {label ?? STATUS[status] ?? status}
+      <span className="status-label">{text}</span>
     </span>
   )
 }

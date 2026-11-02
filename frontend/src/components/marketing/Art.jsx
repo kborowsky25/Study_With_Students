@@ -35,6 +35,9 @@ const ART = {
   earnings:    'Earnings',
   login:       'Rocket',
   signup:      'BecomeTutor',
+
+  // 404
+  notFound:    'EmptyPeek',
 }
 
 /** Decorative by default; pass `alt` to give the scene an accessible name. */
