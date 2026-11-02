@@ -11,6 +11,7 @@ from tests.support import ADMIN_EMAIL, PASSWORD, utcnow
 
 HASH_PREFIXES = ('scrypt:', 'pbkdf2:')
 NEW_PASSWORD = 'a-long-password'
+BIRTH_DATE = '2009-03-14'
 
 
 def request_code(api, db, email='maya@example.com'):
@@ -20,9 +21,10 @@ def request_code(api, db, email='maya@example.com'):
                     (email.strip().lower(),))
 
 
-def register(api, code, email='maya@example.com', name='Maya Patel', password=NEW_PASSWORD):
+def register(api, code, email='maya@example.com', name='Maya Patel', password=NEW_PASSWORD, **extra):
     return api.post('/api/auth/register', json={
         'name': name, 'email': email, 'password': password, 'verification_code': code,
+        'date_of_birth': BIRTH_DATE, **extra,
     })
 
 
@@ -69,9 +71,9 @@ class TestRegister:
 
         assert res.status_code == 201
         body = res.get_json()
-        assert {k: body['user'][k] for k in ('id', 'name', 'email', 'is_tutor', 'screening_status', 'is_admin')} == {
+        assert body['user'] == {
             'id': ANY, 'name': 'Maya Patel', 'email': 'maya@example.com', 'is_tutor': False,
-            'screening_status': None, 'is_admin': False,
+            'screening_status': None, 'is_admin': False, 'is_parent': False, 'is_student': True, 'xp': 0,
         }
         assert claims(app, body['access_token'])['sub'] == str(body['user']['id'])
 
@@ -81,7 +83,34 @@ class TestRegister:
         assert check_password_hash(stored, NEW_PASSWORD)
 
         assert db.value('SELECT COUNT(*) FROM student_profiles WHERE id_user = %s', (body['user']['id'],)) == 1
+        assert str(db.value('SELECT date_of_birth FROM student_profiles WHERE id_user = %s',
+                            (body['user']['id'],))) == BIRTH_DATE
         assert db.value('SELECT used FROM email_verifications WHERE code = %s', (code,)) == 1
+
+    @pytest.mark.parametrize('born', [None, '', 'not a date', '2999-01-01', '1900-01-01', '2024-01-01'])
+    def test_students_give_a_real_date_of_birth(self, api, db, born):
+        code = request_code(api, db)
+        res = register(api, code, date_of_birth=born)
+        assert res.status_code == 400
+        assert 'date of birth' in res.get_json()['error']
+        assert db.value('SELECT used FROM email_verifications WHERE code = %s', (code,)) == 0  # still usable
+
+    def test_parent_account(self, app, api, db):
+        code = request_code(api, db, 'kate@example.com')
+        res = register(api, code, email='kate@example.com', name='Kate Patel', account_type='parent',
+                       date_of_birth=None)
+
+        assert res.status_code == 201
+        body = res.get_json()
+        assert (body['user']['is_parent'], body['user']['is_student']) == (True, False)
+        assert claims(app, body['access_token'])['is_parent'] is True
+        assert db.value('SELECT is_parent FROM users WHERE id_user = %s', (body['user']['id'],)) == 1
+        assert db.value('SELECT COUNT(*) FROM student_profiles WHERE id_user = %s', (body['user']['id'],)) == 0
+
+    @pytest.mark.parametrize('account', ['tutor', 'admin', ['parent']])
+    def test_account_type_is_student_or_parent(self, api, db, account):
+        code = request_code(api, db)
+        assert register(api, code, account_type=account).status_code == 400
 
     def test_email_is_normalised(self, api, db):
         code = request_code(api, db, 'Maya@Example.com')
@@ -124,7 +153,7 @@ class TestRegister:
     def test_all_fields_are_required(self, api, db, missing):
         code = request_code(api, db)
         payload = {'name': 'Maya Patel', 'email': 'maya@example.com', 'password': NEW_PASSWORD,
-                   'verification_code': code, missing: ''}
+                   'verification_code': code, 'date_of_birth': BIRTH_DATE, missing: ''}
         assert api.post('/api/auth/register', json=payload).status_code == 400
 
     def test_password_needs_eight_characters(self, api, db):
@@ -188,6 +217,7 @@ class TestSessionClaims:
         assert user['is_tutor'] is True
         assert user['screening_status'] == 'pending'
         assert user['is_admin'] is False
+        assert (user['is_parent'], user['is_student']) == (False, True)
 
     def test_super_admin_email_is_admin(self, api, make):
         admin = make.user('Ada Admin', email=ADMIN_EMAIL)

@@ -4,7 +4,7 @@ Imported by conftest.py after it has pointed the app at the test database.
 """
 import inspect
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from functools import cache
 
 from werkzeug.security import generate_password_hash
@@ -59,6 +59,16 @@ def local(days, hour=17, minute=0):
 
 def iso(value):
     return value.isoformat(timespec='seconds')
+
+
+def born(years, days=0):
+    """The date of birth of someone who is `years` old (and `days` days on) today."""
+    today = date.today()
+    try:
+        birthday = today.replace(year=today.year - years)
+    except ValueError:  # 29 February
+        birthday = today.replace(year=today.year - years, day=28)
+    return birthday - timedelta(days=days)
 
 
 # ── Database ──────────────────────────────────────────────────────────────────
@@ -131,18 +141,42 @@ class Factory:
         self.db = db
         self.count = 0
 
-    def user(self, name='Maya Patel', email=None, *, password=None, student_profile=True):
-        """A registered user (with the student profile registration creates). `password` stores it as-is."""
+    def user(self, name='Maya Patel', email=None, *, password=None, student_profile=True, birth_date=None,
+             parent=False):
+        """A registered user (with the student profile registration creates). `password` stores it as-is;
+        `birth_date` goes on the student profile (accounts from before sign-up asked have none)."""
         self.count += 1
         email = email or f'user{self.count}@sws.test'
         user_id = self.db.run(
-            'INSERT INTO users (name, email, password) VALUES (%s, %s, %s)',
-            (name, email, password or password_hash()),
+            'INSERT INTO users (name, email, password, is_parent) VALUES (%s, %s, %s, %s)',
+            (name, email, password or password_hash(), parent),
         )
         student_id = None
         if student_profile:
-            student_id = self.db.run('INSERT INTO student_profiles (id_user) VALUES (%s)', (user_id,))
+            student_id = self.db.run('INSERT INTO student_profiles (id_user, date_of_birth) VALUES (%s, %s)',
+                                     (user_id, birth_date))
         return Person(user_id, name, email, student_id)
+
+    def child(self, name='Mia Khan', age=15, **kwargs):
+        """An under-18 student."""
+        return self.user(name, birth_date=born(age, days=40), **kwargs)
+
+    def parent(self, name='Kate Patel', *, of=None, **kwargs):
+        """A parent account (no student profile), linked to the child `of` when given."""
+        person = self.user(name, student_profile=False, parent=True, **kwargs)
+        if of:
+            self.link(person, of)
+        return person
+
+    def link(self, parent, child, status='accepted'):
+        """A parent's invite to `child`, answered with `status` (pending: not answered yet)."""
+        return self.db.run(
+            """
+            INSERT INTO parent_links (parent_user_id, child_email, child_user_id, status, answered_at)
+            VALUES (%s, %s, %s, %s, IF(%s = 'pending', NULL, NOW()))
+            """,
+            (parent.id, child.email, None if status == 'pending' else child.id, status, status),
+        )
 
     def member(self, name='Maya Patel', **kwargs):
         """Someone who can use the community: any user once it is free (see COMMUNITY_IS_FREE),

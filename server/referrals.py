@@ -14,6 +14,10 @@ A credit is spent on the next session booked with a booking fee, which then stor
 booking_fee = 0 and fee_waived = the fee the credit covered. It comes back when that
 session is cancelled before it's paid, or when the request expires unanswered.
 
+Credits and the inviter's reward belong to the family: a student's sessions can use their
+linked parents' credits (server/family.py), and a parent who signed up through an invite
+earns their inviter a credit when their child's first session is paid.
+
 The helpers run on the caller's cursor (plain or dictionary) inside its transaction.
 """
 import secrets
@@ -142,29 +146,46 @@ def record_referral(cur, user_id, email, code):
 
 # ── Credits: one waives one session's booking fee ─────────────────────────────
 
-def available_credits(cur, user_id, now):
-    cur.execute(f"""
-        SELECT COUNT(*) AS n FROM referral_rewards r LEFT JOIN events e ON e.id_event = r.event_id
-        WHERE {FREE_CREDIT}
-    """, {'user': user_id, 'now': now})
-    return int(_row(cur)['n'])
+def family_of(cur, student_user_id):
+    """The student first, then their linked parents: whose credits a student's session can use."""
+    cur.execute("""
+        SELECT parent_user_id FROM parent_links
+        WHERE child_user_id = %s AND status = 'accepted' ORDER BY id
+    """, (student_user_id,))
+    return [student_user_id, *(row['parent_user_id'] for row in _rows(cur))]
+
+
+def available_credits(cur, user_id, now, family=False):
+    """Free credits of the user, or with `family` of the student and their linked parents."""
+    members = family_of(cur, user_id) if family else [user_id]
+    total = 0
+    for member in members:
+        cur.execute(f"""
+            SELECT COUNT(*) AS n FROM referral_rewards r LEFT JOIN events e ON e.id_event = r.event_id
+            WHERE {FREE_CREDIT}
+        """, {'user': member, 'now': now})
+        total += int(_row(cur)['n'])
+    return total
 
 
 def spend_credit(cur, user_id, event_id, now):
-    """Put one of the user's free credits (oldest first) on a session. False if they have none.
+    """Put a free credit (the student's own first, then a linked parent's; oldest first) on a
+    session. False if the family has none.
 
     The caller sets the session's booking_fee to 0 and fee_waived to the fee.
     """
-    cur.execute(f"""
-        SELECT r.id FROM referral_rewards r LEFT JOIN events e ON e.id_event = r.event_id
-        WHERE {FREE_CREDIT}
-        ORDER BY r.id LIMIT 1 FOR UPDATE
-    """, {'user': user_id, 'now': now})
-    row = _row(cur)
-    if not row:
-        return False
-    cur.execute("UPDATE referral_rewards SET event_id = %s, used_at = %s WHERE id = %s", (event_id, now, row['id']))
-    return True
+    for member in family_of(cur, user_id):
+        cur.execute(f"""
+            SELECT r.id FROM referral_rewards r LEFT JOIN events e ON e.id_event = r.event_id
+            WHERE {FREE_CREDIT}
+            ORDER BY r.id LIMIT 1 FOR UPDATE
+        """, {'user': member, 'now': now})
+        row = _row(cur)
+        if row:
+            cur.execute("UPDATE referral_rewards SET event_id = %s, used_at = %s WHERE id = %s",
+                        (event_id, now, row['id']))
+            return True
+    return False
 
 
 def release_credit(cur, event_id):
@@ -179,11 +200,17 @@ def release_credit(cur, event_id):
 # ── Rewards for the inviter ───────────────────────────────────────────────────
 
 def reward_first_payment(cur, user_id, event_id):
-    """Stripe confirmed `user_id` paid for a session: if someone invited them, the inviter
-    earns a credit. Once per invited family (so for its first paid session), and at most
-    MAX_EARNED_CREDITS per inviter. True if a credit was earned."""
-    cur.execute("SELECT referred_by FROM users WHERE id_user = %s", (user_id,))
-    inviter = (_row(cur) or {}).get('referred_by')
+    """Stripe confirmed a session of student `user_id` was paid (by them or a parent): if
+    someone invited the student, or a linked parent, the inviter earns a credit. Once per
+    invited person (so for the family's first paid session), and at most MAX_EARNED_CREDITS
+    per inviter. True if a credit was earned."""
+    invited = inviter = None
+    for member in family_of(cur, user_id):
+        cur.execute("SELECT referred_by FROM users WHERE id_user = %s", (member,))
+        inviter = (_row(cur) or {}).get('referred_by')
+        if inviter:
+            invited = member
+            break
     if not inviter:
         return False
     cur.execute("SELECT amount FROM events WHERE id_event = %s", (event_id,))
@@ -197,7 +224,7 @@ def reward_first_payment(cur, user_id, event_id):
     cur.execute("SELECT COUNT(*) AS n FROM referral_rewards WHERE user_id = %s AND kind = 'family'", (inviter,))
     if _row(cur)['n'] >= MAX_EARNED_CREDITS:
         return False
-    return _grant(cur, inviter, user_id, 'family')
+    return _grant(cur, inviter, invited, 'family')
 
 
 def reward_tutor_approval(cur, tutor_id):

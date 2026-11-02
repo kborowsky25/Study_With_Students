@@ -364,6 +364,15 @@ export const ICONS = {
   ),
   group: GROUP,
   groups: GROUPS,
+  // A parent and child, for parent accounts
+  family: (
+    <>
+      <circle cx="8.5" cy="7.5" r="3.25" />
+      <path d="M2.75 19.5c.5-3.6 2.8-5.85 5.75-5.85 1.3 0 2.45.4 3.35 1.15" />
+      <circle cx="16.75" cy="11.25" r="2.25" />
+      <path d="M12.75 19.5c.35-2.55 1.85-4.1 4-4.1s3.65 1.55 4 4.1" />
+    </>
+  ),
   groups_2: GROUPS,
   group_add: (
     <>
@@ -688,6 +697,12 @@ export const ICONS = {
     <>
       <path d={rosette(12, 12, 7.6, 10.4, 8)} />
       <path d="M8.75 12.1l2.2 2.2 4.3-4.6" />
+    </>
+  ),
+  flag: (
+    <>
+      <path d="M5.5 21V4.25" />
+      <path d="M5.5 4.75c2.4-1.4 4.6-1.4 6.75 0s4.35 1.4 6.75 0v8.5c-2.4 1.4-4.6 1.4-6.75 0s-4.35-1.4-6.75 0" />
     </>
   ),
   block: (

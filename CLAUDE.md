@@ -23,6 +23,14 @@ setup and the project layout.
   pays one session's fee (`booking_fee` 0, `fee_waived` = the fee) and comes back if it's cancelled unpaid.
   Rewards are once per invited person, only after a Stripe-verified payment, at most 10 earned credits;
   tutors who bring in approved tutors get XP (`users.xp`). Nothing here may cost money to run.
+  Credits are family-wide: a student's session uses a linked parent's credit, and a parent who joined
+  through an invite earns their inviter a credit when their child's first session is paid.
+- Parents and safety (`server/family.py`, `routes/family.py`, `routes/safety.py`, `contact_details.py`):
+  a parent links to a child once the child accepts (`parent_links`, at most 2). Under-18s (by
+  `student_profiles.date_of_birth`) need a linked parent before any session is booked. Who may message
+  whom is one rule (`CAN_WRITE` in `routes/messages.py`): anyone → approved tutor, approved tutor → their
+  accepted students, anyone → someone who wrote first. Contact details are hidden between tutors and
+  families and in any conversation with an under-18; the original is kept for admins only.
 - Matching: `server/matching.py` scores tutors 0–100 against the student's learning profile
   (`/api/learning-profile`, `/api/tutors/recommended`); reasons are shown to the student.
 - Passwords are hashed with werkzeug; legacy plaintext rows are upgraded on next login.

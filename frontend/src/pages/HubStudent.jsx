@@ -9,6 +9,7 @@ import LearningProfileDialog from '../components/features/LearningProfileDialog'
 import ReviewDialog from '../components/features/ReviewDialog'
 import SpotlightTour from '../components/features/SpotlightTour'
 import HomeworkCard from '../components/features/HomeworkCard'
+import FamilyCard from '../components/features/FamilyCard'
 import LessonNotesButton from '../components/features/LessonNotesButton'
 import { FindTutor } from '../components/brand/illustrations'
 import {
@@ -239,6 +240,7 @@ export default function HubStudent() {
         </div>
 
         <div className="dash-col">
+          <FamilyCard />
           <HomeworkCard />
 
           <Card title="Inbox" count={unread ? `${unread} new` : null} action={<CardLink to="/messages">Open</CardLink>}>
