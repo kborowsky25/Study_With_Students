@@ -10,6 +10,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from ..db import current_user_id, get_db
 from ..permissions import dev_shortcuts_allowed, is_admin_email
 from ..ratelimit import json_field, rate_limit
+from ..referrals import record_referral
 from ..services.email import mail_configured, send_verification_email
 from ..services.verification import issue_code, redeem_code
 
@@ -45,11 +46,11 @@ def _valid_email(email):
 
 def build_session(cur, user_id):
     """Fresh user payload + JWT, read live from the DB."""
-    cur.execute("SELECT name, email FROM users WHERE id_user = %s", (user_id,))
+    cur.execute("SELECT name, email, xp FROM users WHERE id_user = %s", (user_id,))
     row = cur.fetchone()
     if not row:
         return None
-    name, email = row
+    name, email, xp = row
 
     cur.execute("SELECT screening_status FROM tutor_profiles WHERE id_user = %s LIMIT 1", (user_id,))
     tutor_row = cur.fetchone()
@@ -63,6 +64,7 @@ def build_session(cur, user_id):
         'is_tutor':         is_tutor,
         'screening_status': screening_status,
         'is_admin':         is_admin_email(email),
+        'xp':               xp or 0,  # awarded by the API (tutors inviting tutors); the rest comes from activity
     }
     claims = {k: user[k] for k in ('name', 'email', 'is_tutor', 'screening_status', 'is_admin')}
     token = create_access_token(identity=str(user_id), additional_claims=claims)
@@ -111,6 +113,7 @@ def register():
     email    = str(data.get('email') or '').strip().lower()
     password = str(data.get('password') or '')
     code     = str(data.get('verification_code') or '').strip()
+    referral = str(data.get('referral_code') or '')[:32]  # from an invite link, /signup?ref=CODE
 
     if not name or not email or not password:
         return jsonify({'error': 'All fields required'}), 400
@@ -141,10 +144,11 @@ def register():
         )
         user_id = cur.lastrowid
         cur.execute("INSERT INTO student_profiles (id_user) VALUES (%s)", (user_id,))
+        invited_by = record_referral(cur, user_id, email, referral) if referral else None
         conn.commit()
 
         session = build_session(cur, user_id)
-        return jsonify({'message': 'Account created', **session}), 201
+        return jsonify({'message': 'Account created', **session, 'invited_by': invited_by}), 201
     except Exception:
         conn.rollback()
         raise

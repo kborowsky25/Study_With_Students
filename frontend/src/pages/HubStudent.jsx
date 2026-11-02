@@ -18,7 +18,7 @@ import { requestTutor } from '../api/tutors'
 import { errorMessage } from '../api/client'
 import { invalidate, useQuery } from '../lib/query'
 import { Q } from '../lib/queries'
-import { canJoin, canReview, needsPayment } from '../lib/sessions'
+import { canJoin, canReview, feeWaived, needsPayment, totalPrice } from '../lib/sessions'
 import { levelFor, xpFor } from '../lib/xp'
 import { firstName, formatMoney, formatTime, formatWhen, hoursBetween, timeAgo } from '../lib/format'
 
@@ -29,13 +29,15 @@ const TOUR_STEPS = [
   { target: '[data-tour="payments"]', position: 'right', title: 'Payments', body: 'Tutors keep 100% of their price. You pay a small 5% booking fee per session.' },
 ]
 
-const total = (ev) => Number(ev.amount || 0) + Number(ev.booking_fee || 0)
-
 function SessionActions({ ev, onRate }) {
   return (
     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
       {canJoin(ev) && <a className="btn btn-coral btn-sm" href={ev.meeting_url} target="_blank" rel="noreferrer"><Icon name="videocam" />Join</a>}
-      {needsPayment(ev) && <Link to="/payments" className="btn btn-coral btn-sm">Pay {formatMoney(total(ev), { decimals: 2 })}</Link>}
+      {needsPayment(ev) && (
+        <Link to="/payments" className="btn btn-coral btn-sm" title={feeWaived(ev) ? 'Booking fee waived with an invite credit' : undefined}>
+          Pay {formatMoney(totalPrice(ev), { decimals: 2 })}
+        </Link>
+      )}
       <LessonNotesButton event={ev} />
       {canReview(ev) && <button className="btn btn-ghost btn-sm" onClick={() => onRate(ev)}><Icon name="star" />Rate</button>}
     </div>

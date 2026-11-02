@@ -438,6 +438,8 @@
 .mk-auth-title { font-size: clamp(38px, 4.4vw, 54px); font-weight: 900; line-height: 1.02; letter-spacing: -0.02em; text-transform: uppercase; }
 .mk-auth .mk-sub { margin-top: 14px; font-size: 18px; }
 .mk-auth .mk-sub b { color: var(--text); font-style: normal; word-break: break-all; }
+.mk-invite { display: flex; align-items: center; gap: 10px; margin-top: 18px; font-size: 16px; font-weight: 700; line-height: 1.35; }
+.mk-invite .icon { flex-shrink: 0; font-size: 22px; color: var(--coral); }
 
 .mk-form { display: flex; flex-direction: column; gap: 14px; margin-top: 32px; }
 .mk-form .mk-btn { height: 52px; margin-top: 6px; }

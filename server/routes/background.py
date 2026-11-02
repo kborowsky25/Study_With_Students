@@ -24,6 +24,7 @@ from mysql.connector import IntegrityError
 from ..config import upload_dir
 from ..db import current_user_id, get_db
 from ..permissions import check_admin
+from ..referrals import reward_tutor_approval
 
 bp = Blueprint('background', __name__, url_prefix='/api')
 
@@ -445,6 +446,7 @@ def admin_verify_background_check(check_id):
                 certificate_number = NULL, date_of_birth = NULL, document_path = NULL
             WHERE id = %s
         """, (now, now, _reviewer(), recheck_due, check_id))
+        reward_tutor_approval(cur, row['tutor_id'])  # XP for the tutor who invited them, once approved too
         conn.commit()
         updated = _fetch(cur, 'bc.id = %s', check_id)
     finally:

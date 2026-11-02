@@ -82,13 +82,14 @@ server/
   permissions.py       admin checks
   ratelimit.py         @rate_limit — in-memory sliding window (per instance)
   matching.py          tutor ↔ student matching model (0–100 score + reasons)
+  referrals.py         invite codes, booking-fee credits and referral rewards
   schema.py            creates missing tables/columns on startup — never drops
   services/email.py    verification emails (prints codes in development)
   services/verification.py  verification codes (expiry, 5-attempt cap)
   services/uploads.py  upload checks (extension, size, real file type)
   routes/              one blueprint per domain:
     auth  tutors  learning  events  reviews  payments  messages  forum
-    notes  study_rooms  classrooms  users  screening  admin
+    notes  study_rooms  classrooms  users  screening  admin  referrals
 db/
   schema.sql           canonical schema
   seed.py              demo data
@@ -111,7 +112,8 @@ legacy/                the original Jinja/Flask app, kept for reference only
 ## How a session works
 
 1. A student finds a tutor (or picks a recommended one) and **sends a request**; the tutor accepts.
-2. The student **books** a time (`pending`); price = tutor's hourly rate × length, plus a 5% booking fee.
+2. The student **books** a time (`pending`); price = tutor's hourly rate × length, plus a 5% booking fee
+   (waived when they have an invite credit from `/referrals`).
 3. The tutor **confirms** (`confirmed`) — a private video room link is created — or declines.
 4. The student **pays** through Stripe Checkout (`paid`); the tutor keeps 100% of their price.
 5. After the session the student can **leave one review**, which feeds the tutor's rating.

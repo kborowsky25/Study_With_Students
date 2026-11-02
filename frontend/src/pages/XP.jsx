@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import { useAuth } from '../context/AuthContext'
 import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
 import { Card, Icon, Pill, SkeletonRows, Stat } from '../components/ui'
 import { getEvents } from '../api/events'
 import { getActiveStudents, getActiveTutors } from '../api/tutors'
-import { levelFor, THRESHOLDS, TIERS, xpFor, xpSessions } from '../lib/xp'
+import { awardedXp, levelFor, THRESHOLDS, TIERS, xpFor, xpSessions } from '../lib/xp'
 import './XP.css'
 
 const article = (word) => (/^[aeiou]/i.test(word) ? 'an' : 'a') // "an Explorer", "a Scholar"
@@ -20,6 +21,7 @@ const ACTIONS = {
     { icon: 'event_available', label: 'Confirm a session',  xp: 50 },
     { icon: 'payments',        label: 'Get paid for a session', xp: 100 },
     { icon: 'person_add',      label: 'Take on a student',  xp: 30 },
+    { icon: 'redeem',          label: 'Invite a tutor who gets approved', xp: 150, to: '/referrals' },
   ],
 }
 
@@ -42,7 +44,7 @@ export default function XP() {
   const live = xpSessions(mode, events)
   const done = live.filter((e) => ['confirmed', 'paid'].includes(e.status))
   const paid = live.filter((e) => e.status === 'paid')
-  const xp = xpFor(mode, events, people.length)
+  const xp = xpFor(mode, events, people.length, awardedXp(mode, user))
 
   const tiers = TIERS[mode]
   const { index: level, next, progress } = levelFor(mode, xp)
@@ -92,15 +94,20 @@ export default function XP() {
       <Card title="How to earn XP" icon="bolt">
         {loading ? <SkeletonRows rows={3} /> : (
           <div className="row-list">
-            {ACTIONS[mode].map((a) => (
-              <div key={a.label} className="row">
-                <span className="avatar" style={{ width: 32, height: 32, background: 'var(--coral-soft)', color: 'var(--coral)' }}>
-                  <Icon name={a.icon} size={17} />
-                </span>
-                <div className="main"><div className="title">{a.label}</div></div>
-                <Pill tone="coral">+{a.xp} XP</Pill>
-              </div>
-            ))}
+            {ACTIONS[mode].map((a) => {
+              const row = (
+                <>
+                  <span className="avatar" style={{ width: 32, height: 32, background: 'var(--coral-soft)', color: 'var(--coral)' }}>
+                    <Icon name={a.icon} size={17} />
+                  </span>
+                  <div className="main"><div className="title">{a.label}</div></div>
+                  <Pill tone="coral">+{a.xp} XP</Pill>
+                </>
+              )
+              return a.to
+                ? <Link key={a.label} to={a.to} className="row">{row}</Link>
+                : <div key={a.label} className="row">{row}</div>
+            })}
           </div>
         )}
       </Card>

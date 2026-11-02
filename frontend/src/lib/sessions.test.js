@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { bookingFee, canJoin, canReview, isStudyRoomCopy, JOIN_EARLY_MS, needsPayment, totalPrice } from './sessions'
+import {
+  bookingFee, canJoin, canReview, feeWaived, isStudyRoomCopy, JOIN_EARLY_MS, needsPayment, totalPrice,
+} from './sessions'
 
 const START = new Date(2026, 10, 4, 18, 0).getTime()
 const END = START + 3_600_000
@@ -69,6 +71,14 @@ describe('money', () => {
     expect(bookingFee(session({ amount: 22, booking_fee: 1.1 }))).toBe(1.1)
     expect(totalPrice(session({ amount: 22, booking_fee: 1.1 }))).toBeCloseTo(23.1)
     expect(totalPrice(session({ amount: '33.00', booking_fee: '1.65' }))).toBeCloseTo(34.65)
+  })
+
+  it('an invite credit pays the fee: the family pays the price alone', () => {
+    const waived = session({ amount: '22.00', booking_fee: '0.00', fee_waived: '1.10' })
+    expect(bookingFee(waived)).toBe(0)
+    expect(feeWaived(waived)).toBe(1.1)
+    expect(totalPrice(waived)).toBe(22)
+    expect(feeWaived(session({ booking_fee: 1.1 }))).toBe(0)
   })
 
   it('sessions from before the booking fee have none', () => {

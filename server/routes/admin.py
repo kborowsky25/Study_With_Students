@@ -4,6 +4,7 @@ from flask import Blueprint, jsonify, request
 
 from ..db import get_db
 from ..permissions import check_admin
+from ..referrals import reward_tutor_approval
 
 bp = Blueprint('admin', __name__, url_prefix='/api')
 
@@ -44,8 +45,11 @@ def admin_approve_screening(tutor_id):
             "UPDATE tutor_profiles SET screening_status = 'approved', screening_notes = NULL WHERE id_tutor = %s",
             (tutor_id,)
         )
+        approved = cur.rowcount
+        if approved:
+            reward_tutor_approval(cur, tutor_id)  # XP for the tutor who invited them, once DBS is verified too
         conn.commit()
-        if cur.rowcount == 0:
+        if approved == 0:
             return jsonify({'error': 'Tutor not found'}), 404
         return jsonify({'message': f'Tutor {tutor_id} approved'}), 200
     finally:
@@ -143,7 +147,7 @@ def admin_recent_events():
     conn = get_db(); cur = conn.cursor(dictionary=True)
     try:
         cur.execute("""
-            SELECT e.id_event, e.title, e.status, e.start_time, e.end_time, e.amount,
+            SELECT e.id_event, e.title, e.status, e.start_time, e.end_time, e.amount, e.booking_fee, e.fee_waived,
                    s.name AS student_name, s.email AS student_email,
                    t.name AS tutor_name
             FROM events e

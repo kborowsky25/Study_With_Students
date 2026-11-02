@@ -18,8 +18,8 @@ import { errorMessage } from '../../api/client'
 import { firstName, formatDate, formatMoney, formatTime, formatWhen } from '../../lib/format'
 import { invalidate } from '../../lib/query'
 import {
-  FREE_CANCEL_HOURS, REPEAT_WEEKS, canAddToCalendar, canJoin, canReschedule, canReview, googleCalendarUrl,
-  isLateCancel, isUpcoming, laterWeeks, needsPayment,
+  FREE_CANCEL_HOURS, REPEAT_WEEKS, canAddToCalendar, canJoin, canReschedule, canReview, feeWaived, googleCalendarUrl,
+  isLateCancel, isUpcoming, laterWeeks, needsPayment, totalPrice,
 } from '../../lib/sessions'
 import { Avatar, DateChip, Icon, StatusPill } from '../ui'
 import { useConfirm } from '../ui/confirm'
@@ -327,7 +327,10 @@ export default function EventCard({ event: ev, onChanged, variant = 'date', show
             </button>
           )}
           {canPay && (
-            <Link to="/payments" className="btn btn-coral btn-sm"><Icon name="credit_card" />Pay {formatMoney(ev.amount)}</Link>
+            <Link to="/payments" className="btn btn-coral btn-sm"
+              title={feeWaived(ev) ? 'Booking fee waived with an invite credit' : undefined}>
+              <Icon name="credit_card" />Pay {formatMoney(totalPrice(ev), { decimals: 2 })}
+            </Link>
           )}
           {reviewable && (
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => setReviewing(true)}><Icon name="star" />Rate</button>

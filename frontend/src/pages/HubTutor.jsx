@@ -15,7 +15,7 @@ import { errorMessage } from '../api/client'
 import { invalidate, useQuery } from '../lib/query'
 import { Q } from '../lib/queries'
 import { canJoin } from '../lib/sessions'
-import { levelFor, xpFor } from '../lib/xp'
+import { awardedXp, levelFor, xpFor } from '../lib/xp'
 import { firstName, formatMoney, formatTime, formatWhen, timeAgo, weekBuckets } from '../lib/format'
 
 function EarningsChart({ events }) {
@@ -78,7 +78,7 @@ export default function HubTutor() {
   const unread = conversations.reduce((s, c) => s + Number(c.unread || 0), 0)
   const attention = pending.length + invites.length
 
-  const xp = xpFor('tutor', events, students.length)
+  const xp = xpFor('tutor', events, students.length, awardedXp('tutor', user))
   const level = levelFor('tutor', xp)
 
   async function act(key, fn, success) {
