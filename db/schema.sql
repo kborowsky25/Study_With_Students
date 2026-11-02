@@ -234,36 +234,30 @@ CREATE TABLE IF NOT EXISTS lesson_homework (
   done_at  DATETIME NULL,
   KEY ix_lesson_homework_note (note_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-||||||| 3162761
 
 
--- Scheduling: a tutor's weekly bookable hours (weekday 0 = Monday … 6 = Sunday)
-CREATE TABLE IF NOT EXISTS tutor_availability (
-  id         INT AUTO_INCREMENT PRIMARY KEY,
-  tutor_id   INT NOT NULL,
-  weekday    TINYINT NOT NULL,
-  start_time TIME NOT NULL,
-  end_time   TIME NOT NULL,
-  KEY ix_tutor_availability_tutor (tutor_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Days a tutor can't be booked (holidays, exams), inclusive ranges
-CREATE TABLE IF NOT EXISTS tutor_blocked_dates (
-  id         INT AUTO_INCREMENT PRIMARY KEY,
-  tutor_id   INT NOT NULL,
-  start_date DATE NOT NULL,
-  end_date   DATE NOT NULL,
-  note       VARCHAR(120) NULL,
-  KEY ix_tutor_blocked_dates_tutor (tutor_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Reminder emails already sent, per person and session time (moving a session re-arms them)
-CREATE TABLE IF NOT EXISTS session_reminders (
-  id         INT AUTO_INCREMENT PRIMARY KEY,
-  event_id   INT NOT NULL,
-  kind       VARCHAR(8) NOT NULL,
-  recipient  VARCHAR(10) NOT NULL,
-  start_time DATETIME NOT NULL,
-  sent_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY ux_session_reminders (event_id, kind, recipient, start_time)
+-- Tutor background checks (DBS, England & Wales). One row per tutor: a resubmission
+-- replaces a rejected or expired check. certificate_number, date_of_birth and the scan
+-- are admin-only and are deleted once a check is reviewed (certificate_last4 stays).
+CREATE TABLE IF NOT EXISTS background_checks (
+  id                 INT AUTO_INCREMENT PRIMARY KEY,
+  tutor_id           INT NOT NULL,
+  check_type         ENUM('enhanced_barred','enhanced','standard','basic') NOT NULL,
+  certificate_number CHAR(12) NULL,
+  certificate_last4  CHAR(4) NOT NULL,
+  issue_date         DATE NOT NULL,
+  legal_name         VARCHAR(255) NOT NULL,
+  date_of_birth      DATE NULL,
+  on_update_service  TINYINT(1) NOT NULL DEFAULT 0,
+  document_path      VARCHAR(255) NULL,
+  consent_at         DATETIME NOT NULL,
+  status             ENUM('pending','verified','rejected','expired') NOT NULL DEFAULT 'pending',
+  reviewer_note      TEXT NULL,
+  reviewed_by        VARCHAR(255) NULL,
+  submitted_at       DATETIME NOT NULL,
+  reviewed_at        DATETIME NULL,
+  verified_at        DATETIME NULL,
+  recheck_due        DATE NULL,
+  UNIQUE KEY ux_background_checks_tutor (tutor_id),
+  KEY ix_background_checks_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
