@@ -6,6 +6,7 @@ import { ThemeProvider } from './context/ThemeContext'
 import { ConfirmProvider } from './components/ui/confirm'
 import { router } from './router'
 import './index.css'
+import './styles/brand.css'
 import './styles/app.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
