@@ -4,9 +4,10 @@
 import { useEffect } from 'react'
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { getPublicSubjects, getPublicTutors } from '../api/public'
+import { StudyNotes } from '../components/brand/illustrations'
 import { Icon } from '../components/ui'
 import {
-  ART, BookingSteps, Pager, PublicPage, SignUpCta, SubjectChips, TutorGrid,
+  BookingSteps, EmptyBox, Pager, PublicPage, SignUpCta, SubjectChips, TutorGrid,
   clip, hourlyPrice, listText, subjectLink, topicName,
 } from '../components/public'
 import { formatMoney } from '../lib/format'
@@ -87,15 +88,15 @@ export default function SubjectPage() {
       <PublicPage>
         <section className="pub-hero">
           <div className="pub-container">
-            <div className="pub-empty">
-              <img src={`${ART}/hub/peaking.png`} alt="" width="220" height="160" />
-              <h1 className="pub-h2">No tutors for that subject yet</h1>
-              <p>Nobody on Study with Students teaches “{slug.replace(/-/g, ' ')}” at the moment. Browse every tutor, or teach it yourself.</p>
-              <div className="pub-actions">
+            <EmptyBox
+              heading="h1"
+              title="No tutors for that subject yet"
+              text={`Nobody on Study with Students teaches “${slug.replace(/-/g, ' ')}” at the moment. Browse every tutor, or teach it yourself.`}
+              actions={<>
                 <Link to="/tutors" className="pub-btn pub-btn-coral">Browse all tutors</Link>
                 <Link to="/become-tutor" className="pub-btn pub-btn-slate">Become a tutor</Link>
-              </div>
-            </div>
+              </>}
+            />
           </div>
         </section>
         {others.length > 0 && (
@@ -137,9 +138,7 @@ export default function SubjectPage() {
               </div>
             )}
           </div>
-          <div className="pub-hero-art">
-            <img src={`${ART}/homepage/subjects.svg`} alt="" width="400" height="400" />
-          </div>
+          <div className="pub-hero-art"><StudyNotes title="" /></div>
         </div>
       </section>
 
@@ -150,18 +149,11 @@ export default function SubjectPage() {
             {data && !empty && <span className="pub-count">{data.total} tutor{data.total === 1 ? '' : 's'}</span>}
           </div>
           {error ? (
-            <div className="pub-empty" role="alert">
-              <b>We couldn&apos;t load tutors.</b>
-              <p>Check your connection and try again.</p>
-              <div className="pub-actions"><button type="button" className="pub-btn pub-btn-coral" onClick={() => refetch().catch(() => {})}>Try again</button></div>
-            </div>
+            <EmptyBox alert title="We couldn’t load tutors." text="Check your connection and try again."
+              actions={<button type="button" className="pub-btn pub-btn-coral" onClick={() => refetch().catch(() => {})}>Try again</button>} />
           ) : empty ? (
-            <div className="pub-empty">
-              <b>No {topic} tutors yet.</b>
-              <div className="pub-actions">
-                <Link {...subjectLink(subject.slug)} className="pub-btn pub-btn-coral">All {subject.name} tutors<Icon name="arrow_forward" /></Link>
-              </div>
-            </div>
+            <EmptyBox title={`No ${topic} tutors yet.`}
+              actions={<Link {...subjectLink(subject.slug)} className="pub-btn pub-btn-coral">All {subject.name} tutors<Icon name="arrow_forward" /></Link>} />
           ) : (
             <TutorGrid tutors={data?.tutors ?? []} loading={loading} />
           )}

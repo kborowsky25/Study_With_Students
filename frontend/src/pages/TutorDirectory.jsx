@@ -2,9 +2,10 @@
 // subject, level and university. No login needed, so search engines can index it.
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { getPublicSubjects, getPublicTutors } from '../api/public'
+import { FindTutor } from '../components/brand/illustrations'
 import { Icon } from '../components/ui'
 import {
-  ART, Pager, PublicPage, SignUpCta, SubjectChips, TutorGrid, Wave, topicName,
+  EmptyBox, Pager, PublicPage, SignUpCta, SubjectChips, TutorGrid, Wave, topicName,
 } from '../components/public'
 import { BOOKING_FEE_PERCENT } from '../components/features/BookSessionModal'
 import { useQuery } from '../lib/query'
@@ -58,9 +59,7 @@ export default function TutorDirectory() {
               families pay a {BOOKING_FEE_PERCENT}% booking fee on top.
             </p>
           </div>
-          <div className="pub-hero-art">
-            <img src={`${ART}/howitworks/tutors.svg`} alt="" width="400" height="400" />
-          </div>
+          <div className="pub-hero-art"><FindTutor title="" /></div>
         </div>
       </section>
 
@@ -101,18 +100,11 @@ export default function TutorDirectory() {
           </div>
 
           {error ? (
-            <div className="pub-empty" role="alert">
-              <b>We couldn&apos;t load tutors.</b>
-              <p>Check your connection and try again.</p>
-              <div className="pub-actions"><button type="button" className="pub-btn pub-btn-coral" onClick={() => refetch().catch(() => {})}>Try again</button></div>
-            </div>
+            <EmptyBox alert title="We couldn’t load tutors." text="Check your connection and try again."
+              actions={<button type="button" className="pub-btn pub-btn-coral" onClick={() => refetch().catch(() => {})}>Try again</button>} />
           ) : data && data.total === 0 ? (
-            <div className="pub-empty">
-              <img src={`${ART}/hub/peaking.png`} alt="" width="220" height="160" />
-              <b>No tutors match these filters yet.</b>
-              <p>Try another subject or university, or see everyone.</p>
-              <div className="pub-actions"><button type="button" className="pub-btn pub-btn-coral" onClick={clearFilters}>Show all tutors</button></div>
-            </div>
+            <EmptyBox title="No tutors match these filters yet." text="Try another subject or university, or see everyone."
+              actions={<button type="button" className="pub-btn pub-btn-coral" onClick={clearFilters}>Show all tutors</button>} />
           ) : (
             <TutorGrid tutors={data?.tutors ?? []} loading={loading} />
           )}

@@ -6,7 +6,7 @@ import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { getPublicTutor } from '../api/public'
 import { Icon } from '../components/ui'
 import {
-  ART, BookingSteps, Price, PublicPage, SignUpCta, Stars, TutorAvatar,
+  BookingSteps, EmptyBox, Price, PublicPage, SignUpCta, StarRating, TutorAvatar,
   clip, hourlyPrice, listText, subjectLink, tutorLink,
 } from '../components/public'
 import { BOOKING_FEE_PERCENT } from '../components/features/BookSessionModal'
@@ -115,18 +115,14 @@ export default function PublicTutor() {
       <PublicPage>
         <section className="pub-hero">
           <div className="pub-container">
-            <div className="pub-empty" role={notFound ? undefined : 'alert'}>
-              <img src={`${ART}/hub/peaking.png`} alt="" width="220" height="160" />
-              <h1 className="pub-h2">{notFound ? 'This tutor isn’t listed' : 'We couldn’t load this tutor'}</h1>
-              <p>{notFound
-                ? 'The profile may have been taken down or isn’t finished yet. Plenty of other tutors are ready to help.'
-                : 'Check your connection and try again.'}</p>
-              <div className="pub-actions">
-                {notFound
-                  ? <Link to="/tutors" className="pub-btn pub-btn-coral">Browse tutors</Link>
-                  : <button type="button" className="pub-btn pub-btn-coral" onClick={() => refetch().catch(() => {})}>Try again</button>}
-              </div>
-            </div>
+            {notFound ? (
+              <EmptyBox heading="h1" title="This tutor isn’t listed"
+                text="The profile may have been taken down or isn’t finished yet. Plenty of other tutors are ready to help."
+                actions={<Link to="/tutors" className="pub-btn pub-btn-coral">Browse tutors</Link>} />
+            ) : (
+              <EmptyBox heading="h1" alert title="We couldn’t load this tutor" text="Check your connection and try again."
+                actions={<button type="button" className="pub-btn pub-btn-coral" onClick={() => refetch().catch(() => {})}>Try again</button>} />
+            )}
           </div>
         </section>
       </PublicPage>
@@ -172,7 +168,7 @@ export default function PublicTutor() {
               </div>
               <p className="pub-profile-place">{place}</p>
               <div className="pub-profile-facts">
-                <Stars rating={tutor.rating} count={tutor.review_count} />
+                <StarRating rating={tutor.rating} count={tutor.review_count} />
                 {tutor.levels.length > 0 && <span className="pub-levels">Teaches {listText(tutor.levels)}</span>}
               </div>
             </div>
@@ -220,7 +216,7 @@ export default function PublicTutor() {
                     {tutor.reviews.map((r, i) => (
                       <li key={i}>
                         <figure className="pub-review">
-                          <Stars rating={r.rating} />
+                          <StarRating rating={r.rating} />
                           <blockquote>“{r.comment}”</blockquote>
                           <figcaption>{r.reviewer}{r.date && `, ${monthYear(r.date)}`}</figcaption>
                         </figure>

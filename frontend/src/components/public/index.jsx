@@ -1,17 +1,28 @@
 // Building blocks for the public tutor pages (TutorDirectory, PublicTutor, SubjectPage):
 // the page shell, tutor cards, prices with the booking fee, and "how booking works".
-// Styles live in styles/public.css.
+// Styles live in styles/public.css; artwork comes from components/brand.
 import { Link } from '@tanstack/react-router'
 import Navbar from '../layout/Navbar'
 import Footer from '../layout/Footer'
 import { Avatar, Icon } from '../ui'
+import { EmptyPeek } from '../brand/illustrations'
 import { BOOKING_FEE_PERCENT } from '../features/BookSessionModal'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { formatMoney } from '../../lib/format'
 import '../../styles/public.css'
 
-export const ART = '/static/images'
+/** Empty, error and not-found states: the peeking figure, a heading or line, and actions. */
+export function EmptyBox({ title, heading: Heading = 'b', text, actions, alert = false }) {
+  return (
+    <div className="pub-empty" role={alert ? 'alert' : undefined}>
+      <EmptyPeek title="" />
+      <Heading className={Heading === 'b' ? undefined : 'pub-h2'}>{title}</Heading>
+      {text && <p>{text}</p>}
+      {actions && <div className="pub-actions">{actions}</div>}
+    </div>
+  )
+}
 
 /** Navbar, content and footer. The `mk` classes let the restyled marketing Navbar/Footer theme here too. */
 export function PublicPage({ children }) {
@@ -62,8 +73,8 @@ export function Wave({ top = false }) {
   )
 }
 
-/** Coral stars; with `count`, the average and review count too (nothing when there are no reviews). */
-export function Stars({ rating, count }) {
+/** Five coral stars; with `count`, the average and review count too (nothing when there are no reviews). */
+export function StarRating({ rating, count }) {
   if (rating == null || count === 0) return null
   const full = Math.round(rating)
   return (
@@ -133,7 +144,7 @@ export function TutorCard({ tutor, headingLevel = 3 }) {
           <p className="pub-card-meta">{place}</p>
         </div>
       </div>
-      <Stars rating={tutor.rating} count={tutor.review_count} />
+      <StarRating rating={tutor.rating} count={tutor.review_count} />
       <ul className="pub-chips" aria-label="Subjects">
         {tutor.subjects.slice(0, 4).map((s) => <li key={s.slug} className="pub-chip pub-chip-sm">{s.name}</li>)}
         {extra > 0 && <li className="pub-chip pub-chip-sm">+{extra}</li>}
