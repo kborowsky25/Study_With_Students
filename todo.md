@@ -78,8 +78,8 @@ Stripe's card fees.
 - [ ] Set up a free transactional email service for sign-up codes and reminders (`MAIL_*` variables).
 - [ ] Review `docs/SAFEGUARDING.md` (draft, not legal advice) and decide how tutors without an
       enhanced DBS check can get one (umbrella body).
-- [ ] Decide: should Find tutors hide tutors who aren't approved yet? Students can request them,
-      but messaging only reaches approved tutors.
+- [ ] Decide: should tutors who aren't approved yet appear in Find tutors and accept students?
+      Booking already needs a verified DBS check, and messaging only reaches approved tutors.
 - [ ] Decide: under-13 sign-ups (13 is the UK GDPR consent age). Ages are self-declared.
 - [ ] A parent and child could both pay the same session at the same moment: reuse one open
       Stripe Checkout per session.

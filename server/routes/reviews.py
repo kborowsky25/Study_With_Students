@@ -1,10 +1,10 @@
 """Reviews: students rate a tutor once per completed session."""
-from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 
 from ..db import current_user_id, get_db
+from ..scheduling import local_now
 from .events import fetch_event, is_room_copy
 
 bp = Blueprint('reviews', __name__, url_prefix='/api')
@@ -42,7 +42,7 @@ def review_session(event_id):
             return jsonify({'error': 'Only the student can review this session'}), 403
         if is_room_copy(ev) or ev.get('kind') == 'intro':
             return jsonify({'error': 'Only 1-to-1 sessions can be reviewed'}), 400
-        if ev['status'] not in ('confirmed', 'paid') or ev['end_time'] >= datetime.now():
+        if ev['status'] not in ('confirmed', 'paid') or ev['end_time'] >= local_now():
             return jsonify({'error': 'You can review a session once it has happened'}), 400
 
         cur.execute("SELECT id FROM reviews WHERE event_id = %s", (event_id,))

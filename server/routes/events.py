@@ -190,7 +190,7 @@ def get_events():
     try:
         cur.execute(f"""
             SELECT {EVENT_COLUMNS} {EVENT_JOINS}
-            WHERE tp.id_user = %s OR sp.id_user = %s
+            WHERE (tp.id_user = %s AND {real_session_sql()}) OR sp.id_user = %s
             ORDER BY e.start_time ASC
         """, (uid, uid))
         events = cur.fetchall()

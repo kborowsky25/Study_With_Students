@@ -11,6 +11,7 @@ import toast from 'react-hot-toast'
 import { createLessonNote, updateLessonNote } from '../../api/progress'
 import { errorMessage } from '../../api/client'
 import { useAuth } from '../../context/AuthContext'
+import { focusOnMount } from '../../hooks/useAutoFocus'
 import { formatDate, formatWhen } from '../../lib/format'
 import { useQuery } from '../../lib/query'
 import { CONFIDENCE, NQ, refreshProgress } from '../../lib/progress'
@@ -209,7 +210,7 @@ export default function LessonNotesDialog({ eventId, onClose, onSaved }) {
         <div className="dialog-body">
           <label className="field">
             <span>Subject</span>
-            <select className="input" value={form.subject} onChange={(e) => changeSubject(e.target.value)} autoFocus={!form.subject}>
+            <select className="input" value={form.subject} onChange={(e) => changeSubject(e.target.value)} ref={form.subject ? undefined : focusOnMount}>
               {!form.subject && <option value="" disabled>Choose a subject</option>}
               {LEVELS.map((level) => (
                 <optgroup key={level} label={level}>

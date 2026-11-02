@@ -11,7 +11,7 @@ from ..db import current_user_id, get_db
 from ..extensions import stripe, stripe_dict, stripe_enabled
 from ..family import is_linked_parent
 from ..referrals import reward_first_payment
-from .events import EVENT_COLUMNS, EVENT_JOINS, fetch_event, real_session_sql
+from .events import EVENT_COLUMNS, EVENT_JOINS, fetch_event, is_room_copy, real_session_sql
 
 bp = Blueprint('payments', __name__, url_prefix='/api')
 
@@ -83,6 +83,8 @@ def create_checkout_session(event_id):
         return jsonify({'error': 'Session not found'}), 404
     if ev['student_user_id'] != uid and not by_parent:
         return jsonify({'error': 'Not your session'}), 403
+    if is_room_copy(ev):  # older calendar copies of study rooms were stored with a price
+        return jsonify({'error': 'Study rooms are free: there is nothing to pay'}), 400
     if ev['status'] == 'paid':
         return jsonify({'error': 'This session is already paid'}), 409
     if ev['status'] != 'confirmed':

@@ -1,7 +1,10 @@
-"""App-wide behaviour: health check, JSON errors and JSON encoding."""
+"""App-wide behaviour: health check, JSON errors, JSON encoding and the clock."""
 from datetime import date, datetime
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
+from server import scheduling
+from server.db import get_db
 from server.json import ApiJSONProvider
 
 
@@ -33,3 +36,22 @@ def test_dates_serialise_as_iso_and_decimals_as_numbers():
     assert ApiJSONProvider.default(datetime(2026, 11, 2, 17, 30)) == '2026-11-02T17:30:00'
     assert ApiJSONProvider.default(date(2026, 11, 2)) == '2026-11-02'
     assert ApiJSONProvider.default(Decimal('22.50')) == 22.5
+
+
+def test_the_database_clock_is_uk_time(app):
+    """NOW() and CURRENT_TIMESTAMP (message and post times) match the session clock on any host."""
+    conn = get_db(); cur = conn.cursor()
+    try:
+        cur.execute('SELECT NOW()')
+        assert abs((cur.fetchone()[0] - scheduling.local_now()).total_seconds()) < 5
+    finally:
+        cur.close(); conn.close()
+
+
+def test_utc_offset_is_in_mysql_format(monkeypatch):
+    monkeypatch.setattr(scheduling, '_TZ', ZoneInfo('Asia/Kolkata'))
+    assert scheduling.utc_offset() == '+05:30'
+    monkeypatch.setattr(scheduling, '_TZ', ZoneInfo('America/New_York'))
+    assert scheduling.utc_offset() in ('-05:00', '-04:00')
+    monkeypatch.setattr(scheduling, '_TZ', None)
+    assert scheduling.utc_offset() is None

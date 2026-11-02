@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 
 from ..db import current_user_id, get_db
+from ..scheduling import local_now
 
 bp = Blueprint('study_rooms', __name__, url_prefix='/api')
 
@@ -74,7 +75,7 @@ def create_study_room():
                                  f'and descriptions to {MAX_DESCRIPTION_LENGTH:,}'}), 400
     if not start or not end or end <= start:
         return jsonify({'error': 'Choose a valid start and end time'}), 400
-    if end <= datetime.now():
+    if end <= local_now():
         return jsonify({'error': 'That time has already passed'}), 400
     link = str(data.get('zoom_link') or '').strip()
     if link and (len(link) > MAX_LINK_LENGTH or not re.match(r'https://[^/\s]+\S*$', link, re.IGNORECASE)):

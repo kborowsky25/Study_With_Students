@@ -2,6 +2,7 @@
 // Falls back to a free date + time entry when the tutor hasn't set weekly hours.
 import { useEffect, useMemo, useState } from 'react'
 import { getSlots } from '../../api/scheduling'
+import { toDateInput as dayKey } from '../../lib/dates'
 import { formatTime } from '../../lib/format'
 import { useQuery } from '../../lib/query'
 import './scheduling.css'
@@ -10,7 +11,6 @@ const SLOT_LENGTHS = [15, 30, 45, 60, 90, 120]
 const MAX_WEEKS = 12
 
 const pad = (n) => String(n).padStart(2, '0')
-const dayKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 const timeKey = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`
 
 /** Date + start time inputs. Reports a Date (or null while incomplete). */

@@ -5,6 +5,7 @@ from flask_jwt_extended import jwt_required
 
 from ..db import current_user_id, get_db
 from ..family import parse_birth_date
+from .events import real_session_sql
 from .messages import CAN_WRITE, can_write
 
 bp = Blueprint('users', __name__, url_prefix='/api')
@@ -63,14 +64,14 @@ def get_user_profile(user_id):
         if not user:
             return jsonify({'error': 'User not found'}), 404
 
-        cur.execute("""
+        cur.execute(f"""
             SELECT
               (SELECT COUNT(*) FROM forum_posts WHERE user_id = %s)
             + (SELECT COUNT(*) FROM forum_threads WHERE user_id = %s) AS forum_posts,
               COUNT(e.id_event) AS sessions,
               COALESCE(SUM(e.status IN ('confirmed', 'paid')), 0) AS confirmed_sessions
             FROM student_profiles sp
-            LEFT JOIN events e ON e.student_id = sp.id_student AND e.status <> 'canceled'
+            LEFT JOIN events e ON e.student_id = sp.id_student AND e.status <> 'canceled' AND {real_session_sql()}
             WHERE sp.id_user = %s
         """, (user_id, user_id, user_id))
         stats = cur.fetchone() or {}

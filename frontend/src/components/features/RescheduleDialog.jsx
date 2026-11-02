@@ -2,15 +2,12 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { errorMessage } from '../../api/client'
 import { proposeTime } from '../../api/scheduling'
+import { toLocalISO } from '../../lib/dates'
 import { firstName, formatTime, formatWhen } from '../../lib/format'
 import { invalidate } from '../../lib/query'
 import { sessionMinutes } from '../../lib/sessions'
 import { Icon } from '../ui'
 import SlotPicker from './SlotPicker'
-
-const pad = (n) => String(n).padStart(2, '0')
-const localISO = (d) =>
-  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
 
 /**
  * Propose a new time for a session; it moves once the other side accepts. A student's own
@@ -39,7 +36,7 @@ export default function RescheduleDialog({ event: ev, onClose, onDone }) {
     }
     setSaving(true)
     try {
-      await proposeTime(ev.id_event, localISO(start))
+      await proposeTime(ev.id_event, toLocalISO(start))
       toast.success(moveNow ? 'Request moved' : `New time sent to ${other}`)
       invalidate('events', 'slots')
       await onDone?.()

@@ -729,6 +729,14 @@ export const ICONS = {
   star_filled: <path d={STAR} fill="currentColor" />,
   favorite: <path d={HEART} />,
   heart_filled: <path d={HEART} fill="currentColor" />,
+  mood: (
+    <>
+      <circle cx="12" cy="12" r="8.75" />
+      <path d="M8.75 14.25c.8 1.15 1.95 1.75 3.25 1.75s2.45-.6 3.25-1.75" />
+      <circle cx="9.25" cy="10" r="1" {...solid} />
+      <circle cx="14.75" cy="10" r="1" {...solid} />
+    </>
+  ),
   emoji_events: (
     <>
       <path d="M7.75 4h8.5v5.5a4.25 4.25 0 0 1-8.5 0z" />
@@ -784,6 +792,7 @@ export const ICONS = {
 // these in the database, e.g. calculate / science / terminal / translate).
 const ALIASES = {
   calculate: 'calculator',
+  sentiment_satisfied: 'mood',
   science: 'flask',
   biotech: 'dna',
   terminal: 'code',

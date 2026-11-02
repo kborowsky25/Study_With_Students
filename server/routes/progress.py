@@ -9,7 +9,7 @@ Who sees what: a student sees every note about themself, and so do their linked 
 (server/family.py). A tutor sees only the notes they wrote, and only for students they have had
 a confirmed or paid session with.
 """
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
@@ -25,6 +25,7 @@ from ..data.topics import (
 )
 from ..db import current_user_id, get_db
 from ..family import is_linked_parent
+from ..scheduling import local_now
 from .events import fetch_event
 
 bp = Blueprint('progress', __name__, url_prefix='/api')
@@ -59,7 +60,7 @@ NOTE_COLUMNS = """
 # ── Access ────────────────────────────────────────────────────────────────────
 
 def _has_started(ev):
-    return ev['status'] in NOTE_STATUSES and ev['start_time'] <= datetime.now()
+    return ev['status'] in NOTE_STATUSES and ev['start_time'] <= local_now()
 
 
 def _note_scope(cur, uid, student_uid):
@@ -146,7 +147,7 @@ def _attach(cur, notes, uid, history):
         homework.setdefault(h.pop('note_id'), []).append(h)
 
     previous = _previous_ratings(history)
-    now = datetime.now()
+    now = local_now()
     for n in notes:
         n['subject_name'] = subject_name(n['subject'])
         n['topics'] = [{
@@ -418,7 +419,7 @@ def create_lesson_note(event_id):
         if error:
             return jsonify({'error': error}), 400
 
-        now = datetime.now().replace(microsecond=0)
+        now = local_now()
         try:
             cur.execute("""
                 INSERT INTO lesson_notes (event_id, subject, summary, next_steps, created_at, updated_at)
@@ -448,7 +449,7 @@ def update_lesson_note(event_id):
         current = cur.fetchone()
         if not current:
             return jsonify({'error': 'This session has no notes yet'}), 404
-        if datetime.now() >= current['created_at'] + EDIT_WINDOW:
+        if local_now() >= current['created_at'] + EDIT_WINDOW:
             return jsonify({'error': f'Notes can only be edited for {EDIT_WINDOW.days} days'}), 403
         if ev['status'] not in NOTE_STATUSES:
             return jsonify({'error': 'This session was cancelled'}), 400
@@ -464,7 +465,7 @@ def update_lesson_note(event_id):
         cur.execute("""
             UPDATE lesson_notes SET subject = %s, summary = %s, next_steps = %s, updated_at = %s
             WHERE id = %s
-        """, (note['subject'], note['summary'], note['next_steps'], datetime.now().replace(microsecond=0),
+        """, (note['subject'], note['summary'], note['next_steps'], local_now(),
               current['id']))
         _save_details(cur, current['id'], note, existing)
         conn.commit()
@@ -550,7 +551,7 @@ def tick_homework(homework_id):
             return jsonify({'error': 'Homework not found'}), 404
         if item['student_user_id'] != uid:
             return jsonify({'error': 'Only the student can tick off homework'}), 403
-        done_at = (item['done_at'] or datetime.now().replace(microsecond=0)) if done else None
+        done_at = (item['done_at'] or local_now()) if done else None
         cur.execute("UPDATE lesson_homework SET done_at = %s WHERE id = %s", (done_at, homework_id))
         conn.commit()
         return jsonify({'homework': {'id': homework_id, 'done_at': done_at}})
