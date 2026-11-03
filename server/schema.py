@@ -68,6 +68,8 @@ COLUMN_MIGRATIONS = [
     ('users',            'suspended_by',           "VARCHAR(255) NULL"),
     # The Stripe PaymentIntent that paid a session: a refund (charge.refunded) finds it by this
     ('events',           'stripe_payment_intent',  "VARCHAR(255) NULL, ADD KEY ix_events_payment_intent (stripe_payment_intent)"),
+    # Sample tutors (server/samples.py): labelled example profiles that can't be requested or booked
+    ('users',            'is_sample',              "TINYINT(1) NOT NULL DEFAULT 0"),
 ]
 
 FORUM_CATEGORIES = [

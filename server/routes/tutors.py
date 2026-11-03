@@ -56,7 +56,7 @@ TUTOR_COLUMNS = f"""
     tp.screening_status = 'approved' AS verified,
     rv.rating, COALESCE(rv.review_count, 0) AS review_count,
     COALESCE(ev.sessions_done, 0) AS sessions_done,
-    {dbs_verified_sql('tp')} AS dbs_verified
+    {dbs_verified_sql('tp')} AS dbs_verified, u.is_sample
 """
 
 # FROM clause shared by every tutor listing: profile, name, rating and experience
@@ -83,6 +83,7 @@ def decorate_tutors(tutors):
     for t in tutors:
         t['verified']     = bool(t.get('verified'))
         t['dbs_verified'] = bool(t.get('dbs_verified'))
+        t['sample']       = bool(t.pop('is_sample', 0))  # an example profile (server/samples.py)
         t['rating']     = float(t['rating']) if t.get('rating') is not None else None
         t['avatar_url'] = f"/api/uploads/tutor-avatars/{t['avatar_path']}" if t.get('avatar_path') else None
     return tutors
@@ -344,12 +345,17 @@ def send_tutor_request(tutor_id):
     uid  = current_user_id()
     conn = get_db(); cur = conn.cursor()
     try:
-        cur.execute("SELECT id_user FROM tutor_profiles WHERE id_tutor = %s", (tutor_id,))
+        cur.execute("""
+            SELECT tp.id_user, u.is_sample FROM tutor_profiles tp JOIN users u ON u.id_user = tp.id_user
+            WHERE tp.id_tutor = %s
+        """, (tutor_id,))
         tutor = cur.fetchone()
         if not tutor:
             return jsonify({'error': 'Tutor not found'}), 404
         if tutor[0] == uid:
             return jsonify({'error': "You can't send a request to yourself"}), 400
+        if tutor[1]:
+            return jsonify({'error': 'This is a sample profile, so it can’t take requests'}), 400
 
         # Get or auto-create student profile
         cur.execute("SELECT id_student FROM student_profiles WHERE id_user = %s", (uid,))

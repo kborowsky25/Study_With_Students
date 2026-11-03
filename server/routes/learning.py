@@ -123,7 +123,7 @@ def recommended_tutors():
         cur.execute(f"""
             SELECT {TUTOR_COLUMNS}
             {TUTOR_JOINS}
-            WHERE u.name <> '' AND COALESCE(tp.university, '') <> ''
+            WHERE u.name <> '' AND COALESCE(tp.university, '') <> '' AND u.is_sample = 0
               AND tp.screening_status <> 'rejected' AND u.suspended_at IS NULL
               AND tp.id_user <> %s
               AND tp.id_tutor NOT IN (SELECT id_tutor FROM active_tutors WHERE id_user = %s)

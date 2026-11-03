@@ -6,7 +6,7 @@ import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { getPublicTutor } from '../api/public'
 import { Icon } from '../components/ui'
 import {
-  BookingSteps, EmptyBox, Price, PublicPage, SignUpCta, StarRating, TutorAvatar, Verified,
+  BookingSteps, EmptyBox, Price, PublicPage, SampleTag, SignUpCta, StarRating, TutorAvatar, Verified,
   clip, hourlyPrice, listText, subjectLink, tutorLink,
 } from '../components/public'
 import { BOOKING_FEE_PERCENT } from '../lib/site'
@@ -103,7 +103,9 @@ export default function PublicTutor() {
     path: `/tutors/${tutor.slug}`,
     image: tutor.avatar_url,
     type: 'profile',
-    jsonLd: structuredData(tutor),
+    // A sample profile (server/samples.py) is an example: search engines don't get it
+    jsonLd: tutor.sample ? undefined : structuredData(tutor),
+    noindex: tutor.sample,
   } : {
     title: notFound ? 'Tutor not found' : 'Tutor',
     description: 'Tutors who study at UK universities. Tutors keep 100% of their rate.',
@@ -165,7 +167,7 @@ export default function PublicTutor() {
               </div>
               <p className="pub-profile-place">{place}</p>
               <div className="pub-profile-facts">
-                {tutor.verified && <Verified label="Verified tutor" />}
+                {tutor.sample ? <SampleTag /> : tutor.verified && <Verified label="Verified tutor" />}
                 <StarRating rating={tutor.rating} count={tutor.review_count} />
                 {tutor.levels.length > 0 && <span className="pub-levels">Teaches {listText(tutor.levels)}</span>}
               </div>
@@ -177,6 +179,16 @@ export default function PublicTutor() {
                 <div><dt>{tutor.first_name} keeps</dt><dd>{formatMoney(price.tutor, { decimals: 2 })}</dd></div>
                 <div><dt>Booking fee ({BOOKING_FEE_PERCENT}%)</dt><dd>{formatMoney(price.fee, { decimals: 2 })}</dd></div>
               </dl>
+              {tutor.sample ? (
+                <>
+                  <p className="pub-book-note">This is a sample profile, showing what a tutor’s page looks like. Real tutors are joining now.</p>
+                  <div className="mk-actions">
+                    <Link to="/tutors" className="mk-btn mk-btn-primary">Browse tutors</Link>
+                    <Link to="/become-tutor" className="mk-btn mk-btn-ghost">Become a tutor</Link>
+                  </div>
+                </>
+              ) : (
+              <>
               <div className="mk-actions">
                 {isAuthenticated ? (
                   <Link to="/tutor/$tutorId" params={{ tutorId: String(tutor.id) }} className="mk-btn mk-btn-primary">
@@ -190,6 +202,8 @@ export default function PublicTutor() {
                 )}
               </div>
               <p className="pub-book-note">Free to join. You pay only after {tutor.first_name} confirms a session.</p>
+              </>
+              )}
             </aside>
 
             <div className="pub-profile-details mk-reveal" style={{ '--i': 1 }}>
@@ -230,7 +244,11 @@ export default function PublicTutor() {
 
       <BookingSteps rate={tutor.hourly_rate} tutorName={tutor.first_name} />
 
-      <SignUpCta title={`Book a session with ${tutor.first_name}`} text={`Create a free account to send ${tutor.first_name} a request and book your first session.`} />
+      {tutor.sample ? (
+        <SignUpCta title="Tutor like this" text="Set up your own profile in a few minutes. Tutors keep 100% of their rate." />
+      ) : (
+        <SignUpCta title={`Book a session with ${tutor.first_name}`} text={`Create a free account to send ${tutor.first_name} a request and book your first session.`} />
+      )}
     </PublicPage>
   )
 }

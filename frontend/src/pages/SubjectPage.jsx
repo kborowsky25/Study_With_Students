@@ -47,6 +47,7 @@ export default function SubjectPage() {
   const topic = topicName(subject, level)
   const canonical = subject ? (level ? `${level.slug}-${subject.slug}` : subject.slug) : null
   const empty = Boolean(data) && data.total === 0
+  const samplesOnly = Boolean(data?.tutors?.length) && data.tutors.every((t) => t.sample)
   const missing = Boolean(data) && !subject
 
   // One URL per page: /subjects/maths → /subjects/mathematics
@@ -70,7 +71,7 @@ export default function SubjectPage() {
         + 'Tutors keep 100% of their rate.')
       : 'Find a tutor who studies at a UK university. Tutors keep 100% of their rate.',
     path,
-    noindex: missing || empty,
+    noindex: missing || empty || samplesOnly,
     jsonLd: subject && {
       '@context': 'https://schema.org',
       '@type': 'BreadcrumbList',

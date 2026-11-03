@@ -79,6 +79,7 @@ a.pub-chip.is-active:hover { background: var(--text); }
 
 .pub-verified { display: inline-flex; align-items: center; gap: 3px; color: var(--text-muted); font-size: 12.5px; font-weight: 500; white-space: nowrap; }
 .pub-verified .icon { color: var(--coral); font-size: 15px; }
+.pub-sample { display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border: 1px solid var(--border-strong); border-radius: 4px; color: var(--text-muted); font-size: 12px; font-weight: 500; white-space: nowrap; }
 
 .pub-rating { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; color: var(--text-muted); font-size: 13.5px; }
 .pub-stars { display: inline-flex; color: var(--coral); }

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
 import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
 import ScreeningQueue, { ScreeningPill } from '../components/features/ScreeningQueue'
 import { Avatar, Card, DateChip, EmptyState, Icon, SkeletonRows, Stat, StatusPill } from '../components/ui'
-import client from '../api/client'
+import client, { errorMessage } from '../api/client'
 import { getScreeningQueue } from '../api/screening'
 import { toDateInput } from '../lib/dates'
 import { formatDate, formatMoney } from '../lib/format'
@@ -50,6 +51,7 @@ const fetchQueue = () => getScreeningQueue().then((r) => r.data.queue ?? [])
 const fetchUsers = () => client.get('/admin/users').then((r) => r.data.users ?? [])
 const fetchEvents = () => client.get('/admin/recent-events').then((r) => r.data.events ?? [])
 const fetchOpenReports = () => client.get('/admin/reports').then((r) => r.data.open ?? 0)
+const fetchSamples = () => client.get('/admin/samples').then((r) => r.data)
 
 function Retry({ title, onRetry }) {
   return <EmptyState title={title} action={<button className="btn btn-ghost btn-sm" onClick={onRetry}>Try again</button>} />
@@ -98,7 +100,48 @@ function Overview({ stats, status, onRetry }) {
           </div>
         )}
       </Card>
+      <SampleTutors />
     </>
+  )
+}
+
+/** Sample tutors (server/samples.py): labelled example profiles, added or removed all at once. */
+function SampleTutors() {
+  const confirm = useConfirm()
+  const samples = useAdminData(fetchSamples)
+  const [busy, setBusy] = useState(false)
+  const { data } = samples
+
+  async function change(method) {
+    if (method === 'delete' && !(await confirm({
+      title: 'Remove the sample tutors?',
+      body: 'Their profiles disappear from the site straight away.',
+      confirmLabel: 'Remove',
+      danger: true,
+    }))) return
+    setBusy(true)
+    try {
+      const { data: result } = await client[method]('/admin/samples')
+      samples.setData(() => result)
+      toast.success(`${method === 'post' ? 'Added' : 'Removed'} ${result.changed} sample tutors`)
+    } catch (err) {
+      toast.error(errorMessage(err, 'Could not change the sample tutors'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card title="Sample tutors" count={data ? `${data.live} of ${data.total} live` : null}>
+      <div className="row">
+        <div className="main">
+          <div className="title">Example profiles, labelled as samples</div>
+          <div className="meta">They can’t be requested, booked or messaged, and search engines skip them</div>
+        </div>
+        {data?.live > 0 && <button type="button" className="btn btn-ghost btn-sm" onClick={() => change('delete')} disabled={busy}>Remove</button>}
+        {data && data.live < data.total && <button type="button" className="btn btn-coral btn-sm" onClick={() => change('post')} disabled={busy}>Add</button>}
+      </div>
+    </Card>
   )
 }
 

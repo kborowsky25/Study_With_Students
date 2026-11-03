@@ -89,6 +89,11 @@ export const Verified = ({ label = 'Verified' }) => (
   </span>
 )
 
+/** An example profile (server/samples.py): shown instead of any verified mark. */
+export const SampleTag = () => (
+  <span className="pub-sample" title="An example of a tutor profile. Real tutors are joining now.">Sample profile</span>
+)
+
 export function Price({ rate, note = true }) {
   const { total } = hourlyPrice(rate)
   return (
@@ -120,7 +125,7 @@ export function TutorCard({ tutor, headingLevel = 3 }) {
         <div style={{ minWidth: 0 }}>
           <Heading className="pub-card-name">
             <Link {...tutorLink(tutor)} className="pub-card-link">{tutor.name}</Link>
-            {tutor.verified && <Verified />}
+            {tutor.sample ? <SampleTag /> : tutor.verified && <Verified />}
           </Heading>
           <p className="pub-card-meta">{place}</p>
         </div>

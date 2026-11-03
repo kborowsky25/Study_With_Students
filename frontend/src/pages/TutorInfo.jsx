@@ -141,6 +141,10 @@ export default function TutorInfo() {
                     <Icon name="favorite" fill={state.liked} style={state.liked ? { color: 'var(--coral)' } : undefined} />
                     {state.liked ? 'Saved' : 'Save'}
                   </button>
+                  {t.sample ? (
+                    <span className="eyebrow">Sample profile: requests and messages are off</span>
+                  ) : (
+                  <>
                   <Link to="/messages" search={{ user: t.id_user }} className="btn btn-ghost"><Icon name="chat" />Message</Link>
                   {state.connected ? (
                     <button type="button" className="btn btn-coral" onClick={() => setBooking(true)}>
@@ -152,6 +156,8 @@ export default function TutorInfo() {
                     <button type="button" className="btn btn-coral" onClick={sendRequest} disabled={busy}>
                       <Icon name="person_add" />{state.request === 'declined' ? 'Request again' : 'Request tutor'}
                     </button>
+                  )}
+                  </>
                   )}
                 </>
               )}

@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify, request
 from ..db import get_db
 from ..permissions import check_admin
 from ..referrals import reward_tutor_approval
+from ..samples import SAMPLE_TUTORS, add_samples, remove_samples, sample_count
 
 bp = Blueprint('admin', __name__, url_prefix='/api')
 
@@ -28,6 +29,7 @@ def admin_screening_queue():
                    tp.proof_doc_path
             FROM tutor_profiles tp
             JOIN users u ON u.id_user = tp.id_user
+            WHERE u.is_sample = 0
             ORDER BY tp.id_tutor DESC
         """)
         return jsonify({'queue': cur.fetchall()}), 200
@@ -160,5 +162,31 @@ def admin_recent_events():
             LIMIT 50
         """)
         return jsonify({'events': cur.fetchall()})
+    finally:
+        cur.close(); conn.close()
+
+
+@bp.route('/admin/samples', methods=['GET'])
+def admin_samples():
+    """How many sample tutors are live (server/samples.py), out of how many there are."""
+    if not check_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    conn = get_db(); cur = conn.cursor()
+    try:
+        return jsonify({'live': sample_count(cur), 'total': len(SAMPLE_TUTORS)})
+    finally:
+        cur.close(); conn.close()
+
+
+@bp.route('/admin/samples', methods=['POST', 'DELETE'])
+def admin_change_samples():
+    """POST adds the sample tutors that aren't live yet; DELETE removes them all."""
+    if not check_admin():
+        return jsonify({'error': 'Unauthorized'}), 403
+    conn = get_db(); cur = conn.cursor()
+    try:
+        changed = add_samples(cur) if request.method == 'POST' else remove_samples(cur)
+        conn.commit()
+        return jsonify({'changed': changed, 'live': sample_count(cur), 'total': len(SAMPLE_TUTORS)})
     finally:
         cur.close(); conn.close()

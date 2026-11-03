@@ -57,8 +57,12 @@ export default function TutorCard({ tutor, liked = false, onToggleLike, status, 
             <Link {...profile} className="title tap-link" style={{ color: 'inherit', textDecoration: 'none', minWidth: 0 }}>
               {tutor.name}
             </Link>
-            {tutor.verified && <VerifiedPill />}
-            {tutor.dbs_verified && <DbsPill />}
+            {tutor.sample ? <Pill>Sample profile</Pill> : (
+              <>
+                {tutor.verified && <VerifiedPill />}
+                {tutor.dbs_verified && <DbsPill />}
+              </>
+            )}
             <RelationPill status={status} />
           </div>
           {place && <div className="meta">{place}</div>}

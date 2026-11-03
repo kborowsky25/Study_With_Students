@@ -32,7 +32,7 @@ STATIC_PAGES = ('/', '/tutors', '/how-it-works', '/become-tutor', '/founding-tut
 PUBLIC_COLUMNS = """
     tp.id_tutor, u.name, tp.university, tp.course, tp.about_me, tp.subjects, tp.levels,
     tp.hourly_rate, tp.avatar_path, tp.screening_status = 'approved' AS verified,
-    rv.rating, COALESCE(rv.review_count, 0) AS review_count
+    rv.rating, COALESCE(rv.review_count, 0) AS review_count, u.is_sample
 """
 
 # Listed publicly: a finished profile (name, university, subjects, a real bio), not rejected or suspended
@@ -141,6 +141,7 @@ def public_tutor(row, full=False):
         'verified':     row['verified'],
         'rating':       row['rating'],
         'review_count': int(row['review_count']),
+        'sample':       row['sample'],  # an example profile (server/samples.py); set by decorate_tutors
     }
     if full:
         tutor['about'] = about
@@ -319,8 +320,9 @@ def list_public_subjects():
 @bp.route('/public/sitemap.xml', methods=['GET'])
 @rate_limit(30, per=60)
 def sitemap():
-    """Marketing pages, every public tutor and every subject (and subject + level) page."""
-    tutors = public_tutors()
+    """Marketing pages, every public tutor and every subject (and subject + level) page.
+    Sample profiles stay out, and so do subjects only they teach."""
+    tutors = [t for t in public_tutors() if not t['sample']]
     index = subject_index(tutors)
     paths = [*STATIC_PAGES, *(f"/tutors/{t['slug']}" for t in sorted(tutors, key=lambda t: t['id']))]
     for slug in sorted(index):
