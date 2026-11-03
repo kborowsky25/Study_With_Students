@@ -17,7 +17,7 @@ from server.schema import COLUMN_MIGRATIONS, SCHEMA_FILE
 PASSWORD = 'correct-horse-battery'
 ADMIN_EMAIL = 'admin@sws.test'          # SUPER_ADMIN_EMAIL in conftest.py
 ADMIN_SECRET = 'test-admin-secret'      # ADMIN_SECRET in conftest.py
-KEEP_TABLES = {'forum_categories'}      # seeded by ensure_schema(); everything else is emptied per test
+KEEP_TABLES = {'forum_categories', 'schema_meta'}  # set up by ensure_schema(); the rest is emptied per test
 
 
 @cache

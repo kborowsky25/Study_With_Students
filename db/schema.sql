@@ -353,3 +353,10 @@ CREATE TABLE IF NOT EXISTS reports (
   KEY ix_reports_status (status),
   KEY ix_reports_reported (reported_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- What the database was last set up from (server/schema.py fingerprint()): a cold start of the
+-- API skips the setup when nothing has changed.
+CREATE TABLE IF NOT EXISTS schema_meta (
+  name  VARCHAR(64) PRIMARY KEY,
+  value VARCHAR(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -1,5 +1,8 @@
 """Schema bootstrap: creates missing tables and columns. Never drops anything."""
+import hashlib
 import os
+
+from mysql.connector import Error
 
 from .config import ROOT_DIR
 from .db import column_exists, get_db
@@ -85,9 +88,33 @@ def _statements(sql):
     return [s.strip() for s in '\n'.join(lines).split(';') if s.strip()]
 
 
-def ensure_schema():
+def fingerprint():
+    """Changes whenever schema.sql, the column migrations or the forum categories change."""
+    digest = hashlib.sha256()
+    with open(SCHEMA_FILE, 'rb') as fh:
+        digest.update(fh.read())
+    digest.update(repr((COLUMN_MIGRATIONS, FORUM_CATEGORIES)).encode())
+    return digest.hexdigest()[:16]
+
+
+def _stored_fingerprint(cur):
+    try:
+        cur.execute("SELECT value FROM schema_meta WHERE name = 'fingerprint'")
+        row = cur.fetchone()
+        return row[0] if row else None
+    except Error:  # a database from before schema_meta existed
+        return None
+
+
+def ensure_schema(force=False):
+    """Bring the database up to this code's schema. A serverless cold start calls this, so it
+    first compares fingerprints and skips the ~100 statements when nothing has changed.
+    Returns True when it ran."""
+    current = fingerprint()
     conn = get_db(); cur = conn.cursor()
     try:
+        if not force and _stored_fingerprint(cur) == current:
+            return False
         with open(SCHEMA_FILE) as fh:
             for statement in _statements(fh.read()):
                 cur.execute(statement)
@@ -111,6 +138,11 @@ def ensure_schema():
                     "INSERT INTO forum_categories (name, description, icon) VALUES (%s, %s, %s)",
                     (name, description, icon),
                 )
+        cur.execute("""
+            INSERT INTO schema_meta (name, value) VALUES ('fingerprint', %s)
+            ON DUPLICATE KEY UPDATE value = VALUES(value)
+        """, (current,))
         conn.commit()
+        return True
     finally:
         cur.close(); conn.close()

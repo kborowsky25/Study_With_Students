@@ -47,7 +47,9 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700;900&display=swap" rel="stylesheet" />
+    <!-- Preloaded here, applied by main.jsx: the font stylesheet is large (every Japanese range),
+         so it must not hold up the first paint -->
+    <link rel="preload" as="style" id="brand-font" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" />
   </head>
   <body>
     <div id="root"></div>

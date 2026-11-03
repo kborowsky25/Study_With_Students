@@ -11,7 +11,9 @@ from server.json import ApiJSONProvider
 def test_health_reports_the_database(api):
     res = api.get('/api/health')
     assert res.status_code == 200
-    assert res.get_json() == {'ok': True, 'database': True, 'mail': False}  # no SMTP in tests
+    body = res.get_json()
+    assert (body['ok'], body['database'], body['mail']) == (True, True, False)  # no SMTP in tests
+    assert isinstance(body['db_ms'], int)
 
 
 def test_unknown_routes_answer_in_json(api):
@@ -110,3 +112,10 @@ def test_health_says_which_database_setting_to_check():
     assert db_problem(Error(errno=1049, msg="Unknown database 'x'")).startswith('unknown database')
     assert db_problem(Error(errno=2003, msg="Can't connect")).startswith("can't reach")
     assert db_problem(Error(msg='SSL connection error: CERTIFICATE_VERIFY_FAILED')).startswith('TLS failed')
+
+
+def test_schema_setup_is_skipped_when_nothing_changed(app):
+    """A cold start runs one query instead of the whole setup."""
+    from server.schema import ensure_schema
+    assert ensure_schema() is False           # set up once already, when the app started
+    assert ensure_schema(force=True) is True

@@ -1,4 +1,6 @@
 """Study With Students — Flask REST API (JWT auth, JSON only)."""
+import os
+import time
 import traceback
 
 from flask import Flask, jsonify
@@ -78,11 +80,17 @@ def create_app(config=Config):
 
     @app.get('/api/health')
     def health():
+        started = time.perf_counter()
         try:
             get_db().close()
         except Exception as e:  # get_db wraps the driver's error
             return jsonify({'ok': False, 'database': False, 'problem': db_problem(e.__cause__ or e)}), 503
-        return jsonify({'ok': True, 'database': True, 'mail': mail_configured()})
+        return jsonify({
+            'ok': True, 'database': True, 'mail': mail_configured(),
+            # how far the database is: a connection costs several round trips
+            'db_ms': round((time.perf_counter() - started) * 1000),
+            'region': os.environ.get('VERCEL_REGION'),
+        })
 
     try:
         ensure_schema()

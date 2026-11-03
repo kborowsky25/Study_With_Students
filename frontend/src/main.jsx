@@ -10,6 +10,15 @@ import './styles/brand.css'
 import './styles/app.css'
 import './styles/responsive.css'
 
+// The brand font, applied without blocking the first paint (index.html preloads it)
+const fontPreload = document.getElementById('brand-font')
+if (fontPreload) {
+  const font = document.createElement('link')
+  font.rel = 'stylesheet'
+  font.href = fontPreload.href
+  document.head.appendChild(font)
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ThemeProvider>
