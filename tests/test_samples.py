@@ -71,3 +71,24 @@ def test_removing_takes_everything_away(api, db, make, admin, samples):
     assert db.value('SELECT COUNT(*) FROM users WHERE is_sample = 1') == 0
     assert db.value('SELECT COUNT(*) FROM tutor_profiles') == 0
     assert db.value('SELECT COUNT(*) FROM liked_tutors') == 0
+
+
+def test_the_live_site_gets_the_samples_once(db):
+    """A deploy adds them through a data step (production only); removing them by hand sticks."""
+    from server.db import get_db
+    from server.samples import remove_samples
+    from server.schema import run_data_steps
+
+    conn = get_db(); cur = conn.cursor()
+    try:
+        assert run_data_steps(cur) == ['sample-tutors-1']
+        assert db.value('SELECT COUNT(*) FROM users WHERE is_sample = 1') == 0  # not committed yet
+        conn.commit()
+        assert db.value('SELECT COUNT(*) FROM users WHERE is_sample = 1') == len(SAMPLE_TUTORS)
+        remove_samples(cur); conn.commit()
+        assert run_data_steps(cur) == []
+        conn.commit()
+        assert db.value('SELECT COUNT(*) FROM users WHERE is_sample = 1') == 0
+    finally:
+        cur.execute("DELETE FROM schema_meta WHERE name LIKE 'data:%'")
+        conn.commit(); cur.close(); conn.close()

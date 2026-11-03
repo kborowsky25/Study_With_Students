@@ -4,8 +4,9 @@ import os
 
 from mysql.connector import Error
 
-from .config import ROOT_DIR
+from .config import IS_PRODUCTION, ROOT_DIR
 from .db import column_exists, get_db
+from .samples import add_samples
 
 SCHEMA_FILE = os.path.join(ROOT_DIR, 'db', 'schema.sql')
 
@@ -90,13 +91,35 @@ def _statements(sql):
     return [s.strip() for s in '\n'.join(lines).split(';') if s.strip()]
 
 
+# One-off changes to the live site's data, each run once, the first time a deploy that
+# includes it starts, and recorded in schema_meta (so undoing one by hand sticks).
+# Production only: tests and local copies start from their own data.
+DATA_STEPS = (
+    ('sample-tutors-1', add_samples),  # the labelled sample tutors; /superadmin removes them
+)
+
+
 def fingerprint():
-    """Changes whenever schema.sql, the column migrations or the forum categories change."""
+    """Changes whenever schema.sql, the column migrations, the forum categories or the data
+    steps change."""
     digest = hashlib.sha256()
     with open(SCHEMA_FILE, 'rb') as fh:
         digest.update(fh.read())
-    digest.update(repr((COLUMN_MIGRATIONS, FORUM_CATEGORIES)).encode())
+    digest.update(repr((COLUMN_MIGRATIONS, FORUM_CATEGORIES, [name for name, _ in DATA_STEPS])).encode())
     return digest.hexdigest()[:16]
+
+
+def run_data_steps(cur):
+    """Run the data steps this database hasn't had yet; returns their names."""
+    ran = []
+    for name, step in DATA_STEPS:
+        cur.execute("SELECT 1 FROM schema_meta WHERE name = %s", (f'data:{name}',))
+        if cur.fetchall():
+            continue
+        step(cur)
+        cur.execute("INSERT INTO schema_meta (name, value) VALUES (%s, 'done')", (f'data:{name}',))
+        ran.append(name)
+    return ran
 
 
 def _stored_fingerprint(cur):
@@ -140,6 +163,9 @@ def ensure_schema(force=False):
                     "INSERT INTO forum_categories (name, description, icon) VALUES (%s, %s, %s)",
                     (name, description, icon),
                 )
+        if IS_PRODUCTION:
+            for name in run_data_steps(cur):
+                print(f'[schema] data step {name} done', flush=True)
         cur.execute("""
             INSERT INTO schema_meta (name, value) VALUES ('fingerprint', %s)
             ON DUPLICATE KEY UPDATE value = VALUES(value)
