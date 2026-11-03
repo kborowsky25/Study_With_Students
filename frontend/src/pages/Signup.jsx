@@ -191,17 +191,17 @@ export default function Signup() {
     }
   }
 
-  // ── Layout: form left, illustration right (as on the original sign-up page) ──
+  // ── Layout: form beside one illustration; the illustration hides on small screens ──
   return (
     <MarketingPage title="Sign up" footer={false}>
       <section className="mk-auth">
         <div className="mk-container mk-auth-grid">
-          <div className="mk-auth-panel">
+          <div className="mk-auth-panel mk-reveal">
             {step === 'form' ? (
               /* ── Step 1: registration form ── */
               <>
                 <h1 className="mk-auth-title">Create an account</h1>
-                <p className="mk-sub">
+                <p className="mk-lead">
                   {account === 'parent'
                     ? 'Follow your child’s sessions, progress and payments in one place.'
                     : 'We’re so excited for you to join and kickstart your journey!'}
@@ -219,26 +219,28 @@ export default function Signup() {
                       </button>
                     ))}
                   </div>
-                  <input
-                    type="text"
-                    value={form.name}
-                    onChange={update('name')}
-                    required
-                    placeholder="Full name"
-                    aria-label="Full name"
-                    autoComplete="name"
-                    className="mk-input"
-                  />
-                  <input
-                    type="email"
-                    value={form.email}
-                    onChange={update('email')}
-                    required
-                    placeholder="Email"
-                    aria-label="Email"
-                    autoComplete="email"
-                    className="mk-input"
-                  />
+                  <label className="mk-field">
+                    <span>Full name</span>
+                    <input
+                      type="text"
+                      value={form.name}
+                      onChange={update('name')}
+                      required
+                      autoComplete="name"
+                      className="mk-input"
+                    />
+                  </label>
+                  <label className="mk-field">
+                    <span>Email</span>
+                    <input
+                      type="email"
+                      value={form.email}
+                      onChange={update('email')}
+                      required
+                      autoComplete="email"
+                      className="mk-input"
+                    />
+                  </label>
                   {account === 'student' && (
                     <label className="mk-field">
                       <span>Date of birth</span>
@@ -253,51 +255,54 @@ export default function Signup() {
                       />
                     </label>
                   )}
-                  <input
-                    type="password"
-                    value={form.password}
-                    onChange={update('password')}
-                    required
-                    minLength={8}
-                    placeholder="Password (at least 8 characters)"
-                    aria-label="Password"
-                    autoComplete="new-password"
-                    className="mk-input"
-                  />
-                  <input
-                    type="password"
-                    value={form.confirm}
-                    onChange={update('confirm')}
-                    required
-                    placeholder="Confirm password"
-                    aria-label="Confirm password"
-                    autoComplete="new-password"
-                    className="mk-input"
-                  />
+                  <label className="mk-field">
+                    <span>Password</span>
+                    <input
+                      type="password"
+                      value={form.password}
+                      onChange={update('password')}
+                      required
+                      minLength={8}
+                      placeholder="At least 8 characters"
+                      autoComplete="new-password"
+                      className="mk-input"
+                    />
+                  </label>
+                  <label className="mk-field">
+                    <span>Confirm password</span>
+                    <input
+                      type="password"
+                      value={form.confirm}
+                      onChange={update('confirm')}
+                      required
+                      autoComplete="new-password"
+                      className="mk-input"
+                    />
+                  </label>
                   {account === 'parent' && (
                     <label className="mk-agree">
                       <input type="checkbox" required />
                       <span>I’m a parent or legal guardian, aged 18 or over</span>
                     </label>
                   )}
-                  <button type="submit" disabled={loading} className="mk-btn mk-btn-coral mk-btn-block">
+                  <button type="submit" disabled={loading} className="mk-btn mk-btn-primary mk-btn-block">
                     {loading ? 'Sending code…' : 'Start journey'}
                   </button>
                 </form>
 
                 <p className="mk-auth-alt">
-                  Have an account already? <Link to="/login">Log in here</Link>
+                  Have an account already?<Link to="/login">Log in</Link>
                 </p>
               </>
             ) : (
               /* ── Step 2: email code ── */
               <>
                 <h1 className="mk-auth-title">Check your inbox</h1>
-                <p className="mk-sub">We sent a 6-digit code to <b>{form.email}</b></p>
+                <p className="mk-lead">We sent a 6-digit code to <b>{form.email}</b></p>
 
                 <form onSubmit={handleVerify} className="mk-form">
                   <OTPInput value={otp} onChange={setOtp} disabled={loading} />
-                  <button type="submit" disabled={loading || otp.length < 6} className="mk-btn mk-btn-coral mk-btn-block">
+                  <button type="submit" disabled={loading || otp.length < 6} className="mk-btn mk-btn-primary mk-btn-block">
                     {loading ? 'Creating account…' : 'Verify and create account'}
                   </button>
                 </form>
@@ -315,7 +320,7 @@ export default function Signup() {
             )}
           </div>
 
-          <div className="mk-auth-art"><Art name="signup" /></div>
+          <div className="mk-panel mk-auth-art mk-reveal" style={{ '--i': 2 }}><Art name="signup" backdrop={false} /></div>
         </div>
       </section>
     </MarketingPage>

@@ -1,54 +1,39 @@
 import { Link } from '@tanstack/react-router'
 import { useAuth } from '../context/AuthContext'
-import Art from '../components/marketing/Art'
-import { MarketingPage } from '../components/marketing'
-import { Icon } from '../components/ui'
+import { ClosingCta, Facts, MarketingPage, PageHero, Section } from '../components/marketing'
 
 // Founding tutors: the first verified tutors on the platform. Styles: styles/marketing.css.
 
 const DEAL = [
-  ['percent', 'Keep 100%', 'You keep 100% of your rate. Families pay a small booking fee on top.'],
-  ['sell', 'Your price', 'Set your own hourly rate and change it whenever you like.'],
-  ['verified_user', 'Verified and DBS checked', 'Your university and an enhanced DBS check are confirmed before your first booking.'],
+  ['percent', 'Keep 100%', 'Families pay a small booking fee on top.'],
+  ['sell', 'Your price', 'Change it whenever you like.'],
+  ['verified_user', 'Verified and DBS checked', 'Confirmed before your first booking.'],
 ]
 
 export default function FoundingTutors() {
   const { isAuthenticated } = useAuth()
+  const start = isAuthenticated ? '/tutor-profile' : '/signup'
 
   return (
     <MarketingPage path="/founding-tutors">
-      <section className="mk-page-hero">
-        <div className="mk-container mk-split">
-          <div>
-            <h1 className="mk-h2 mk-page-title">Founding <em>tutors.</em></h1>
-            <p className="mk-lead mk-page-lead">
-              The first tutors on Study with Students. We are students who tutor, and we built this
-              so that tutors keep 100% of their rate. Be one of the first.
-            </p>
-            <div className="mk-actions">
-              <Link to={isAuthenticated ? '/tutor-profile' : '/signup'} className="mk-btn mk-btn-coral">Become a tutor</Link>
-              <Link to="/become-tutor" className="mk-btn mk-btn-slate">How tutoring works</Link>
-            </div>
-          </div>
-          <div className="mk-page-art"><Art name="becomeTutor" /></div>
+      <PageHero
+        title="Founding tutors"
+        lead="The first tutors on Study with Students. We built it so tutors keep 100% of their rate."
+        art="founding"
+      >
+        <div className="mk-actions">
+          <Link to={start} className="mk-btn mk-btn-primary">Become a tutor</Link>
+          <Link to="/become-tutor" className="mk-btn mk-btn-ghost">How tutoring works</Link>
         </div>
-      </section>
+      </PageHero>
 
-      <section className="mk-section mk-center" aria-labelledby="deal-title">
-        <div className="mk-container">
-          <h2 id="deal-title" className="mk-h2">The <em>deal.</em></h2>
-          <p className="mk-lead">Same for every tutor, from the first one on.</p>
-          <ul className="mk-deal">
-            {DEAL.map(([icon, title, text]) => (
-              <li key={title}>
-                <Icon name={icon} />
-                <h3 className="mk-h3">{title}</h3>
-                <p>{text}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
+      <Section id="deal" title="The deal, from the first tutor on">
+        <Facts items={DEAL} />
+      </Section>
+
+      <ClosingCta title="Be one of the first" text="Joining is free.">
+        <Link to={start} className="mk-btn mk-btn-primary">Become a tutor</Link>
+      </ClosingCta>
     </MarketingPage>
   )
 }

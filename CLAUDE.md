@@ -70,10 +70,14 @@ Either side can cancel; only the tutor confirms; only verified Stripe checkouts 
 - Colours only through tokens in `index.css`; neutral tints via `rgb(var(--fg) / 0.06)`.
 - Reuse the classes in `styles/app.css` and components in `components/ui/` (Icon, StatusPill,
   Stars, Card, …). No helper text under everything, no callout boxes, no emoji, no gradients.
-- Public marketing pages use the original homepage look (heavy uppercase hero, illustrations), kept
-  calm: one heading style (a coral italic word), at most one illustration per section, one closing
-  call to action. Their titles and descriptions live in `lib/site.js`; `scripts/page-heads.mjs`
-  writes them into each page's HTML after `vite build` (search engines and link previews).
+- Public pages (everything before the dashboard) are product-led and visual first: the dashboard on a
+  navy stage in the hero, the five brand scenes in a card grid, previews drawn with the app's own
+  components (`components/marketing/Previews.jsx`), short copy, big numbers rather than paragraphs, one
+  closing call to action. Blocks live in `components/marketing` (shell, sections, steps, facts, numbers,
+  FAQ, closing CTA); styles in `styles/marketing.css`, plus `styles/public.css` for the tutor pages.
+  Motion stays small: `mk-reveal` fades content in on scroll (`Motion.jsx`), all off for reduced motion.
+  Titles and descriptions live in `lib/site.js`; `scripts/page-heads.mjs` writes them into each
+  page's HTML after `vite build` (search engines and link previews).
 
 ## Legacy
 `legacy/` holds the original Jinja/Flask app and its templates. Nothing imports it.

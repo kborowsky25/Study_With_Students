@@ -28,46 +28,49 @@ export default function Login() {
     }
   }
 
+  // Form beside one illustration; the illustration hides on small screens
   return (
     <MarketingPage title="Log in" footer={false}>
       <section className="mk-auth">
         <div className="mk-container mk-auth-grid">
-          <div className="mk-auth-art"><Art name="login" /></div>
-
-          <div className="mk-auth-panel">
+          <div className="mk-auth-panel mk-reveal">
             <h1 className="mk-auth-title">Log in</h1>
-            <p className="mk-sub">One day or day one?</p>
+            <p className="mk-lead">One day or day one?</p>
 
             <form onSubmit={handleSubmit} className="mk-form">
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                placeholder="Email"
-                aria-label="Email"
-                autoComplete="email"
-                className="mk-input"
-              />
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                placeholder="Password"
-                aria-label="Password"
-                autoComplete="current-password"
-                className="mk-input"
-              />
-              <button type="submit" disabled={loading} className="mk-btn mk-btn-coral mk-btn-block">
+              <label className="mk-field">
+                <span>Email</span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  className="mk-input"
+                />
+              </label>
+              <label className="mk-field">
+                <span>Password</span>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  className="mk-input"
+                />
+              </label>
+              <button type="submit" disabled={loading} className="mk-btn mk-btn-primary mk-btn-block">
                 {loading ? 'Signing in…' : 'Log in'}
               </button>
             </form>
 
             <p className="mk-auth-alt">
-              Don&apos;t have an account yet? <Link to="/signup">Sign up here</Link>
+              Don&apos;t have an account yet?<Link to="/signup">Sign up</Link>
             </p>
           </div>
+
+          <div className="mk-panel mk-auth-art mk-reveal" style={{ '--i': 2 }}><Art name="login" backdrop={false} /></div>
         </div>
       </section>
     </MarketingPage>

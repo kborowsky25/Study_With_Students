@@ -2,10 +2,8 @@
 // subject, level and university. No login needed, so search engines can index it.
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { getPublicSubjects, getPublicTutors } from '../api/public'
-import { FindTutor } from '../components/brand/illustrations'
-import { Icon } from '../components/ui'
 import {
-  EmptyBox, Pager, PublicPage, SignUpCta, SubjectChips, TutorGrid, Wave, topicName,
+  EmptyBox, Pager, PublicPage, SignUpCta, SubjectChips, TutorGrid, topicName,
 } from '../components/public'
 import { BOOKING_FEE_PERCENT, PAGES } from '../lib/site'
 import { useQuery } from '../lib/query'
@@ -47,23 +45,18 @@ export default function TutorDirectory() {
 
   return (
     <PublicPage>
-      <section className="pub-hero">
-        <div className="pub-container pub-hero-grid">
-          <div>
-            <span className="pub-tag"><Icon name="school" />Find a tutor</span>
-            <h1 className="pub-h1">GCSE &amp; A-level tutors from <span className="pub-coral">UK universities</span></h1>
-            <p className="pub-sub">Learn from students who sat the same exams, not from an agency.</p>
-            <p className="pub-lead">
-              Every tutor is a UK university student. They set their own rate and keep all of it;
-              families pay a {BOOKING_FEE_PERCENT}% booking fee on top.
-            </p>
-          </div>
-          <div className="pub-hero-art"><FindTutor title="" /></div>
+      <section className="pub-top">
+        <div className="mk-container mk-reveal">
+          <h1 className="mk-title">GCSE and <span className="mk-nowrap">A-level</span> tutors from UK universities</h1>
+          <p className="mk-lead">
+            Students who sat the same exams. They keep their whole rate; families pay a
+            {' '}{BOOKING_FEE_PERCENT}% booking fee on top.
+          </p>
         </div>
       </section>
 
-      <section className="pub-section pub-section-tight" aria-labelledby="results-title">
-        <div className="pub-container">
+      <section className="mk-section" aria-labelledby="results-title">
+        <div className="mk-container">
           <form className="pub-filters" role="search" aria-label="Filter tutors" onSubmit={(e) => e.preventDefault()}>
             <label className="pub-field">
               <span>Subject</span>
@@ -90,20 +83,20 @@ export default function TutorDirectory() {
                 )}
               </select>
             </label>
-            <button type="button" className="pub-btn pub-btn-ghost" onClick={clearFilters} disabled={!filtered}>Clear</button>
+            <button type="button" className="mk-btn mk-btn-ghost" onClick={clearFilters} disabled={!filtered}>Clear</button>
           </form>
 
           <div className="pub-results-head">
-            <h2 id="results-title" className="pub-h3">{heading}</h2>
+            <h2 id="results-title">{heading}</h2>
             {data && <span className="pub-count" aria-live="polite">{data.total} tutor{data.total === 1 ? '' : 's'}</span>}
           </div>
 
           {error ? (
             <EmptyBox alert title="We couldn’t load tutors." text="Check your connection and try again."
-              actions={<button type="button" className="pub-btn pub-btn-coral" onClick={() => refetch().catch(() => {})}>Try again</button>} />
+              actions={<button type="button" className="mk-btn mk-btn-primary" onClick={() => refetch().catch(() => {})}>Try again</button>} />
           ) : data && data.total === 0 ? (
             <EmptyBox title="No tutors match these filters yet." text="Try another subject or university, or see everyone."
-              actions={<button type="button" className="pub-btn pub-btn-coral" onClick={clearFilters}>Show all tutors</button>} />
+              actions={<button type="button" className="mk-btn mk-btn-primary" onClick={clearFilters}>Show all tutors</button>} />
           ) : (
             <TutorGrid tutors={data?.tutors ?? []} loading={loading} />
           )}
@@ -113,14 +106,13 @@ export default function TutorDirectory() {
       </section>
 
       {subjects.length > 0 && (
-        <section className="pub-band" aria-labelledby="subjects-title">
-          <Wave top />
-          <div className="pub-container">
-            <h2 id="subjects-title" className="pub-h2">Browse by subject</h2>
-            <p className="pub-lead">Each subject page lists its tutors, their rates and how booking works.</p>
-            <div style={{ marginTop: 28 }}><SubjectChips subjects={subjects} /></div>
+        <section className="mk-section" aria-labelledby="subjects-title">
+          <div className="mk-container">
+            <div className="mk-head">
+              <h2 id="subjects-title" className="mk-h2">Browse by subject</h2>
+            </div>
+            <SubjectChips subjects={subjects} />
           </div>
-          <Wave />
         </section>
       )}
 
