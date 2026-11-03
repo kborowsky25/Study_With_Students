@@ -22,7 +22,7 @@ import { FQ, refreshFamily } from '../lib/family'
 import { firstName, formatDate, formatMoney, formatTime, greeting, timeAgo } from '../lib/format'
 import { NQ } from '../lib/progress'
 import { invalidate, useQuery } from '../lib/query'
-import { bookingFee, needsPayment, totalPrice } from '../lib/sessions'
+import { bookingFee, feeWaived, needsPayment, totalPrice } from '../lib/sessions'
 import '../components/features/progress.css'
 import '../components/features/family.css'
 
@@ -108,11 +108,13 @@ function SessionsCard({ first, data, paying, onPay }) {
           {due.length > 0 && <div className="group-head">To pay <span className="count">{due.length}</span></div>}
           {due.map((ev) => {
             const fee = bookingFee(ev)
+            const waived = feeWaived(ev)
             return (
               <SessionRow key={ev.id_event} ev={ev}>
                 <span className="price">
                   <b>{formatMoney(totalPrice(ev), { decimals: 2 })}</b>
                   {fee > 0 && <small>{formatMoney(ev.amount)} + {formatMoney(fee, { decimals: 2 })} fee</small>}
+                  {!fee && waived > 0 && <small><s>{formatMoney(waived, { decimals: 2 })}</s> fee waived</small>}
                 </span>
                 <button className="btn btn-coral btn-sm" disabled={!data.stripe_enabled || paying !== null} onClick={() => onPay(ev)}>
                   {paying === ev.id_event ? 'Redirecting…' : 'Pay'}

@@ -339,6 +339,46 @@ class TestFamilies:
             {'user_id': maya.id, 'referred_id': kate.id}]
         assert summary(api, maya)['credits'] == 1
 
+    def test_refunding_the_childs_session_takes_back_the_parents_reward(self, api, db, family, stripe, webhook):
+        maya, kate, mia, oliver = family
+        event_id = book(api, mia, oliver)[0]['id_event']  # Kate's welcome credit pays the fee
+        pay(api, stripe, mia, oliver, event_id)
+        assert summary(api, maya)['credits'] == 1
+
+        assert refund(webhook, event_id) == 'session refunded'
+        assert summary(api, maya)['credits'] == 0
+        assert summary(api, kate)['credits'] == 1  # Kate's credit is back for the next booking
+
+    def test_a_parents_reward_stays_while_another_child_has_paid(self, api, db, make, family, stripe, webhook):
+        maya, kate, mia, oliver = family
+        leo = make.child('Leo Lee')
+        make.link(kate, leo)
+        make.connect(leo, oliver)
+        mias = book(api, mia, oliver)[0]['id_event']
+        leos = book(api, leo, oliver, days=4)[0]['id_event']
+        pay(api, stripe, mia, oliver, mias)
+        pay(api, stripe, leo, oliver, leos)
+
+        refund(webhook, mias)
+        assert summary(api, maya)['credits'] == 1
+        refund(webhook, leos)
+        assert summary(api, maya)['credits'] == 0
+
+    def test_a_tutor_who_invited_the_parent_earns_xp(self, api, db, make, stripe, webhook):
+        tom, oliver = make.tutor('Tom Reid'), make.tutor('Oliver Grant', rate=22)
+        kate = joined(api, db, code_of(api, tom), email='kate@example.com', name='Kate Lee', account_type='parent')
+        mia = make.child('Mia Lee')
+        make.link(kate, mia)
+        make.connect(mia, oliver)
+        event_id = book(api, mia, oliver)[0]['id_event']
+        pay(api, stripe, mia, oliver, event_id)
+        assert db.all("SELECT user_id, referred_id, xp FROM referral_rewards WHERE kind = 'family'") == [
+            {'user_id': tom.id, 'referred_id': kate.id, 'xp': FAMILY_REFERRAL_XP}]
+        assert db.value('SELECT xp FROM users WHERE id_user = %s', (tom.id,)) == FAMILY_REFERRAL_XP
+
+        refund(webhook, event_id)
+        assert db.value('SELECT xp FROM users WHERE id_user = %s', (tom.id,)) == 0
+
     def test_an_unlinked_parents_credit_stays_theirs(self, api, db, family):
         _, kate, mia, oliver = family
         db.run("UPDATE parent_links SET status = 'declined'")
