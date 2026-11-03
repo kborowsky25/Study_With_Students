@@ -78,6 +78,8 @@ Either side can cancel; only the tutor confirms; only verified Stripe checkouts 
   closing call to action. Blocks live in `components/marketing` (shell, sections, steps, facts, numbers,
   FAQ, closing CTA); styles in `styles/marketing.css`, plus `styles/public.css` for the tutor pages.
   Motion stays small: `mk-reveal` fades content in on scroll (`Motion.jsx`), all off for reduced motion.
+  Icons there are spot icons (`components/brand/Spot.jsx`: a glyph over a hand-cut shape whose
+  colour and tilt vary down a list), never an icon on a tinted tile.
   Titles and descriptions live in `lib/site.js`; `scripts/page-heads.mjs` writes them into each
   page's HTML after `vite build` (search engines and link previews).
 
