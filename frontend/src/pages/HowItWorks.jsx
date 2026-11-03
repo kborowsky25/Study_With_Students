@@ -1,9 +1,9 @@
 import { Link } from '@tanstack/react-router'
 import { useAuth } from '../context/AuthContext'
+import Spot from '../components/brand/Spot'
 import { ClosingCta, Faq, MarketingPage, PageHero, Section, Steps } from '../components/marketing'
 import { FEE, PricingExplainer } from '../components/marketing/Pricing'
 import { FAQ } from '../components/marketing/faq'
-import { Icon } from '../components/ui'
 
 // How it works: the steps for students and for tutors, pricing, and questions.
 // Styles: styles/marketing.css.
@@ -48,9 +48,9 @@ export default function HowItWorks() {
 
       <Section id="steps" title="Step by step">
         <div className="mk-flows">
-          {FLOWS.map(({ icon, title, steps }) => (
+          {FLOWS.map(({ icon, title, steps }, i) => (
             <div key={title} className="mk-card mk-flow">
-              <h3 className="mk-h3"><Icon name={icon} />{title}</h3>
+              <h3 className="mk-h3"><Spot icon={icon} index={i * 3 + 1} size={44} />{title}</h3>
               <Steps items={steps} />
             </div>
           ))}

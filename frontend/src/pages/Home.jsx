@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { useAuth } from '../context/AuthContext'
 import Art from '../components/marketing/Art'
+import Spot from '../components/brand/Spot'
 import { ClosingCta, Faq, MarketingPage, Section } from '../components/marketing'
 import { HeroStage, StepPreview, TutorChecksPreview } from '../components/marketing/Previews'
 import { PricingExplainer } from '../components/marketing/Pricing'
@@ -101,8 +102,8 @@ export default function Home() {
           <div className="mk-reveal">
             <h2 id="checked-title" className="mk-h2">Every tutor is checked</h2>
             <ul className="mk-list">
-              {CHECKS.map(([icon, title]) => (
-                <li key={title}><Icon name={icon} /><b>{title}</b></li>
+              {CHECKS.map(([icon, title], i) => (
+                <li key={title}><Spot icon={icon} index={i} size={48} /><b>{title}</b></li>
               ))}
             </ul>
           </div>

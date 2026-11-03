@@ -34,6 +34,11 @@ html.dark,
   --ill-plant-deep:  #4a876c;
   --ill-backdrop:    #223049;
   --ill-sparkle:     #cfd8dc;
+  /* Spot icons (components/brand/Spot.jsx): solid shapes behind a white glyph */
+  --spot-coral:      #ff725e;
+  --spot-blush:      #d98c80;
+  --spot-leaf:       #4f9275;
+  --spot-stone:      #4a5d80;
 }
 
 html.light,
@@ -60,6 +65,11 @@ html.light,
   --ill-plant-deep:  #5c9a7d;
   --ill-backdrop:    #f0f3f6;
   --ill-sparkle:     #b0bec5;
+  /* Spot icons: pale shapes behind a navy glyph */
+  --spot-coral:      #ff9a8a;
+  --spot-blush:      #ffd6ce;
+  --spot-leaf:       #bfe0cd;
+  --spot-stone:      #dde5ea;
 }
 
 /* Illustrations fill their container's width; zero specificity so any class wins. */

@@ -5,6 +5,7 @@
 import { useId, useRef } from 'react'
 import Navbar from '../layout/Navbar'
 import Footer from '../layout/Footer'
+import Spot from '../brand/Spot'
 import { Icon } from '../ui'
 import { LogoMark } from '../brand/Logo'
 import Art from './Art'
@@ -109,7 +110,7 @@ export function Facts({ items, cols = 3 }) {
     <ul className="mk-facts" style={{ '--cols': cols }}>
       {items.map(([icon, title, text], i) => (
         <li key={title} className="mk-reveal" style={{ '--i': i }}>
-          <Icon name={icon} />
+          <Spot icon={icon} index={i} />
           <h3 className="mk-h3">{title}</h3>
           {text && <p>{text}</p>}
         </li>
