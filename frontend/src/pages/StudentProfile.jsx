@@ -7,6 +7,9 @@ import { useAuth } from '../context/AuthContext'
 import { Avatar, Card, EmptyState, Icon, SkeletonRows, Stat } from '../components/ui'
 import { getUserProfile, updateStudentBio } from '../api/users'
 import { errorMessage } from '../api/client'
+import { toDateInput } from '../lib/dates'
+import { formatDate } from '../lib/format'
+import { refreshFamily } from '../lib/family'
 
 const EDUCATION_LEVELS = [
   'Secondary School (GCSE)',
@@ -36,17 +39,19 @@ function Detail({ label, children }) {
 }
 
 function EditForm({ profile, onSaved, onCancel }) {
-  const [form, setForm] = useState(() => toForm(profile))
+  const [form, setForm] = useState(() => ({ ...toForm(profile), date_of_birth: '' }))
   const [saving, setSaving] = useState(false)
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
 
   async function submit(e) {
     e.preventDefault()
     const data = Object.fromEntries(FIELDS.map((k) => [k, form[k].trim()]))
+    if (form.date_of_birth) data.date_of_birth = form.date_of_birth // once, for accounts from before sign-up asked
     setSaving(true)
     try {
       await updateStudentBio(data)
       toast.success('Profile updated')
+      if (data.date_of_birth) refreshFamily()
       onSaved(data)
     } catch (err) {
       toast.error(errorMessage(err, 'Could not save your profile'))
@@ -75,6 +80,13 @@ function EditForm({ profile, onSaved, onCancel }) {
               placeholder="King’s College London" />
           </label>
         </div>
+        {!profile.date_of_birth && (
+          <label className="field">
+            <span>Date of birth</span>
+            <input className="input" type="date" value={form.date_of_birth} onChange={set('date_of_birth')}
+              max={toDateInput(new Date())} />
+          </label>
+        )}
         <label className="field">
           <span>Year <Optional /></span>
           <input className="input" value={form.study_year} onChange={set('study_year')} maxLength={50}
@@ -144,6 +156,7 @@ export default function StudentProfile() {
           <Card title="About">
             <div className="row-list">
               <Detail label="Education">{education.length ? education.join(' · ') : <span style={{ color: 'var(--text-faint)' }}>Not added</span>}</Detail>
+              {isOwn && profile.date_of_birth && <Detail label="Date of birth">{formatDate(`${profile.date_of_birth}T00:00:00`, { year: 'numeric' })}</Detail>}
               <div className="row" style={{ alignItems: 'flex-start', paddingTop: 12, paddingBottom: 12 }}>
                 <p style={{ fontSize: 13.5, lineHeight: 1.65, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', color: profile.bio ? 'var(--text)' : 'var(--text-faint)' }}>
                   {profile.bio || (isOwn ? 'Add a few lines about what you’re studying.' : 'No bio yet.')}
@@ -174,8 +187,10 @@ export default function StudentProfile() {
                 </Link>
               )}
               {isOwn ? (
-                !editing && <button className="btn btn-ghost" onClick={() => setEditing(true)}><Icon name="edit" />Edit profile</button>
-              ) : (
+                !editing && me.is_student !== false && (
+                  <button className="btn btn-ghost" onClick={() => setEditing(true)}><Icon name="edit" />Edit profile</button>
+                )
+              ) : profile.can_message && (
                 <Link to="/messages" search={{ user: profile.id_user }} className="btn btn-coral"><Icon name="chat" />Message</Link>
               )}
             </div>

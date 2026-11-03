@@ -1,5 +1,9 @@
-"""Direct messages: sending, conversations, unread counts and read receipts."""
+"""Direct messages: sending, conversations, unread counts and read receipts; who can write to
+whom, the people search and the contact-detail guard."""
 import pytest
+
+from server.contact_details import PLACEHOLDER
+from tests.support import born
 
 
 def send(api, sender, receiver, text):
@@ -99,3 +103,170 @@ class TestInbox:
         maya, _, _ = people
         assert api.get('/api/messages', user=maya).get_json()['conversations'] == []
         assert unread(api, maya) == 0
+
+
+# ── Who can start a conversation ──────────────────────────────────────────────
+
+class TestWhoCanWrite:
+    def test_students_and_parents_write_to_tutors(self, api, make, people):
+        maya, oliver, _ = people
+        assert send(api, maya, oliver, 'Hi Oliver!').status_code == 201
+        assert send(api, make.parent(), oliver, 'Hello, I’m Maya’s mum').status_code == 201
+
+    def test_a_tutor_cannot_cold_message_a_student(self, api, db, people):
+        _, oliver, sam = people
+        res = send(api, oliver, sam, 'Want some tutoring?')
+        assert res.status_code == 403
+        assert res.get_json()['code'] == 'not_your_student'
+        assert db.value('SELECT COUNT(*) FROM messages') == 0
+
+    def test_a_tutor_writes_to_students_they_accepted(self, api, make, people):
+        _, oliver, sam = people
+        make.connect(sam, oliver)
+        assert send(api, oliver, sam, 'Welcome aboard!').status_code == 201
+
+    @pytest.mark.parametrize('status', ['pending', 'none'])
+    def test_an_unverified_tutor_cannot_message_the_students_who_asked(self, api, make, people, status):
+        _, _, sam = people
+        noah = make.tutor('Noah Fox', status=status)
+        make.connect(sam, noah)
+        res = send(api, noah, sam, 'Hi Sam')
+        assert (res.status_code, res.get_json()['code']) == (403, 'not_verified')
+
+    def test_a_tutor_replies_to_a_student_who_wrote_first(self, api, people):
+        _, oliver, sam = people
+        send(api, sam, oliver, 'Are you free on Sunday?')
+        assert send(api, oliver, sam, 'I am!').status_code == 201
+
+    def test_students_cannot_cold_message_students(self, api, people):
+        maya, _, sam = people
+        res = send(api, maya, sam, 'Hey')
+        assert res.status_code == 403
+        assert res.get_json()['code'] == 'tutors_only'
+
+    @pytest.mark.parametrize('status', ['pending', 'none', 'rejected'])
+    def test_only_verified_tutors_can_be_written_to_first(self, api, make, people, status):
+        maya, _, _ = people
+        res = send(api, maya, make.tutor('Noah Fox', status=status), 'Hi')
+        assert res.status_code == 403
+        assert res.get_json()['code'] == 'tutor_not_verified'
+
+    def test_nobody_can_cold_message_an_under_18(self, api, make, people):
+        maya, oliver, _ = people
+        mia = make.child('Mia Khan')
+        strangers = [oliver, maya, make.parent(), make.tutor('Noah Fox')]
+        for person in strangers:
+            res = send(api, person, mia, 'Hi Mia')
+            assert res.status_code == 403
+            assert '18' not in res.get_json()['error']  # refusals never give away someone's age
+
+    def test_an_under_18_writes_to_tutors_and_gets_replies(self, api, make, people):
+        _, oliver, _ = people
+        mia = make.child('Mia Khan')
+        assert send(api, mia, oliver, 'Hi, can you help with physics?').status_code == 201
+        assert send(api, oliver, mia, 'Of course').status_code == 201
+
+    def test_a_tutor_an_under_18_asked_for_writes_first(self, api, make, people):
+        _, oliver, _ = people
+        mia = make.child('Mia Khan')
+        make.connect(mia, oliver)
+        assert send(api, oliver, mia, 'Welcome!').status_code == 201
+
+    def test_a_tutor_under_18_is_not_open_to_everyone(self, api, make, people):
+        maya, _, _ = people
+        young = make.tutor('Noah Fox')
+        make.db.run('UPDATE student_profiles SET date_of_birth = %s WHERE id_user = %s', (born(16), young.id))
+        assert send(api, maya, young, 'Hi').status_code == 403
+
+    def test_a_parent_cannot_message_their_child(self, api, make, people):
+        maya, _, _ = people
+        assert send(api, make.parent(of=maya), maya, 'Tea is ready').status_code == 403
+
+    def test_the_thread_says_whether_i_can_write(self, api, people):
+        maya, oliver, sam = people
+        assert api.get(f'/api/messages/{oliver.id}', user=maya).get_json()['can_send'] is True
+        thread = api.get(f'/api/messages/{sam.id}', user=oliver).get_json()
+        assert (thread['can_send'], thread['reason_code']) == (False, 'not_your_student')
+        assert thread['reason'].startswith('You can message Sam once')
+
+
+class TestSearch:
+    def search(self, api, user, q):
+        return [u['name'] for u in api.get('/api/users/search', user=user, query_string={'q': q}).get_json()['users']]
+
+    def test_finds_only_people_i_can_write_to(self, api, make, people):
+        maya, oliver, sam = people
+        make.tutor('Noah Fox', status='pending')
+        make.child('Sami Khan')
+        assert self.search(api, maya, 'Oliver') == ['Oliver Grant']
+        assert self.search(api, maya, 'Sam') == []
+        assert self.search(api, maya, 'Noah') == []
+        assert self.search(api, oliver, 'Sam') == []
+
+        make.connect(sam, oliver)
+        assert self.search(api, oliver, 'Sam') == ['Sam Lee']
+        api.post(f'/api/blocks/{oliver.id}', user=maya)
+        assert self.search(api, maya, 'Oliver') == []
+
+    def test_finds_someone_who_wrote_to_me(self, api, make, people):
+        _, oliver, sam = people
+        send(api, sam, oliver, 'Hi')
+        assert self.search(api, oliver, 'Sam') == ['Sam Lee']
+
+    def test_profiles_say_whether_i_can_write(self, api, people):
+        maya, oliver, sam = people
+        assert api.get(f'/api/users/{oliver.id}/profile', user=maya).get_json()['user']['can_message'] is True
+        assert api.get(f'/api/users/{sam.id}/profile', user=maya).get_json()['user']['can_message'] is False
+        assert 'can_message' not in api.get(f'/api/users/{maya.id}/profile', user=maya).get_json()['user']
+
+
+# ── Contact details ───────────────────────────────────────────────────────────
+
+class TestContactGuard:
+    def test_hidden_between_a_student_and_a_tutor(self, api, db, people):
+        maya, oliver, _ = people
+        res = send(api, maya, oliver, 'Text me on 07700 900123 or maya@gmail.com')
+        assert res.status_code == 201
+        body = res.get_json()
+        assert body['data']['message'] == f'Text me on {PLACEHOLDER} or {PLACEHOLDER}'
+        assert body['hidden'] == ['email', 'phone']
+        assert 'original_message' not in body['data']
+        # The original is kept for moderation only
+        assert db.value('SELECT original_message FROM messages') == 'Text me on 07700 900123 or maya@gmail.com'
+
+        for user, other in ((oliver, maya), (maya, oliver)):
+            thread = api.get(f'/api/messages/{other.id}', user=user).get_json()['messages']
+            assert [m['message'] for m in thread] == [f'Text me on {PLACEHOLDER} or {PLACEHOLDER}']
+            assert '07700' not in str(api.get('/api/messages', user=user).get_json())
+
+    def test_hidden_from_a_tutor_to_a_student(self, api, make, people):
+        maya, oliver, _ = people
+        send(api, maya, oliver, 'Hi')
+        res = send(api, oliver, maya, 'Add me on snap: oliver_g23')
+        assert res.get_json()['data']['message'] == f'Add me on {PLACEHOLDER}'
+
+    def test_hidden_between_a_parent_and_a_tutor(self, api, make, people):
+        _, oliver, _ = people
+        res = send(api, make.parent(), oliver, 'My number is 07700 900123')
+        assert res.get_json()['hidden'] == ['phone']
+
+    def test_everyday_messages_are_stored_as_written(self, api, db, people):
+        maya, oliver, _ = people
+        res = send(api, maya, oliver, 'Can we do 17:30 on Tuesday? Paper 8300/1H, it’s £22 right?')
+        assert res.get_json()['hidden'] == []
+        assert res.get_json()['data']['message'] == 'Can we do 17:30 on Tuesday? Paper 8300/1H, it’s £22 right?'
+        assert db.value('SELECT original_message FROM messages') is None
+
+    def test_tutors_can_swap_numbers_with_each_other(self, api, make, people):
+        _, oliver, _ = people
+        noah = make.tutor('Noah Fox')
+        assert send(api, oliver, noah, 'Call me: 07700 900123').get_json()['hidden'] == []
+
+    def test_hidden_whenever_an_under_18_is_in_the_conversation(self, api, db, make, people):
+        _, _, sam = people
+        mia = make.child('Mia Khan')
+        db.run('INSERT INTO messages (id_sender, id_receiver, message) VALUES (%s, %s, %s)',
+               (sam.id, mia.id, 'Hi Mia, from before the rules'))
+        res = send(api, mia, sam, 'My number is 07700 900123')
+        assert res.status_code == 201
+        assert res.get_json()['hidden'] == ['phone']

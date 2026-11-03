@@ -16,12 +16,12 @@ export default function FoundingTutors() {
   const { isAuthenticated } = useAuth()
 
   return (
-    <MarketingPage title="Founding tutors">
+    <MarketingPage path="/founding-tutors">
       <section className="mk-page-hero">
         <div className="mk-container mk-split">
           <div>
             <h1 className="mk-h2 mk-page-title">Founding <em>tutors.</em></h1>
-            <p className="mk-sub mk-page-lead">
+            <p className="mk-lead mk-page-lead">
               The first tutors on Study with Students. We are students who tutor, and we built this
               so that tutors keep 100% of their rate. Be one of the first.
             </p>
@@ -30,17 +30,17 @@ export default function FoundingTutors() {
               <Link to="/become-tutor" className="mk-btn mk-btn-slate">How tutoring works</Link>
             </div>
           </div>
-          <div className="mk-founding-art"><Art name="becomeTutor" /></div>
+          <div className="mk-page-art"><Art name="becomeTutor" /></div>
         </div>
       </section>
 
       <section className="mk-section mk-center" aria-labelledby="deal-title">
         <div className="mk-container">
-          <h2 id="deal-title" className="mk-h2 mk-coral">The deal</h2>
-          <p className="mk-sub">Same for every tutor, from the first one on.</p>
+          <h2 id="deal-title" className="mk-h2">The <em>deal.</em></h2>
+          <p className="mk-lead">Same for every tutor, from the first one on.</p>
           <ul className="mk-deal">
             {DEAL.map(([icon, title, text]) => (
-              <li key={title} className="mk-box">
+              <li key={title}>
                 <Icon name={icon} />
                 <h3 className="mk-h3">{title}</h3>
                 <p>{text}</p>

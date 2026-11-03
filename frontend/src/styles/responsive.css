@@ -8,7 +8,10 @@
 @media (max-width: 900px), (pointer: coarse) {
   :is(.shell, .overlay) :is(.btn, .btn-sm) { min-height: 32px; }
   :is(.shell, .overlay) .icon-btn { min-width: 32px; min-height: 32px; }
-  :is(.shell, .overlay) :is(.mode-switch button, .card-link) { min-height: 32px; }
+  :is(.shell, .overlay) :is(.mode-switch button, .card-link, .choice-grid button) { min-height: 32px; }
+  .shell .nav-item { min-height: 36px; }
+  /* A text link in a list row: a taller hit area without moving anything */
+  .shell .tap-link { display: inline-block; padding: 7px 0; margin: -7px 0; }
 }
 
 /* Rows with trailing actions (`.row.row-wrap` + `.row-actions`): when the row runs

@@ -8,6 +8,7 @@ from flask_jwt_extended import create_access_token, jwt_required
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from ..db import current_user_id, get_db
+from ..family import parse_birth_date
 from ..permissions import dev_shortcuts_allowed, is_admin_email
 from ..ratelimit import json_field, rate_limit
 from ..referrals import record_referral
@@ -19,6 +20,7 @@ bp = Blueprint('auth', __name__, url_prefix='/api')
 HASH_PREFIXES = ('scrypt:', 'pbkdf2:')
 MAX_NAME_LENGTH  = 100
 MAX_EMAIL_LENGTH = 254
+ACCOUNT_TYPES    = ('student', 'parent')  # a parent account has no student profile
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -46,11 +48,14 @@ def _valid_email(email):
 
 def build_session(cur, user_id):
     """Fresh user payload + JWT, read live from the DB."""
-    cur.execute("SELECT name, email, xp FROM users WHERE id_user = %s", (user_id,))
+    cur.execute("SELECT name, email, xp, is_parent FROM users WHERE id_user = %s", (user_id,))
     row = cur.fetchone()
     if not row:
         return None
-    name, email, xp = row
+    name, email, xp, is_parent = row
+
+    cur.execute("SELECT 1 FROM student_profiles WHERE id_user = %s LIMIT 1", (user_id,))
+    is_student = bool(cur.fetchall())
 
     cur.execute("SELECT screening_status FROM tutor_profiles WHERE id_user = %s LIMIT 1", (user_id,))
     tutor_row = cur.fetchone()
@@ -65,8 +70,11 @@ def build_session(cur, user_id):
         'screening_status': screening_status,
         'is_admin':         is_admin_email(email),
         'xp':               xp or 0,  # awarded by the API (tutors inviting tutors); the rest comes from activity
+        'is_parent':        bool(is_parent),
+        'is_student':       is_student,
     }
-    claims = {k: user[k] for k in ('name', 'email', 'is_tutor', 'screening_status', 'is_admin')}
+    claims = {k: user[k] for k in ('name', 'email', 'is_tutor', 'screening_status', 'is_admin',
+                                   'is_parent', 'is_student')}
     token = create_access_token(identity=str(user_id), additional_claims=claims)
     return {'access_token': token, 'user': user}
 
@@ -114,6 +122,7 @@ def register():
     password = str(data.get('password') or '')
     code     = str(data.get('verification_code') or '').strip()
     referral = str(data.get('referral_code') or '')[:32]  # from an invite link, /signup?ref=CODE
+    account  = data.get('account_type') or 'student'
 
     if not name or not email or not password:
         return jsonify({'error': 'All fields required'}), 400
@@ -125,6 +134,13 @@ def register():
         return jsonify({'error': 'Password must be at least 8 characters'}), 400
     if not code:
         return jsonify({'error': 'Verification code required'}), 400
+    if account not in ACCOUNT_TYPES:
+        return jsonify({'error': 'Choose a student or a parent account'}), 400
+    born = None
+    if account == 'student':  # the under-18 rules need it (server/family.py)
+        born, error = parse_birth_date(data.get('date_of_birth'))
+        if error:
+            return jsonify({'error': error}), 400
 
     conn = get_db(); cur = conn.cursor()
     try:
@@ -139,11 +155,13 @@ def register():
             return jsonify({'error': 'Email already registered'}), 409
 
         cur.execute(
-            "INSERT INTO users (name, email, password) VALUES (%s, %s, %s)",
-            (name, email, hash_password(password)),
+            "INSERT INTO users (name, email, password, is_parent) VALUES (%s, %s, %s, %s)",
+            (name, email, hash_password(password), account == 'parent'),
         )
         user_id = cur.lastrowid
-        cur.execute("INSERT INTO student_profiles (id_user) VALUES (%s)", (user_id,))
+        if account == 'student':
+            cur.execute("INSERT INTO student_profiles (id_user, date_of_birth) VALUES (%s, %s)", (user_id, born))
+        # Parents sign up through invites too: their credit pays the fee on their child's sessions
         invited_by = record_referral(cur, user_id, email, referral) if referral else None
         conn.commit()
 

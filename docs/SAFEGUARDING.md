@@ -7,8 +7,8 @@
 
 Study With Students connects university students (tutors, 18+) with school pupils, most of
 whom are under 18. Sessions happen online. This page covers what we check about tutors, who
-can see that information, how long we keep it, how to raise a concern, and the rules for
-contact with under-18s.
+can see that information, how long we keep it, how to raise a concern, the rules for contact
+with under-18s, and what the app enforces about parents and messages.
 
 ## 1. What we check
 
@@ -40,7 +40,7 @@ enrolment. An admin approves it (`tutor_profiles.screening_status = 'approved'`)
    - *"did not reveal any information and remains current"*: verify.
    - *"remains current as no further information has been identified since its issue"*: the
      original certificate disclosed something. Don't verify until the safeguarding lead has
-     seen the original and made a decision (see section 6).
+     seen the original and made a decision (see section 7).
    - *"no longer current"*: reject and ask for a new check.
    - *"details entered do not match"*: reject with a note so the tutor can correct them.
 3. Verify or reject in the panel. Rejecting always needs a note, and the tutor sees it, so keep
@@ -84,8 +84,10 @@ served with `Cache-Control: no-store` and is never publicly linked.
 
 - **A child is in immediate danger:** call 999.
 - **Worried about a child, or about a tutor's behaviour:** tell the platform's safeguarding lead
-  straight away (contact to be set up, see section 6). Don't investigate, confront anyone or
+  straight away (contact to be set up, see section 7). Don't investigate, confront anyone or
   promise to keep it secret.
+- **About something in messages:** report the person or the message from the conversation's ⋯
+  menu. It goes to Admin → Reports with the conversation attached (section 6).
 - **Allegations against a tutor** go to the Local Authority Designated Officer (LADO) for the
   child's area. The safeguarding lead revokes the tutor's check while it's looked into.
 - **Online sexual abuse or grooming** can also be reported to
@@ -103,16 +105,81 @@ served with `Cache-Control: no-store` and is never publicly linked.
 3. Sessions are online, at the booked time, through the platform. No in-person sessions
    arranged through the platform.
 4. Don't record sessions or share images of a student without written consent from a parent.
-5. A parent or carer can ask to see their child's sessions and messages. *(Not built yet.)*
+5. A parent or carer can link their account to their child's and see their sessions, progress
+   and messages with tutors (section 6).
 6. Tutors report anything worrying a student says to the safeguarding lead the same day.
 
 Tutors agree to a code of conduct when they create a profile. That code still needs writing,
 and should include these rules.
 
-## 6. What the owner still needs to decide or do
+## 6. What the app enforces
 
-1. **Appoint a safeguarding lead** and set up a contact for concerns (an email address and a
-   "Report a concern" link in the app), plus a secure incident log outside the platform.
+**Ages.** Students give their date of birth when they sign up (`student_profiles.date_of_birth`),
+and under-18 is worked out from it every time, so nobody stays "under 18" by mistake. Accounts
+from before sign-up asked for it have no date of birth and are treated as adults; they can add
+one, once, on their profile. A date of birth can't be changed by the user afterwards (it would
+undo the rules below). It is self-declared: we don't verify it.
+
+**Parents and guardians.**
+
+- Someone signs up as a parent or guardian (confirming they're one, aged 18 or over), or a
+  student adds parent mode to their account. Under-18s can't.
+- The parent invites their child by email. The child accepts or declines in the app, after a
+  dialog that spells out what the parent will see. A child has at most two linked parents, and
+  either side can unlink at any time. The reply to an invite is the same whether or not that
+  email has an account, so invites can't be used to find out who is signed up. Invites from
+  someone the child has blocked are hidden from them.
+- A linked parent sees their child's sessions (not the video link), lesson notes, homework and
+  progress, can read (never write in) their child's conversations with tutors, gets the session
+  reminder emails, and can pay for sessions. Their child's other conversations stay private.
+- **Under-18s need a linked parent before any session can be booked**, including the free intro
+  call, whether the student or the tutor is booking. Under-18s rarely pay by card themselves, so
+  a parent is usually involved anyway; the rule makes sure every 1-to-1 session with a child has
+  a parent who can see it and read the messages around it. The student's home page tells them
+  how to get a parent linked.
+
+**Who can message whom.** Anyone may write to a verified tutor (approved screening, and not
+under 18). A verified tutor may write to the students who asked for them and whose request they
+accepted. Anyone may reply to someone who wrote to them first. Nothing else starts a
+conversation, so nobody can cold-message an under-18: only the tutors they asked for, and people
+they wrote to themselves, can message them. Parents can't message students (including their own
+child) and students can't message other students. The people search only finds people you're
+allowed to write to, and a refusal never says whether someone is under 18.
+
+**Contact details.** In messages between a tutor and a student or parent, and in any
+conversation with an under-18, phone numbers (also spaced out or spelled in words), email
+addresses (also "at"/"dot" spellings) and off-platform handles and links (WhatsApp, wa.me,
+Snapchat, Instagram, TikTok, Telegram, Discord, Kik, WeChat, Facebook/Messenger, X…) are
+replaced with "[contact details hidden]". Times, prices, dates and exam paper codes are left
+alone. The original text is kept for moderation (`messages.original_message`) and is only shown
+to admins. Everyone else, including a reading parent, sees the hidden version.
+
+**Both sides know when a parent can read.** A conversation between a tutor and a child with a
+linked parent says so quietly in its header ("Visible to Maya's parent").
+
+**Report and block.**
+
+- Anyone can report a person, or a message they received from them, with a reason (including
+  "I'm worried about someone's safety", which also says to call 999 in an emergency) and an
+  optional note. A linked parent can report a message sent to their child.
+- Reports go to Admin → Reports, which shows the report, the conversation around it (with the
+  original text of hidden contact details) and how many reports the person has had. An admin
+  resolves or dismisses each report with a note; who closed it and when is recorded.
+- Admin → Reports → "Contact details hidden" lists the latest messages where the guard fired,
+  with what was actually written. A tutor who keeps trying is a warning sign.
+- Blocking someone stops messages both ways until it's undone (from the conversation's menu).
+
+**What it can't stop.** A child can give a false date of birth, or make a second account and
+"invite" themselves as their own parent. The rules make parental visibility the default, not a
+guarantee. Determined people can also get contact details past the guard (for example a
+username with no digits in the middle of a sentence), which is why the original text is kept
+and reviewable.
+
+## 7. What the owner still needs to decide or do
+
+1. **Appoint a safeguarding lead** and set up a contact for concerns (an email address, plus a
+   "Report a concern" link outside messages, e.g. for sessions and the forum), a secure incident
+   log outside the platform, and how quickly reports in Admin → Reports are looked at.
 2. **Check legal entitlement.** GOV.UK requires anyone doing a status check to be legally
    entitled to see that level of certificate, and enhanced checks with barred lists depend on
    the role being eligible (regulated activity). Confirm the platform's role here. If it isn't
@@ -137,8 +204,15 @@ and should include these rules.
    through an umbrella body or by registering with DBS. It then becomes responsible for
    eligibility, ID checks and the DBS Code of Practice.
 9. **Retention periods** for the check record (section 3) and for backups.
-10. **Write the tutor code of conduct** and build the missing pieces: report-a-concern, parent
-    visibility, account suspension, and flagging contact details in messages to under-18s.
+10. **Write the tutor code of conduct** and build the missing pieces: account suspension (an
+    admin can only resolve reports and revoke DBS checks today), and reporting outside messages.
+11. **Under-13s.** Sign-up accepts anyone aged 5 or over. Decide whether under-13s may sign up
+    themselves (UK GDPR consent age is 13) or only through a parent, and say so in the privacy
+    notice.
+12. **Reading messages for moderation.** Admins can read reported conversations and the
+    original text of hidden contact details, and parents can read their child's conversations
+    with tutors. Cover both in the privacy notice and the terms, and decide how long reports and
+    the hidden originals are kept.
 
 ## In the code
 
@@ -147,3 +221,13 @@ and should include these rules.
 - Tutor page: `frontend/src/pages/BackgroundCheck.jsx`. Admin panel:
   `frontend/src/components/features/DbsReviewPanel.jsx`.
 - Table: `background_checks` in `db/schema.sql`.
+- Parents and ages: `server/family.py` (the rules), `server/routes/family.py` (invites, links and
+  the parent's views). The booking rule is in `create_event` (`server/routes/events.py`). Pages:
+  `frontend/src/pages/HubParent.jsx`, `frontend/src/components/features/FamilyCard.jsx`.
+- Messages: `CAN_WRITE` in `server/routes/messages.py` is the one who-can-write rule (sending,
+  the thread's reply box and the people search). The contact-detail guard is
+  `server/contact_details.py`, tested in `tests/test_contact_details.py`.
+- Report and block: `server/routes/safety.py`; admin panel
+  `frontend/src/components/features/ReportsPanel.jsx`.
+- Tables: `parent_links`, `user_blocks`, `reports` in `db/schema.sql`; columns `users.is_parent`,
+  `student_profiles.date_of_birth` and `messages.original_message` in `server/schema.py`.

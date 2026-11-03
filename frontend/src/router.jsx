@@ -15,6 +15,11 @@ const HowItWorks     = lazy(() => import('./pages/HowItWorks'))
 const BecomeATutor   = lazy(() => import('./pages/BecomeATutor'))
 const FoundingTutors = lazy(() => import('./pages/FoundingTutors'))
 
+// Public tutor and subject pages (indexed by search engines; no login)
+const TutorDirectory = lazy(() => import('./pages/TutorDirectory'))
+const PublicTutor    = lazy(() => import('./pages/PublicTutor'))
+const SubjectPage    = lazy(() => import('./pages/SubjectPage'))
+
 // Hub — student
 const HubStudent        = lazy(() => import('./pages/HubStudent'))
 const FindTutors        = lazy(() => import('./pages/FindTutors'))
@@ -35,6 +40,9 @@ const Earnings        = lazy(() => import('./pages/Earnings'))
 const StudyRoomsTutor = lazy(() => import('./pages/StudyRoomsTutor'))
 const Availability    = lazy(() => import('./pages/Availability'))
 const BackgroundCheck = lazy(() => import('./pages/BackgroundCheck'))
+
+// Hub — parent
+const HubParent       = lazy(() => import('./pages/HubParent'))
 
 // Hub — shared
 const Messages       = lazy(() => import('./pages/Messages'))
@@ -74,17 +82,23 @@ function requireVerifiedTutor() {
   if (user.screening_status !== 'approved') throw redirect({ to: '/tutor-screening' })
 }
 
+function requireParent() {
+  const user = requireAuth()
+  if (!user.is_parent) throw redirect({ to: '/hub/student' })
+}
+
 function requireAdmin() {
   const user = requireAuth()
   if (!user.is_admin) throw redirect({ to: '/hub' })
 }
 
-/** /hub → the dashboard for the last-used view. */
+/** /hub → the dashboard for the last-used view (a parent-only account always has the parent one). */
 function redirectToHub() {
   const user = requireAuth()
-  const tutorView = user.is_tutor && user.screening_status === 'approved' &&
-    localStorage.getItem('sws_hub_mode') === 'tutor'
-  throw redirect({ to: tutorView ? '/hub/tutor' : '/hub/student' })
+  const last = localStorage.getItem('sws_hub_mode')
+  const tutorView = user.is_tutor && user.screening_status === 'approved' && last === 'tutor'
+  const parentView = user.is_parent && (last === 'parent' || user.is_student === false)
+  throw redirect({ to: tutorView ? '/hub/tutor' : parentView ? '/hub/parent' : '/hub/student' })
 }
 
 // ── Route table ───────────────────────────────────────────────────────────────
@@ -103,18 +117,22 @@ const page = (path, component, beforeLoad) =>
 
 const routeTree = rootRoute.addChildren([
   // Public
-  page('/',                Home),
-  page('/login',           Login),
-  page('/signup',          Signup),
-  page('/about',           AboutUs),
-  page('/how-it-works',    HowItWorks),
-  page('/become-tutor',    BecomeATutor),
-  page('/founding-tutors', FoundingTutors),
+  page('/',                  Home),
+  page('/login',             Login),
+  page('/signup',            Signup),
+  page('/about',             AboutUs),
+  page('/how-it-works',      HowItWorks),
+  page('/become-tutor',      BecomeATutor),
+  page('/founding-tutors',   FoundingTutors),
+  page('/tutors',            TutorDirectory),
+  page('/tutors/$slug',      PublicTutor),
+  page('/subjects/$subject', SubjectPage),
 
   // Hub
   page('/hub',             () => null, redirectToHub),
   page('/hub/student',     HubStudent, requireAuth),
   page('/hub/tutor',       HubTutor,   requireVerifiedTutor),
+  page('/hub/parent',      HubParent,  requireParent),
 
   // Students
   page('/find-tutors',      FindTutors,      requireAuth),
@@ -151,7 +169,7 @@ const routeTree = rootRoute.addChildren([
   page('/classroom',                        Classroom,         requireAuth),
 
   // Admin
-  page('/admin',      AdminScreening),
+  page('/admin',      AdminScreening, requireAdmin),
   page('/superadmin', SuperAdmin, requireAdmin),
 ])
 
@@ -159,6 +177,10 @@ export const router = createRouter({
   routeTree,
   // Hovering or focusing a link starts loading that page's chunk.
   defaultPreload: 'intent',
+  // New pages open at the top (instantly, despite the site's smooth scrolling);
+  // Back returns to where you were.
+  scrollRestoration: true,
+  scrollRestorationBehavior: 'instant',
 })
 
 // When the saved session stops working, check the current page again: one that needs a

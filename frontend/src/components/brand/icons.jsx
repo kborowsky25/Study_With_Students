@@ -364,6 +364,15 @@ export const ICONS = {
   ),
   group: GROUP,
   groups: GROUPS,
+  // A parent and child, for parent accounts
+  family: (
+    <>
+      <circle cx="8.5" cy="7.5" r="3.25" />
+      <path d="M2.75 19.5c.5-3.6 2.8-5.85 5.75-5.85 1.3 0 2.45.4 3.35 1.15" />
+      <circle cx="16.75" cy="11.25" r="2.25" />
+      <path d="M12.75 19.5c.35-2.55 1.85-4.1 4-4.1s3.65 1.55 4 4.1" />
+    </>
+  ),
   groups_2: GROUPS,
   group_add: (
     <>
@@ -690,6 +699,12 @@ export const ICONS = {
       <path d="M8.75 12.1l2.2 2.2 4.3-4.6" />
     </>
   ),
+  flag: (
+    <>
+      <path d="M5.5 21V4.25" />
+      <path d="M5.5 4.75c2.4-1.4 4.6-1.4 6.75 0s4.35 1.4 6.75 0v8.5c-2.4 1.4-4.6 1.4-6.75 0s-4.35-1.4-6.75 0" />
+    </>
+  ),
   block: (
     <>
       {CIRCLE}
@@ -714,6 +729,14 @@ export const ICONS = {
   star_filled: <path d={STAR} fill="currentColor" />,
   favorite: <path d={HEART} />,
   heart_filled: <path d={HEART} fill="currentColor" />,
+  mood: (
+    <>
+      <circle cx="12" cy="12" r="8.75" />
+      <path d="M8.75 14.25c.8 1.15 1.95 1.75 3.25 1.75s2.45-.6 3.25-1.75" />
+      <circle cx="9.25" cy="10" r="1" {...solid} />
+      <circle cx="14.75" cy="10" r="1" {...solid} />
+    </>
+  ),
   emoji_events: (
     <>
       <path d="M7.75 4h8.5v5.5a4.25 4.25 0 0 1-8.5 0z" />
@@ -769,6 +792,7 @@ export const ICONS = {
 // these in the database, e.g. calculate / science / terminal / translate).
 const ALIASES = {
   calculate: 'calculator',
+  sentiment_satisfied: 'mood',
   science: 'flask',
   biotech: 'dna',
   terminal: 'code',

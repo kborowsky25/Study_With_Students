@@ -6,7 +6,7 @@ import { MarketingPage } from '../components/marketing'
 export default function NotFound() {
   const signedIn = Boolean(localStorage.getItem('sws_token'))
   return (
-    <MarketingPage title="Page not found">
+    <MarketingPage title="Page not found" noindex>
       <section className="mk-page-hero">
         <div className="mk-container mk-center">
           <div className="mk-not-found-art"><Art name="notFound" /></div>

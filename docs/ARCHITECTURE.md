@@ -46,7 +46,7 @@ frontend/
     styles/responsive.css  touch targets and wrapping rows for phones
     index.css           design tokens (dark and light) and the public site's styles
 legacy/                 the original Jinja/Flask app; nothing imports it
-docs/                   this file and QA-FINDINGS.md
+docs/                   this file and SAFEGUARDING.md
 ```
 
 ## How a request flows
@@ -138,10 +138,11 @@ and slate, Noto Sans JP):
   pays through Stripe Checkout and only a verified checkout marks it `paid`. Either side can
   cancel; only the tutor confirms. A tutor can also schedule one of their students directly
   (created `confirmed`).
-- Study rooms saved to a student's calendar are stored as free `events` titled
-  "Study Room: …" (see `isStudyRoomCopy` and docs/QA-FINDINGS.md).
+- Study rooms saved to a student's calendar are stored as free `events` with kind `room`, titled
+  "Study Room: …" (`is_room_copy` / `isStudyRoomCopy`): they never count as sessions, earnings
+  or reviews, and never ask to be paid.
 - Matching (`server/matching.py`) scores each tutor 0–100 against the student's learning
-  profile (subjects 45, level 15, budget 15, availability 10, quality 15) and returns up to
+  profile (subjects 45, level 15, budget 15, availability 10, quality 18) and returns up to
   three reasons; `/api/tutors/recommended` and `/api/tutors` use it.
 
 ## Recipes
@@ -186,8 +187,8 @@ tutors, connections and sessions straight in SQL.
 
 Two kinds of expected failures are marked, both strict (an unexpected pass fails the run):
 
-- `@pytest.mark.xfail(strict=True, reason=…)` pins a known bug listed in
-  docs/QA-FINDINGS.md. Fix the bug, then delete the marker.
+- `@pytest.mark.xfail(strict=True, reason=…)` pins a known bug (none are open now). Fix the
+  bug, then delete the marker.
 - `@pytest.mark.free_community` and `@pytest.mark.booking_fee` describe the new pricing
   contract. `conftest.py` checks whether the server implements it yet and only then runs
   them normally; until then they count as expected failures.

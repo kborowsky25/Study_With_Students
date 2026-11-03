@@ -12,3 +12,6 @@ export function useAutoFocus() {
   useEffect(() => { ref.current?.focus({ preventScroll: true }) }, [])
   return ref
 }
+
+/** The same for an element that appears later (e.g. once a dialog's data has loaded): `ref={focusOnMount}`. */
+export const focusOnMount = (element) => element?.focus({ preventScroll: true })

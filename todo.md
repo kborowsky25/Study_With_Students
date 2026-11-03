@@ -22,6 +22,7 @@ Everything here can stay £0 while the project is a hobby.
    | `DB_NAME` | `sws_prod` | `sws_staging` |
    | `SECRET_KEY`, `JWT_SECRET_KEY` | two strings from step 2 | two different strings |
    | `FRONTEND_URL` | `https://www.studywithstudents.co.uk` | `https://staging.studywithstudents.co.uk` |
+   | `VITE_SITE_URL` | `https://www.studywithstudents.co.uk` | `https://staging.studywithstudents.co.uk` |
    | `SUPER_ADMIN_EMAIL` | your email | your email |
    | `STRIPE_SECRET_KEY`, `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe **test** keys while it's a hobby | Stripe test keys |
    | `STRIPE_WEBHOOK_SECRET` | signing secret of the webhook below | the test-mode webhook's secret |
@@ -77,8 +78,35 @@ Stripe's card fees.
 - [ ] Set up a free transactional email service for sign-up codes and reminders (`MAIL_*` variables).
 - [ ] Review `docs/SAFEGUARDING.md` (draft, not legal advice) and decide how tutors without an
       enhanced DBS check can get one (umbrella body).
+- [ ] Decide: should tutors who aren't approved yet appear in Find tutors and accept students?
+      Booking already needs a verified DBS check, and messaging only reaches approved tutors.
+- [ ] Decide: under-13 sign-ups (13 is the UK GDPR consent age). Ages are self-declared.
+- [ ] A parent and child could both pay the same session at the same moment: reuse one open
+      Stripe Checkout per session.
+- [ ] Account suspension for people who get reported (reports cover messages only so far).
+- [ ] Run one real Stripe test-mode checkout: fee line, waived-fee description, a parent paying.
 
-## 6. Housekeeping
+## 6. Search (getting found on Google)
+
+The site can't be found until the new code is live: www.studywithstudents.co.uk answers every
+request with an error today (step 2). Everything on our side is ready: each public page has its
+own title, description and canonical address in its HTML, link previews have an image, Google
+gets the organisation and site name, and the sitemap and robots.txt list the public pages.
+
+- [ ] In Vercel, set `VITE_SITE_URL=https://www.studywithstudents.co.uk` (with `FRONTEND_URL`).
+- [ ] Once live, add the site to Google Search Console (free): verify the domain with a DNS TXT
+      record at the registrar, then submit `https://www.studywithstudents.co.uk/sitemap.xml`
+      and request indexing of the homepage. `frontend/public/robots.txt` names that address.
+- [ ] Optional: Bing Webmaster Tools (free) can import the Search Console setup.
+- [ ] When the site has social profiles, add their URLs as `sameAs` to the Organization
+      details in `frontend/index.html`, and link to the site from them.
+- [ ] Keep staging behind Vercel's login (the default), or search engines will index it too.
+- [ ] Optional: link previews (WhatsApp, LinkedIn) only see the generic tags in `index.html`. A small
+      Flask route that fills in each tutor page's tags would fix that (no paid service needed).
+- [ ] Optional: "Sign up to book" on a tutor page could bring families back to that tutor after
+      sign-up (a `?redirect=` on login and sign-up).
+
+## 7. Housekeeping
 
 - [ ] Old "Study Room:" sessions created by a fixed bug are still in the local dev database.
       Clean them up with:

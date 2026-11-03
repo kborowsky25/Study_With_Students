@@ -1,30 +1,11 @@
 import { Link } from '@tanstack/react-router'
 import { useAuth } from '../context/AuthContext'
 import Art from '../components/marketing/Art'
-import { MarketingPage, Wave } from '../components/marketing'
+import { MarketingPage } from '../components/marketing'
 import { FEE, PricingExplainer } from '../components/marketing/Pricing'
 
-// The original "How it works" page, with the real product steps. Styles: styles/marketing.css.
-
-const FEATURES = [
-  { art: 'findTutor',  label: 'Find tutors' },
-  { art: 'uni',        label: 'Get university guidance' },
-  { art: 'classes',    label: 'Join live classes' },
-  { art: 'studyRooms', label: 'Join study rooms' },
-  { art: 'forumBoard', label: 'Explore the student and tutor forum' },
-]
-
-const EASY_STEPS = [
-  { art: 'stepJoin',    text: 'Create an account and join the community' },
-  { art: 'stepMode',    text: "Choose Student mode or Tutor mode. It's up to you." },
-  { art: 'stepExplore', text: 'Explore the hub and find what interests you' },
-]
-
-const REASONS = [
-  ['Switch anytime', 'Move between modes whenever you feel like a change.'],
-  ['Enjoy dual benefits', 'Learn in one subject and teach in another.'],
-  ['Adapt to your needs', 'Match your mode to your goals.'],
-]
+// How it works: the steps for students and for tutors, pricing, and questions.
+// Styles: styles/marketing.css.
 
 const STUDENT_STEPS = [
   ['Find a tutor', 'Search by subject or university.'],
@@ -53,7 +34,7 @@ const FAQ = [
 
 function NumberedSteps({ title, steps }) {
   return (
-    <div className="mk-mode-steps">
+    <div>
       <h3 className="mk-h3">{title}</h3>
       <ol className="mk-numbered">
         {steps.map(([name, text], i) => (
@@ -72,89 +53,47 @@ export default function HowItWorks() {
   const start = isAuthenticated ? '/hub' : '/signup'
 
   return (
-    <MarketingPage title="How it works">
+    <MarketingPage path="/how-it-works">
       {/* Do more than just learn. */}
       <section className="mk-page-hero">
         <div className="mk-container mk-split">
           <div>
             <h1 className="mk-h2 mk-page-title">Do more than just <em>learn.</em></h1>
-            <p className="mk-sub mk-page-lead">
-              Study with Students is an all-inclusive hub for students and tutors alike. We want you
-              to be able to find everything you need right here.
+            <p className="mk-lead mk-page-lead">
+              Find a tutor, book sessions and keep track of your progress, with a free community of
+              students alongside: the forum, study notes, study rooms and live classes.
             </p>
             <div className="mk-actions">
               <Link to={start} className="mk-btn mk-btn-coral">Start my journey</Link>
             </div>
           </div>
-          <ul className="mk-feature-rows">
-            {FEATURES.map(({ art, label }) => (
-              <li key={art}>
-                <Art name={art} />
-                <span>{label}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="mk-page-art"><Art name="findTutor" /></div>
         </div>
       </section>
 
-      {/* Start exploring in 3 easy steps */}
-      <section className="mk-band mk-band-steps" aria-labelledby="easy-title">
-        <Wave top />
-        <div className="mk-container mk-center">
-          <h2 id="easy-title" className="mk-h2">Start exploring in 3 easy steps</h2>
-          <ol className="mk-step-cards brand-light">
-            {EASY_STEPS.map(({ art, text }, i) => (
-              <li key={art}>
-                <h3>Step {i + 1}</h3>
-                <Art name={art} />
-                <p>{text}</p>
-              </li>
-            ))}
-          </ol>
-          <Link to={start} className="mk-btn mk-btn-coral">Start now</Link>
-        </div>
-        <Wave shape="b" />
-      </section>
-
-      {/* Choosing modes */}
-      <section className="mk-section" aria-labelledby="modes-title">
-        <div className="mk-container mk-split">
-          <div>
-            <h2 id="modes-title" className="mk-h2">Choosing modes</h2>
-            <p className="mk-quote-line">“To tutor or not to tutor. That is the question.” — William Shakespeare</p>
-            <dl className="mk-reasons">
-              {REASONS.map(([name, text]) => (
-                <div key={name}><dt>{name}</dt><dd>{text}</dd></div>
-              ))}
-            </dl>
+      {/* The steps, for each side */}
+      <section className="mk-section" aria-labelledby="steps-title">
+        <div className="mk-container">
+          <h2 id="steps-title" className="mk-h2">Step by <em>step.</em></h2>
+          <div className="mk-flows">
+            <NumberedSteps title="For students and parents" steps={STUDENT_STEPS} />
+            <NumberedSteps title="For tutors" steps={TUTOR_STEPS} />
           </div>
-          <div className="mk-modes">
-            <figure className="mk-mode is-student"><Art name="studentMode" /><figcaption>Student mode</figcaption></figure>
-            <figure className="mk-mode is-tutor"><Art name="tutorMode" /><figcaption>Tutor mode</figcaption></figure>
-          </div>
-        </div>
-        <div className="mk-container mk-mode-grid">
-          <NumberedSteps title="In student mode" steps={STUDENT_STEPS} />
-          <NumberedSteps title="In tutor mode" steps={TUTOR_STEPS} />
         </div>
       </section>
 
       {/* How pricing works */}
-      <section className="mk-section" aria-labelledby="pricing-title">
+      <section className="mk-section" id="pricing" aria-labelledby="pricing-title">
         <div className="mk-container">
-          <div className="mk-head mk-center">
-            <p className="mk-eyebrow">Pricing</p>
-            <h2 id="pricing-title" className="mk-h2">How pricing <em>works.</em></h2>
-            <p className="mk-sub">Free to join. Tutors keep 100%.</p>
-          </div>
+          <h2 id="pricing-title" className="mk-h2">How pricing <em>works.</em></h2>
           <PricingExplainer />
         </div>
       </section>
 
       {/* Questions */}
       <section className="mk-section" aria-labelledby="faq-title">
-        <div className="mk-container mk-faq-wrap">
-          <h2 id="faq-title" className="mk-h2 mk-coral">Questions?</h2>
+        <div className="mk-container">
+          <h2 id="faq-title" className="mk-h2">Any <em>questions?</em></h2>
           <div className="mk-faq">
             {FAQ.map(([q, a]) => (
               <details key={q}>
@@ -165,7 +104,7 @@ export default function HowItWorks() {
           </div>
           <div className="mk-actions mk-faq-actions">
             <Link to={start} className="mk-btn mk-btn-coral">Join now</Link>
-            <Link to="/find-tutors" className="mk-btn mk-btn-slate">Find a tutor</Link>
+            <Link to="/tutors" className="mk-btn mk-btn-slate">Find a tutor</Link>
           </div>
         </div>
       </section>

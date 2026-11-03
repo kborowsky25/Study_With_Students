@@ -21,39 +21,22 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         gutter={8}
         toastOptions={{
           duration: 3500,
+          // Theme tokens (index.css), so toasts follow light and dark mode
           style: {
-            background: '#1a2640',
-            color: '#e8edf4',
-            border: '1px solid rgba(255,255,255,0.09)',
-            borderRadius: '12px',
-            fontSize: '13px',
-            fontWeight: '600',
+            background: 'var(--elevated)',
+            color: 'var(--text)',
+            border: '1px solid var(--border-strong)',
+            borderRadius: 'var(--radius)',
+            boxShadow: 'var(--shadow-pop)',
             fontFamily: "'Noto Sans JP', sans-serif",
-            padding: '12px 16px',
-            boxShadow: '0 8px 28px rgba(0,0,0,0.40)',
+            fontSize: '13px',
+            fontWeight: '500',
+            padding: '10px 14px',
             maxWidth: '360px',
           },
-          success: {
-            iconTheme: { primary: '#ff725e', secondary: '#1a2640' },
-            style: {
-              background: '#1a2640',
-              borderLeft: '3px solid #ff725e',
-            },
-          },
-          error: {
-            iconTheme: { primary: '#ef4444', secondary: '#1a2640' },
-            style: {
-              background: '#1a2640',
-              borderLeft: '3px solid #ef4444',
-            },
-          },
-          loading: {
-            iconTheme: { primary: '#ff725e', secondary: '#1a2640' },
-            style: {
-              background: '#1a2640',
-              borderLeft: '3px solid rgba(255,255,255,0.15)',
-            },
-          },
+          success: { iconTheme: { primary: 'var(--coral)', secondary: 'var(--elevated)' } },
+          error:   { iconTheme: { primary: 'var(--red)', secondary: 'var(--elevated)' } },
+          loading: { iconTheme: { primary: 'var(--coral)', secondary: 'var(--border-strong)' } },
         }}
       />
     </ThemeProvider>

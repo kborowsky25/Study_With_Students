@@ -44,13 +44,14 @@ def summary(api, person):
     return api.get('/api/referrals', user=person).get_json()
 
 
-def sign_up(api, db, code, email='sam@example.com', name='Sam Lee'):
-    """Register the way the sign-up page does, with the code from the invite link."""
+def sign_up(api, db, code, email='sam@example.com', name='Sam Lee', **extra):
+    """Register the way the sign-up page does, with the code from the invite link: an adult
+    student, unless `extra` says otherwise (account_type='parent')."""
     assert api.post('/api/auth/send-verification', json={'email': email}).status_code == 200
     otp = db.value('SELECT code FROM email_verifications WHERE email = %s', (email.lower(),))
     return api.post('/api/auth/register', json={
         'name': name, 'email': email, 'password': 'a-long-password', 'verification_code': otp,
-        'referral_code': code,
+        'referral_code': code, 'date_of_birth': '1990-05-01', **extra,
     })
 
 
@@ -196,7 +197,7 @@ class TestSignUp:
 
         res = api.post('/api/auth/register', json={
             'name': 'Sam Lee', 'email': 'sam@example.com', 'password': 'a-long-password',
-            'verification_code': otp, 'referral_code': code})
+            'verification_code': otp, 'referral_code': code, 'date_of_birth': '1990-05-01'})
         assert res.status_code == 409
         assert db.value('SELECT referred_by FROM users WHERE id_user = %s', (sam.id,)) is None
         assert db.value('SELECT COUNT(*) FROM referral_rewards') == 0
@@ -305,6 +306,45 @@ class TestCreditsComeBack:
         assert api.put(f'/api/events/{event_id}/status', user=sam, json={'status': 'canceled'}).status_code == 400
         assert db.value("SELECT event_id FROM referral_rewards WHERE kind = 'welcome'") == event_id
         assert summary(api, sam)['credits'] == 0
+
+
+# ── Families: parents sign up and pay, the bookings are the child's ──────────────
+
+class TestFamilies:
+    @pytest.fixture
+    def family(self, api, db, make):
+        """Maya invited Kate, a parent who signed up with her link. Kate's daughter Mia (15) is
+        linked to her and connected to Oliver (£22/hour)."""
+        maya, oliver = make.user('Maya Patel', email='maya@example.com'), make.tutor('Oliver Grant', rate=22)
+        kate = joined(api, db, code_of(api, maya), email='kate@example.com', name='Kate Lee', account_type='parent')
+        mia = make.child('Mia Lee')
+        make.link(kate, mia)
+        make.connect(mia, oliver)
+        return maya, kate, mia, oliver
+
+    def test_a_parents_welcome_credit_waives_the_childs_first_fee(self, api, db, family):
+        _, kate, mia, oliver = family
+        assert summary(api, kate)['credits'] == 1
+        assert api.get(f'/api/tutors/{oliver.tutor_id}/booking-info', user=mia).get_json()['fee_credits'] == 1
+
+        first = book(api, mia, oliver)[0]
+        assert (first['booking_fee'], first['fee_waived']) == (0, 1.1)
+        assert summary(api, kate)['credits'] == 0
+        assert book(api, mia, oliver, days=4)[0]['booking_fee'] == 1.1
+
+    def test_the_childs_first_paid_session_rewards_whoever_invited_the_parent(self, api, db, family, stripe):
+        maya, kate, mia, oliver = family
+        pay(api, stripe, mia, oliver, book(api, mia, oliver)[0]['id_event'])
+        assert db.all("SELECT user_id, referred_id FROM referral_rewards WHERE kind = 'family'") == [
+            {'user_id': maya.id, 'referred_id': kate.id}]
+        assert summary(api, maya)['credits'] == 1
+
+    def test_an_unlinked_parents_credit_stays_theirs(self, api, db, family):
+        _, kate, mia, oliver = family
+        db.run("UPDATE parent_links SET status = 'declined'")
+        db.run('UPDATE student_profiles SET date_of_birth = NULL WHERE id_user = %s', (mia.id,))  # may book alone
+        assert book(api, mia, oliver)[0]['booking_fee'] == 1.1
+        assert summary(api, kate)['credits'] == 1
 
 
 # ── Earning credits ───────────────────────────────────────────────────────────

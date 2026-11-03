@@ -203,7 +203,7 @@ def booking_info(tutor_id):
             'summary':          availability_summary(windows),
             'notice_hours':     tutor['booking_notice_hours'] or DEFAULT_NOTICE_HOURS,
             'intro_call':       bool(link) and intro_call_available(cur, tutor_id, link['id_student']),
-            'fee_credits':      available_credits(cur, uid, local_now()),
+            'fee_credits':      available_credits(cur, uid, local_now(), family=True),  # parents' credits count
         })
     finally:
         cur.close(); conn.close()

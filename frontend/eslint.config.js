@@ -34,13 +34,6 @@ export default [
     },
   },
 
-  // Marketing pages owned by the public-site workstream still carry dead code (unused
-  // constants and components). Listed in docs/QA-FINDINGS.md; drop this block once cleaned up.
-  {
-    files: ['src/pages/{AboutUs,BecomeATutor,Home,HowItWorks}.jsx'],
-    rules: { 'no-unused-vars': 'warn' },
-  },
-
   // Node-side files: build config and tests
   {
     files: ['*.config.js', 'src/**/*.test.{js,jsx}', 'src/test/**/*.{js,jsx}'],

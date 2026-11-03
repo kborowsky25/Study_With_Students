@@ -2,7 +2,7 @@
 // rate plus a booking fee, tutors keep 100%, the community is free.
 // The fee comes from the booking dialog, so the site and the app always agree.
 import { useState } from 'react'
-import { BOOKING_FEE_PERCENT } from '../features/BookSessionModal'
+import { BOOKING_FEE_PERCENT } from '../../lib/site'
 import { Icon } from '../ui'
 import { formatMoney } from '../../lib/format'
 

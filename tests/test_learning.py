@@ -147,3 +147,10 @@ class TestDirectory:
         assert [t['name'] for t in by_subject] == ['Priya Shah']
         by_uni = api.get('/api/tutors?university=King', user=maya).get_json()['tutors']
         assert [t['name'] for t in by_uni] == ['Priya Shah']
+
+
+@pytest.mark.parametrize('body', [[1, 2], 'text', {'subjects': 12, 'availability': 3, 'goals': 4.5}])
+def test_odd_request_bodies_are_handled(api, make, body):
+    maya = make.user('Maya Patel')
+    res = api.put('/api/learning-profile', user=maya, json=body)
+    assert res.status_code in (200, 400)  # never a 500

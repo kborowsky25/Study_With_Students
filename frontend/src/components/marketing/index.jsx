@@ -1,21 +1,28 @@
 // Building blocks for the public pages (Home, How it works, About us, Become a tutor,
 // Founding tutors, Log in, Sign up). Styles live in styles/marketing.css.
-import { useEffect } from 'react'
 import Navbar from '../layout/Navbar'
 import Footer from '../layout/Footer'
 import { Icon } from '../ui'
 import { useTheme } from '../../context/ThemeContext'
+import { PAGES } from '../../lib/site'
+import useMeta from '../../lib/useMeta'
 import '../../styles/marketing.css'
 
-/** Page shell: navbar, content and footer, themed through useTheme(). */
-export function MarketingPage({ title, className = '', footer = true, children }) {
+/**
+ * Page shell: navbar, content and footer, themed through useTheme().
+ * `path`: a page listed in lib/site.js, whose title and description go in the head;
+ * other pages (log in, sign up, not found) pass a `title`, and `noindex` if search
+ * engines should skip them.
+ */
+export function MarketingPage({ path, title, noindex = false, className = '', footer = true, children }) {
   const { dark } = useTheme()
-
-  useEffect(() => {
-    const previous = document.title
-    document.title = title ? `${title} · Study with Students` : 'Study with Students'
-    return () => { document.title = previous }
-  }, [title])
+  const page = PAGES[path]
+  useMeta({
+    title: page?.title ?? title,
+    description: page?.description ?? PAGES['/'].description,
+    path,
+    noindex,
+  })
 
   return (
     <div className={`mk ${dark ? 'mk-dark' : 'mk-light'} ${className}`}>

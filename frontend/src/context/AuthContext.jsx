@@ -45,7 +45,7 @@ export function AuthProvider({ children }) {
     })
   }, [])
 
-  // Exchange the stored JWT for fresh claims (plan, tutor approval) — on load and on demand.
+  // Exchange the stored JWT for fresh claims (roles, tutor approval) — on load and on demand.
   const refreshSession = useCallback(async () => {
     const { data } = await client.post('/auth/refresh')
     login(data.access_token, data.user)
@@ -59,11 +59,10 @@ export function AuthProvider({ children }) {
   useEffect(() => onSessionExpired(logout), [logout])
 
   const isAuthenticated = Boolean(token)
-  const isTutor    = Boolean(user?.is_tutor)
-  const isPremium  = Boolean(user?.is_premium)
+  const isTutor = Boolean(user?.is_tutor)
 
   return (
-    <AuthContext.Provider value={{ token, user, isAuthenticated, isTutor, isPremium, login, logout, updateUser, refreshSession }}>
+    <AuthContext.Provider value={{ token, user, isAuthenticated, isTutor, login, logout, updateUser, refreshSession }}>
       {children}
     </AuthContext.Provider>
   )

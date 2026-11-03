@@ -4,11 +4,16 @@ from flask_jwt_extended import get_jwt_identity
 from mysql.connector import Error
 
 from .config import Config
+from .scheduling import utc_offset
 
 
 def get_db():
+    """A connection whose clock is UK time, like the stored session times (scheduling.local_now):
+    NOW(), CURDATE() and CURRENT_TIMESTAMP defaults (message and post times) then agree with
+    them on any host, a UTC database included."""
+    offset = utc_offset()
     try:
-        return mysql.connector.connect(**Config.DB)
+        return mysql.connector.connect(**Config.DB, **({'time_zone': offset} if offset else {}))
     except Error as e:
         raise RuntimeError(f'DB connection failed: {e}') from e
 

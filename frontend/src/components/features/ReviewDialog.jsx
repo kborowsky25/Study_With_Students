@@ -62,7 +62,7 @@ export default function ReviewDialog({ event, onClose, onDone }) {
             <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{LABELS[shown]}</span>
           </div>
           <label className="field">
-            <span>Review</span>
+            <span>Review<small>Shown on {firstName(event.tutor_name)}'s public profile, without your name</small></span>
             <textarea className="input" value={comment} maxLength={1000} onChange={(e) => setComment(e.target.value)}
               placeholder={`What was ${firstName(event.tutor_name)} like?`} />
           </label>

@@ -23,13 +23,23 @@ setup and the project layout.
   pays one session's fee (`booking_fee` 0, `fee_waived` = the fee) and comes back if it's cancelled unpaid.
   Rewards are once per invited person, only after a Stripe-verified payment, at most 10 earned credits.
   Tutors earn XP instead (`users.xp`): for a family's first paid session and for an approved tutor.
+  Credits are family-wide: a student's session uses a linked parent's credit, and a parent who joined
+  through an invite earns their inviter a reward when their child's first session is paid.
   A full refund (webhook `charge.refunded`) cancels the session (`cancel_type` `refunded`) and takes
   back what its payment earned. Nothing here may cost money to run.
+- Parents and safety (`server/family.py`, `routes/family.py`, `routes/safety.py`, `contact_details.py`):
+  a parent links to a child once the child accepts (`parent_links`, at most 2). Under-18s (by
+  `student_profiles.date_of_birth`) need a linked parent before any session is booked. Who may message
+  whom is one rule (`CAN_WRITE` in `routes/messages.py`): anyone → approved tutor, approved tutor → their
+  accepted students, anyone → someone who wrote first. Contact details are hidden between tutors and
+  families and in any conversation with an under-18; the original is kept for admins only.
 - Matching: `server/matching.py` scores tutors 0–100 against the student's learning profile
   (`/api/learning-profile`, `/api/tutors/recommended`); reasons are shown to the student.
 - Passwords are hashed with werkzeug; legacy plaintext rows are upgraded on next login.
 - JSON: datetimes serialise as ISO-8601 and decimals as numbers (server/json.py).
 - SQL must always be parameterised — never interpolate user input.
+- Logged-out, indexable data (`/tutors`, `/subjects/…`, sitemap) comes only from `server/routes/public.py`:
+  a field allowlist, first name + initial, contact details scrubbed, reviews without reviewer names.
 - Abuse-prone endpoints get `@rate_limit` (server/ratelimit.py), placed *below* `@jwt_required`
   when keyed per user. Uploads go through `services/uploads.read_upload`.
 - Never return Stripe or exception text to the client — log it. See SECURITY.md before touching auth,
@@ -44,8 +54,9 @@ is generated) → student pays via Stripe (`paid`) → student can review once.
 Either side can cancel; only the tutor confirms; only verified Stripe checkouts mark `paid`.
 
 ## Frontend (frontend/src)
-- All API calls go through `api/client.js` (JWT interceptor, 401 → login), with `errorMessage()` for toasts.
-- `AuthContext.refreshSession()` re-issues the JWT with live claims — call it after plan/role changes.
+- All API calls go through `api/client.js` (JWT interceptor; a 401 signs the user out and the route
+  guards send protected pages to /login, public pages stay), with `errorMessage()` for toasts.
+- `AuthContext.refreshSession()` re-issues the JWT with live claims — call it after role changes.
 - Navigation lives in `lib/navigation.js` (sidebar, ⌘K palette and `g`+key shortcuts all read it).
 - Hub pages render inside `<HubLayout>` and set the header with `<PageTitle title icon />`.
 - Data: `lib/query.js` (stale-while-revalidate cache, `useQuery`, `invalidate`) with keys in
@@ -61,7 +72,10 @@ Either side can cancel; only the tutor confirms; only verified Stripe checkouts 
 - Colours only through tokens in `index.css`; neutral tints via `rgb(var(--fg) / 0.06)`.
 - Reuse the classes in `styles/app.css` and components in `components/ui/` (Icon, StatusPill,
   Stars, Card, …). No helper text under everything, no callout boxes, no emoji, no gradients.
-- Public marketing pages use the original homepage look (heavy uppercase hero, illustrations).
+- Public marketing pages use the original homepage look (heavy uppercase hero, illustrations), kept
+  calm: one heading style (a coral italic word), at most one illustration per section, one closing
+  call to action. Their titles and descriptions live in `lib/site.js`; `scripts/page-heads.mjs`
+  writes them into each page's HTML after `vite build` (search engines and link previews).
 
 ## Legacy
 `legacy/` holds the original Jinja/Flask app and its templates. Nothing imports it.

@@ -68,10 +68,12 @@ def get_learning_profile():
 @bp.route('/learning-profile', methods=['PUT'])
 @jwt_required()
 def save_learning_profile():
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Send the profile as a JSON object'}), 400
     values = {}
     if 'subjects' in data:
-        values['subjects'] = (data.get('subjects') or '').strip()[:255] or None
+        values['subjects'] = str(data.get('subjects') or '').strip()[:255] or None
     if 'level' in data:
         level = data.get('level') or None
         if level and level not in LEVELS:
@@ -89,9 +91,9 @@ def save_learning_profile():
             if not 5 <= values['budget'] <= 200:
                 return jsonify({'error': 'Budget must be between £5 and £200 an hour'}), 400
     if 'availability' in data:
-        values['availability'] = (data.get('availability') or '').strip()[:255] or None
+        values['availability'] = str(data.get('availability') or '').strip()[:255] or None
     if 'goals' in data:
-        values['goals'] = (data.get('goals') or '').strip()[:1000] or None
+        values['goals'] = str(data.get('goals') or '').strip()[:1000] or None
 
     uid = current_user_id()
     conn = get_db(); cur = conn.cursor(dictionary=True)

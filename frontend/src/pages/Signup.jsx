@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import toast from 'react-hot-toast'
 import { register as apiRegister, sendVerification } from '../api/auth'
 import { lookupInvite } from '../api/referrals'
@@ -8,6 +8,10 @@ import { currentInvite, forgetInvite } from '../lib/invite'
 import { Icon } from '../components/ui'
 import Art from '../components/marketing/Art'
 import { MarketingPage } from '../components/marketing'
+import { toDateInput } from '../lib/dates'
+
+// Students give their date of birth (under-18s link a parent before booking); parents don't.
+const ACCOUNTS = [['student', 'Student'], ['parent', 'Parent or guardian']]
 
 // ── 6-box OTP input ───────────────────────────────────────────────────────────
 function OTPInput({ value = '', onChange, disabled }) {
@@ -16,7 +20,9 @@ function OTPInput({ value = '', onChange, disabled }) {
 
   // Reflect a code set from outside (e.g. the dev-mode autofill)
   useEffect(() => {
-    if (value !== digits.join('')) setDigits([...value.slice(0, 6).split(''), ...Array(6).fill('')].slice(0, 6))
+    setDigits((current) => (value === current.join('')
+      ? current
+      : [...value.slice(0, 6).split(''), ...Array(6).fill('')].slice(0, 6)))
   }, [value])
 
   function handleChange(idx, raw) {
@@ -84,8 +90,10 @@ function OTPInput({ value = '', onChange, disabled }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function Signup() {
+  const search = useSearch({ strict: false })
   const [step,    setStep]    = useState('form')   // 'form' | 'verify'
-  const [form,    setForm]    = useState({ name: '', email: '', password: '', confirm: '' })
+  const [account, setAccount] = useState(search.as === 'parent' ? 'parent' : 'student')
+  const [form,    setForm]    = useState({ name: '', email: '', password: '', confirm: '', born: '' })
   const [otp,     setOtp]     = useState('')
   const [loading, setLoading] = useState(false)
   const [resendIn, setResendIn] = useState(0)
@@ -154,12 +162,13 @@ export default function Signup() {
     if (otp.length !== 6) { toast.error('Enter the full 6-digit code'); return }
     setLoading(true)
     try {
-      const { data } = await apiRegister(form.name, form.email, form.password, otp, invite)
+      const extra = account === 'parent' ? { account_type: 'parent' } : { account_type: 'student', date_of_birth: form.born }
+      const { data } = await apiRegister(form.name, form.email, form.password, otp, { ...extra, referral_code: invite })
       forgetInvite()
       login(data.access_token, data.user)
       const first = form.name.split(' ')[0]
       toast.success(data.invited_by ? `Welcome aboard, ${first}! Your first booking fee is on us.` : `Welcome aboard, ${first}!`)
-      navigate({ to: '/hub/student' })
+      navigate({ to: account === 'parent' ? '/hub/parent' : '/hub/student' })
     } catch (err) {
       toast.error(err.response?.data?.error ?? 'Registration failed')
     } finally {
@@ -192,12 +201,24 @@ export default function Signup() {
               /* ── Step 1: registration form ── */
               <>
                 <h1 className="mk-auth-title">Create an account</h1>
-                <p className="mk-sub">We're so excited for you to join and kickstart your journey!</p>
+                <p className="mk-sub">
+                  {account === 'parent'
+                    ? 'Follow your child’s sessions, progress and payments in one place.'
+                    : 'We’re so excited for you to join and kickstart your journey!'}
+                </p>
                 {inviter && (
                   <p className="mk-invite"><Icon name="redeem" />{inviter} invited you — your first booking fee is on us</p>
                 )}
 
                 <form onSubmit={handleSendCode} className="mk-form">
+                  <div className="mk-account" role="radiogroup" aria-label="Account type">
+                    {ACCOUNTS.map(([key, label]) => (
+                      <button key={key} type="button" role="radio" aria-checked={account === key}
+                        className={account === key ? 'is-on' : ''} onClick={() => setAccount(key)}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                   <input
                     type="text"
                     value={form.name}
@@ -218,6 +239,20 @@ export default function Signup() {
                     autoComplete="email"
                     className="mk-input"
                   />
+                  {account === 'student' && (
+                    <label className="mk-field">
+                      <span>Date of birth</span>
+                      <input
+                        type="date"
+                        value={form.born}
+                        onChange={update('born')}
+                        required
+                        max={toDateInput(new Date())}
+                        autoComplete="bday"
+                        className="mk-input"
+                      />
+                    </label>
+                  )}
                   <input
                     type="password"
                     value={form.password}
@@ -239,6 +274,12 @@ export default function Signup() {
                     autoComplete="new-password"
                     className="mk-input"
                   />
+                  {account === 'parent' && (
+                    <label className="mk-agree">
+                      <input type="checkbox" required />
+                      <span>I’m a parent or legal guardian, aged 18 or over</span>
+                    </label>
+                  )}
                   <button type="submit" disabled={loading} className="mk-btn mk-btn-coral mk-btn-block">
                     {loading ? 'Sending code…' : 'Start journey'}
                   </button>

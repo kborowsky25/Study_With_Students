@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { Avatar, EmptyState, Icon, Pill, SkeletonRows } from '../ui'
 import { useConfirm } from '../ui/confirm'
+import { useAutoFocus } from '../../hooks/useAutoFocus'
 import { errorMessage } from '../../api/client'
 import {
   DBS_STATUS_CHECK_URL, checkTypeLabel, getDbsChecks, getDbsDocument, parseDay, parseUtc, rejectDbsCheck, verifyDbsCheck,
@@ -148,6 +149,7 @@ function ReviewedRow({ check, busy, onRevoke }) {
 // ── Dialogs ───────────────────────────────────────────────────────────────────
 
 function RejectDialog({ check, busy, onSubmit, onClose }) {
+  const noteRef = useAutoFocus()
   const [note, setNote] = useState('')
   useEscape(onClose)
   const revoking = check.status === 'verified'
@@ -164,7 +166,7 @@ function RejectDialog({ check, busy, onSubmit, onClose }) {
         <div className="dialog-body">
           <label className="field">
             <span>Note to the tutor</span>
-            <textarea className="input" rows={4} maxLength={1000} autoFocus value={note} onChange={(e) => setNote(e.target.value)}
+            <textarea className="input" rows={4} maxLength={1000} ref={noteRef} value={note} onChange={(e) => setNote(e.target.value)}
               placeholder={revoking ? 'e.g. We need to look into something before you can take bookings.' : 'e.g. The details don’t match the Update Service record.'} />
           </label>
         </div>

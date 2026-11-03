@@ -1,4 +1,4 @@
-"""Events: 1-to-1 sessions. Students request, tutors confirm, students pay the tutor.
+"""Events: 1-to-1 sessions. Students request, tutors confirm, students (or their parents) pay the tutor.
 
 Booking rules (weekly hours, clashes, notice, intro calls, the 24-hour cancellation policy) live
 in server/scheduling.py. A booking can repeat weekly: the weeks share a `series_id` (the first
@@ -6,12 +6,14 @@ week's id) and one confirmation from the tutor answers them all.
 """
 import secrets
 from datetime import timedelta
+from decimal import ROUND_HALF_UP, Decimal
 
 from flask import Blueprint, Response, jsonify, request
 from flask_jwt_extended import jwt_required
 
 from ..config import Config
 from ..db import current_user_id, get_db
+from ..family import needs_parent, parent_required_error
 from ..referrals import release_credit, spend_credit
 from ..scheduling import (
     DEFAULT_NOTICE_HOURS,
@@ -53,8 +55,14 @@ def is_room_copy(ev):
     return ev.get('kind') == 'room' or str(ev.get('title') or '').startswith('Study Room: ')
 
 
+def money(value):
+    """Pounds rounded half-up to the penny (£11.125 → £11.13), as the booking dialog rounds them;
+    round() would go half-to-even on a binary float (→ £11.12)."""
+    return float(Decimal(str(value)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
+
+
 def booking_fee(amount):
-    return round(float(amount) * BOOKING_FEE_PERCENT / 100, 2)
+    return money(Decimal(str(amount)) * BOOKING_FEE_PERCENT / 100)
 
 EVENT_COLUMNS = """
     e.id_event, e.title, e.description, e.start_time, e.end_time, e.status, e.amount, e.booking_fee, e.fee_waived,
@@ -182,7 +190,7 @@ def get_events():
     try:
         cur.execute(f"""
             SELECT {EVENT_COLUMNS} {EVENT_JOINS}
-            WHERE tp.id_user = %s OR sp.id_user = %s
+            WHERE (tp.id_user = %s AND {real_session_sql()}) OR sp.id_user = %s
             ORDER BY e.start_time ASC
         """, (uid, uid))
         events = cur.fetchall()
@@ -261,6 +269,12 @@ def create_event():
         cur.execute("SELECT id_user FROM student_profiles WHERE id_student = %s FOR UPDATE", (student_id,))
         student_user = (cur.fetchone() or {}).get('id_user')
         tutor_id = tutor['id_tutor']
+        if student_user and needs_parent(cur, student_user):  # under-18s book once a parent is linked
+            name = None
+            if by_tutor:
+                cur.execute("SELECT name FROM users WHERE id_user = %s", (student_user,))
+                name = _first(cur.fetchall()[0]['name'], 'Your student')
+            return jsonify(parent_required_error(name)), 403
         if intro and not intro_call_available(cur, tutor_id, student_id):
             return jsonify({
                 'error': 'You’ve already had your free intro call with this tutor',
@@ -300,7 +314,7 @@ def create_event():
                               for when, problem in sorted(problems.items())],
             }), 409
 
-        amount = 0 if intro else round(float(tutor['hourly_rate'] or 20) * length.total_seconds() / 3600, 2)
+        amount = 0 if intro else money(Decimal(str(tutor['hourly_rate'] or 20)) * int(length.total_seconds()) / 3600)
         fee    = 0 if intro else booking_fee(amount)
         status = 'confirmed' if by_tutor else 'pending'
         ids = []

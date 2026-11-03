@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tests.support import iso, local
+from tests.support import Person, iso, local
 
 READS = ['/api/forum/categories', '/api/forum/recent', '/api/study-notes', '/api/study-rooms', '/api/classrooms']
 
@@ -95,3 +95,26 @@ def test_only_verified_tutors_host(api, make):
     for person in (maya, pete):
         assert api.post('/api/study-rooms', user=person, json=room).status_code == 403
         assert api.post('/api/classrooms', user=person, json=klass).status_code == 403
+
+
+def test_a_tutor_cannot_enrol_in_their_own_class(api, db, hosted):
+    host = db.one("""SELECT u.id_user, u.name, u.email FROM classrooms c
+                     JOIN tutor_profiles tp ON tp.id_tutor = c.tutor_id JOIN users u ON u.id_user = tp.id_user""")
+    oliver = Person(host['id_user'], host['name'], host['email'])
+    res = api.post(f'/api/classrooms/{hosted.klass}/enroll', user=oliver)
+    assert res.status_code == 400
+    assert db.value('SELECT COUNT(*) FROM classroom_enrollments') == 0
+
+
+def test_nobody_enrols_in_a_class_that_has_ended(api, db, make, hosted):
+    db.run('UPDATE classrooms SET start_time = %s, end_time = %s', (local(-1, hour=18), local(-1, hour=19)))
+    res = api.post(f'/api/classrooms/{hosted.klass}/enroll', user=make.user('Maya Patel'))
+    assert res.status_code == 400
+    assert db.value('SELECT COUNT(*) FROM classroom_enrollments') == 0
+
+
+def test_parent_accounts_cannot_save_study_rooms(api, db, make, hosted):
+    kate = make.parent('Kate Patel')
+    res = api.post(f'/api/study-rooms/{hosted.room}/calendar', user=kate)
+    assert res.status_code == 403
+    assert db.value("SELECT COUNT(*) FROM events WHERE kind = 'room'") == 0

@@ -1,7 +1,7 @@
 """Email verification codes: 6 random digits, valid for 10 minutes, dead after 5 wrong guesses."""
 import hmac
 import secrets
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 CODE_TTL     = timedelta(minutes=10)
 MAX_ATTEMPTS = 5
@@ -13,7 +13,7 @@ def issue_code(cur, email):
     cur.execute("DELETE FROM email_verifications WHERE email = %s", (email,))
     cur.execute(
         "INSERT INTO email_verifications (email, code, expires_at) VALUES (%s, %s, %s)",
-        (email, code, datetime.utcnow() + CODE_TTL),
+        (email, code, datetime.now(UTC).replace(tzinfo=None) + CODE_TTL),
     )
     return code
 
@@ -35,7 +35,7 @@ def redeem_code(cur, email, code):
         return 'Verification code already used'
     if attempts >= MAX_ATTEMPTS:
         return 'Too many wrong attempts — please request a new code'
-    if datetime.utcnow() > expires_at:
+    if datetime.now(UTC).replace(tzinfo=None) > expires_at:
         return 'Verification code expired — please request a new one'
     if not hmac.compare_digest(expected.encode(), code.encode()):
         cur.execute("UPDATE email_verifications SET attempts = attempts + 1 WHERE id = %s", (ver_id,))

@@ -2,6 +2,7 @@
 // Falls back to a free date + time entry when the tutor hasn't set weekly hours.
 import { useEffect, useMemo, useState } from 'react'
 import { getSlots } from '../../api/scheduling'
+import { toDateInput as dayKey } from '../../lib/dates'
 import { formatTime } from '../../lib/format'
 import { useQuery } from '../../lib/query'
 import './scheduling.css'
@@ -10,7 +11,6 @@ const SLOT_LENGTHS = [15, 30, 45, 60, 90, 120]
 const MAX_WEEKS = 12
 
 const pad = (n) => String(n).padStart(2, '0')
-const dayKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 const timeKey = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`
 
 /** Date + start time inputs. Reports a Date (or null while incomplete). */
@@ -21,6 +21,8 @@ export function DateTimeFields({ value, onChange }) {
   useEffect(() => {
     const d = new Date(`${date}T${time}`)
     onChange(Number.isNaN(d.getTime()) ? null : d)
+  // Report when the fields change; parents pass inline callbacks, which would loop
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, time])
 
   return (
@@ -73,6 +75,8 @@ export default function SlotPicker({
   useEffect(() => {
     if (readOnly || custom || !data?.has_availability || !value) return
     if (!data.slots.some((slot) => new Date(slot).getTime() === value.getTime())) onChange(null)
+  // Only when new slots arrive, not on every pick
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data])
 
   const freeEntry = custom || !supported || Boolean(error) || data?.has_availability === false

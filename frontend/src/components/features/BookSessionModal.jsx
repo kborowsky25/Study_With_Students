@@ -4,14 +4,15 @@ import { createEvent } from '../../api/events'
 import { getBookingInfo } from '../../api/scheduling'
 import { errorMessage } from '../../api/client'
 import { invalidate, useQuery } from '../../lib/query'
+import { toLocalISO } from '../../lib/dates'
 import { firstName, formatDate, formatMoney } from '../../lib/format'
 import { INTRO_MINUTES, REPEAT_WEEKS } from '../../lib/sessions'
+import { BOOKING_FEE_PERCENT } from '../../lib/site'
 import { Avatar, Icon } from '../ui'
 import { useConfirm } from '../ui/confirm'
 import SlotPicker from './SlotPicker'
 
 // Families pay the tutor's price plus this fee; tutors keep 100% of their price.
-export const BOOKING_FEE_PERCENT = 5
 
 const DURATIONS = [
   { minutes: 30, label: '30 min' },
@@ -20,10 +21,6 @@ const DURATIONS = [
   { minutes: 90, label: '1 h 30' },
   { minutes: 120, label: '2 h' },
 ]
-
-const pad = (n) => String(n).padStart(2, '0')
-const localISO = (d) =>
-  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
 
 function ConflictList({ conflicts }) {
   return (
@@ -77,8 +74,8 @@ export default function BookSessionModal({ tutor, onClose, onBooked }) {
     kind,
     title: form.title.trim() || 'Tutoring session',
     description: form.notes.trim(),
-    start_time: localISO(start),
-    end_time: localISO(new Date(start.getTime() + minutes * 60_000)),
+    start_time: toLocalISO(start),
+    end_time: toLocalISO(new Date(start.getTime() + minutes * 60_000)),
     repeat_weeks: repeat,
     skip_conflicts: skipConflicts,
   })

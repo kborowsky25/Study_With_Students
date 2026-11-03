@@ -86,3 +86,25 @@ def test_room_copies_cannot_be_reviewed(api, db, people):
     api.post(f'/api/study-rooms/{past_room(db, oliver)}/calendar', user=maya)
     event_id = db.value('SELECT id_event FROM events')
     assert api.post(f'/api/events/{event_id}/review', user=maya, json={'rating': 5}).status_code == 400
+
+
+def test_old_priced_room_copies_cannot_be_paid(api, db, people, monkeypatch):
+    """Copies saved before rooms were free still carry £20: checkout refuses them."""
+    from server.routes import payments
+    monkeypatch.setattr(payments, 'stripe_enabled', lambda: True)
+    maya, oliver = people
+    api.post(f'/api/study-rooms/{past_room(db, oliver)}/calendar', user=maya)
+    db.run("UPDATE events SET amount = 20, kind = 'session'")   # what the old bug stored
+    event_id = db.value('SELECT id_event FROM events')
+    res = api.post(f'/api/payments/checkout/{event_id}', user=maya)
+    assert res.status_code == 400
+
+
+def test_hosts_do_not_get_their_students_room_copies(api, db, people):
+    maya, oliver = people
+    room_id = host(api, oliver).get_json()['room']['id']
+    api.post(f'/api/study-rooms/{room_id}/calendar', user=maya)
+    assert api.get('/api/events', user=oliver).get_json()['events'] == []
+    assert len(api.get('/api/events', user=maya).get_json()['events']) == 1
+    profile = api.get(f'/api/users/{maya.id}/profile', user=maya).get_json()
+    assert profile['user']['stats']['sessions'] == 0

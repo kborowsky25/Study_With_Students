@@ -10,11 +10,12 @@ export const INTRO_MINUTES = 15
 export const REPEAT_WEEKS = [1, 2, 3, 4, 6, 8, 10, 12]
 
 /**
- * A study room a student saved to their calendar: stored as a free (£0) confirmed event
- * titled "Study Room: …" (server/routes/study_rooms.py). It isn't a 1-to-1 session, so it
- * never counts towards earnings, payments, reviews or session totals.
+ * A study room a student saved to their calendar: a free confirmed event with kind 'room',
+ * titled "Study Room: …" (server/routes/study_rooms.py; older copies have no kind, and some
+ * were stored with a price). It isn't a 1-to-1 session, so it never counts towards earnings,
+ * payments, reviews or session totals, and never asks to be paid. Same rule as is_room_copy().
  */
-export const isStudyRoomCopy = (ev) => Number(ev.amount) === 0 && String(ev.title ?? '').startsWith('Study Room: ')
+export const isStudyRoomCopy = (ev) => ev.kind === 'room' || String(ev.title ?? '').startsWith('Study Room: ')
 
 /** The video link opens 15 minutes before a confirmed or paid session and closes when it ends. */
 export function canJoin(ev, now = Date.now()) {
@@ -30,7 +31,7 @@ export function canReview(ev, now = Date.now()) {
 }
 
 /** Free sessions (intro calls, study rooms saved to the calendar) never need paying. */
-export const needsPayment = (ev) => ev.status === 'confirmed' && Number(ev.amount) > 0
+export const needsPayment = (ev) => ev.status === 'confirmed' && Number(ev.amount) > 0 && !isStudyRoomCopy(ev)
 
 /** The free 15-minute call before the first paid session with a tutor. */
 export const isIntro = (ev) => ev.kind === 'intro'

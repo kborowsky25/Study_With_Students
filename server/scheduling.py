@@ -38,6 +38,15 @@ def local_now():
     return datetime.now(_TZ).replace(tzinfo=None, microsecond=0)
 
 
+def utc_offset():
+    """The UK's offset from UTC right now, as MySQL's time_zone takes it ('+01:00' in summer),
+    or None without a time zone database (the server clock is used then)."""
+    if _TZ is None:
+        return None
+    minutes = int(datetime.now(_TZ).utcoffset().total_seconds() // 60)
+    return f"{'-' if minutes < 0 else '+'}{abs(minutes) // 60:02d}:{abs(minutes) % 60:02d}"
+
+
 # ── Weekly hours ──────────────────────────────────────────────────────────────
 
 def parse_hhmm(value):

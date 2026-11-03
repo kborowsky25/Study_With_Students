@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 
 from ..db import current_user_id, get_db
+from ..scheduling import local_now
 
 bp = Blueprint('classrooms', __name__, url_prefix='/api')
 
@@ -101,7 +102,7 @@ def create_classroom():
                                  f'{MAX_SUBJECT_LENGTH} and descriptions to {MAX_DESCRIPTION_LENGTH:,}'}), 400
     if not start or not end or end <= start:
         return jsonify({'error': 'Choose a valid start and end time'}), 400
-    if end <= datetime.now():
+    if end <= local_now():
         return jsonify({'error': 'That time has already passed'}), 400
     if link and (len(link) > MAX_LINK_LENGTH or not re.match(r'https://[^/\s]+\S*$', link, re.IGNORECASE)):
         return jsonify({'error': 'The meeting link must start with https://'}), 400
@@ -178,14 +179,23 @@ def enroll_classroom(classroom_id):
         student_id = row[0]
 
         # Lock the class so two students can't both take the last seat
-        cur.execute("SELECT capacity FROM classrooms WHERE id = %s FOR UPDATE", (classroom_id,))
+        cur.execute("""
+            SELECT c.capacity, c.end_time, tp.id_user FROM classrooms c
+            LEFT JOIN tutor_profiles tp ON tp.id_tutor = c.tutor_id
+            WHERE c.id = %s FOR UPDATE
+        """, (classroom_id,))
         c = cur.fetchone()
         if not c:
             return jsonify({'error': 'Classroom not found'}), 404
+        capacity, end_time, host_id = c
+        if host_id == uid:
+            return jsonify({'error': "You can't enrol in your own class"}), 400
+        if end_time and end_time <= local_now():
+            return jsonify({'error': 'This class has already ended'}), 400
 
         cur.execute("SELECT COUNT(*) FROM classroom_enrollments WHERE classroom_id = %s", (classroom_id,))
-        if cur.fetchone()[0] >= c[0]:
-            return jsonify({'error': f'Classroom is full ({c[0]} max)'}), 409
+        if cur.fetchone()[0] >= capacity:
+            return jsonify({'error': f'Classroom is full ({capacity} max)'}), 409
 
         cur.execute(
             "INSERT IGNORE INTO classroom_enrollments (classroom_id, student_id) VALUES (%s, %s)",

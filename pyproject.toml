@@ -15,11 +15,6 @@ markers = [
     "free_community: the community is free for every logged-in user (new pricing; xfail until it is merged)",
     "booking_fee: booked sessions carry a 5% booking fee (new pricing; xfail until it is merged)",
 ]
-filterwarnings = [
-    # server/ still calls datetime.utcnow() (deprecated in Python 3.12) — tracked in docs/QA-FINDINGS.md.
-    # Silenced only for server code, so any new warning still shows up.
-    "ignore:datetime.datetime.utcnow:DeprecationWarning:server",
-]
 
 [tool.ruff]
 target-version = "py312"

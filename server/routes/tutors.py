@@ -449,7 +449,8 @@ def respond_tutor_request(request_id):
     On accept: automatically adds to active_tutors (student side) and active_students (tutor side).
     """
     uid    = current_user_id()
-    action = request.get_json().get('action')  # 'accepted' or 'declined'
+    data   = request.get_json(silent=True)
+    action = data.get('action') if isinstance(data, dict) else None  # 'accepted' or 'declined'
     if action not in ('accepted', 'declined'):
         return jsonify({'error': 'Invalid action — must be accepted or declined'}), 400
 

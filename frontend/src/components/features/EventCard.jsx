@@ -15,7 +15,9 @@ import {
 } from '../../api/scheduling'
 import { getTutorProfile } from '../../api/tutors'
 import { errorMessage } from '../../api/client'
+import { toDateInput as dayKey, toLocalISO } from '../../lib/dates'
 import { firstName, formatDate, formatMoney, formatTime, formatWhen } from '../../lib/format'
+import { useAutoFocus } from '../../hooks/useAutoFocus'
 import { invalidate } from '../../lib/query'
 import {
   FREE_CANCEL_HOURS, REPEAT_WEEKS, canAddToCalendar, canJoin, canReschedule, canReview, feeWaived, googleCalendarUrl,
@@ -39,9 +41,6 @@ const TONE = {
 const tint = (color, pct = 14) => `color-mix(in srgb, ${color} ${pct}%, transparent)`
 const ellipsis = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
 
-const pad = (n) => String(n).padStart(2, '0')
-const dayKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-const localISO = (d) => `${dayKey(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
 
 /** A request the tutor never answered before it started counts as expired, not pending. */
 const visualStatus = (ev) =>
@@ -572,6 +571,7 @@ const DURATIONS = [
 
 /** A tutor books a session with one of their students, once or weekly. It's created as confirmed. */
 export function ScheduleSessionDialog({ students, studentId, date, onClose, onScheduled }) {
+  const titleRef = useAutoFocus()
   const tomorrow = dayKey(new Date(Date.now() + 86_400_000))
   const firstDay = date && dayKey(date) >= dayKey(new Date()) ? dayKey(date) : tomorrow
   const [form, setForm] = useState({
@@ -612,8 +612,8 @@ export function ScheduleSessionDialog({ students, studentId, date, onClose, onSc
       student_id: student.id_student,
       title: form.title.trim() || 'Tutoring session',
       description: form.notes.trim(),
-      start_time: localISO(start),
-      end_time: localISO(end),
+      start_time: toLocalISO(start),
+      end_time: toLocalISO(end),
       repeat_weeks: form.repeat,
       skip_conflicts: skipConflicts,
     })
@@ -672,7 +672,7 @@ export function ScheduleSessionDialog({ students, studentId, date, onClose, onSc
           )}
           <label className="field">
             <span>What will you cover?</span>
-            <input className="input" value={form.title} onChange={set('title')} placeholder="e.g. Past paper walkthrough" maxLength={120} autoFocus />
+            <input className="input" value={form.title} onChange={set('title')} placeholder="e.g. Past paper walkthrough" maxLength={120} ref={titleRef} />
           </label>
           <div className="field-row">
             <label className="field">

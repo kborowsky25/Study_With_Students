@@ -113,25 +113,6 @@ html.light ::-webkit-scrollbar        { width: 8px; height: 8px; }
 html.light ::-webkit-scrollbar-track  { background: transparent; }
 html.light ::-webkit-scrollbar-thumb  { background: rgba(27, 38, 59, 0.14); border-radius: 4px; }
 
-/* ── Material Symbols font-variation-settings (required for icons to render) */
-
-.material-symbols-outlined {
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-  font-family: 'Material Symbols Outlined';
-  font-size: 24px;
-  line-height: 1;
-  letter-spacing: normal;
-  text-transform: none;
-  display: inline-block;
-  white-space: nowrap;
-  word-wrap: normal;
-  direction: ltr;
-  -webkit-font-feature-settings: 'liga';
-  font-feature-settings: 'liga';
-  -webkit-font-smoothing: antialiased;
-  user-select: none;
-}
-
 /* ── Keyframes ───────────────────────────────────────────────────────────── */
 
 @keyframes slideUpFade {

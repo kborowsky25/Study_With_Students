@@ -63,6 +63,7 @@ describe('money', () => {
     expect(needsPayment(session())).toBe(true)
     expect(needsPayment(session({ amount: '22.00' }))).toBe(true)
     expect(needsPayment(session({ amount: 0 }))).toBe(false)
+    expect(needsPayment(session({ title: 'Study Room: Physics', amount: 20 }))).toBe(false)
     expect(needsPayment(session({ status: 'paid' }))).toBe(false)
     expect(needsPayment(session({ status: 'pending' }))).toBe(false)
   })
@@ -97,7 +98,8 @@ describe('money', () => {
   it('isStudyRoomCopy: free calendar copies of study rooms', () => {
     expect(isStudyRoomCopy(session({ title: 'Study Room: Physics', amount: 0 }))).toBe(true)
     expect(isStudyRoomCopy(session({ title: 'Study Room: Physics', amount: '0.00' }))).toBe(true)
-    expect(isStudyRoomCopy(session({ title: 'Study Room: Physics', amount: 22 }))).toBe(false)
+    expect(isStudyRoomCopy(session({ title: 'Study Room: Physics', amount: 20 }))).toBe(true)  // an old priced copy
+    expect(isStudyRoomCopy(session({ title: 'Physics', kind: 'room', amount: 0 }))).toBe(true)
     expect(isStudyRoomCopy(session({ title: 'Physics', amount: 0 }))).toBe(false)
     expect(isStudyRoomCopy(session({ title: null, amount: 0 }))).toBe(false)
   })

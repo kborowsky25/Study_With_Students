@@ -53,6 +53,11 @@ COLUMN_MIGRATIONS = [
     ('users',            'referral_code',          "VARCHAR(12) NULL UNIQUE"),
     ('users',            'referred_by',            "INT NULL, ADD KEY ix_users_referred_by (referred_by)"),
     ('events',           'fee_waived',             "DECIMAL(10,2) NOT NULL DEFAULT 0.00"),
+    # Parents and safer messaging: the parent role, students' dates of birth (under-18 rules) and
+    # the text of a message before its contact details were hidden (kept for moderation)
+    ('users',            'is_parent',              "TINYINT(1) NOT NULL DEFAULT 0"),
+    ('student_profiles', 'date_of_birth',          "DATE NULL"),
+    ('messages',         'original_message',       "TEXT NULL"),
     # The Stripe PaymentIntent that paid a session: a refund (charge.refunded) finds it by this
     ('events',           'stripe_payment_intent',  "VARCHAR(255) NULL, ADD KEY ix_events_payment_intent (stripe_payment_intent)"),
 ]

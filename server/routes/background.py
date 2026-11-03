@@ -15,7 +15,7 @@ Reused elsewhere:
 import os
 import re
 import secrets
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 from flask import Blueprint, jsonify, request, send_from_directory
 from flask_jwt_extended import get_jwt, jwt_required, verify_jwt_in_request
@@ -109,7 +109,7 @@ _ORDER = {
 
 
 def _today():
-    return datetime.utcnow().date()  # SQL compares with UTC_DATE()
+    return datetime.now(UTC).replace(tzinfo=None).date()  # SQL compares with UTC_DATE()
 
 
 def _add_years(day, years):
@@ -331,7 +331,7 @@ def submit_background_check():
             return jsonify({'error': message}), 409
 
         saved = _save_document(*document) if document else None
-        now = datetime.utcnow()
+        now = datetime.now(UTC).replace(tzinfo=None)
         values = (
             fields['check_type'], fields['certificate_number'], fields['certificate_number'][-4:],
             fields['issue_date'], fields['legal_name'], fields['date_of_birth'],
@@ -438,7 +438,7 @@ def admin_verify_background_check(check_id):
         if recheck_due <= _today():
             return jsonify({'error': 'This certificate is too old to verify. Ask the tutor for a newer one.'}), 400
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC).replace(tzinfo=None)
         cur.execute("""
             UPDATE background_checks
             SET status = 'verified', verified_at = %s, reviewed_at = %s, reviewed_by = %s,
@@ -480,7 +480,7 @@ def admin_reject_background_check(check_id):
             SET status = 'rejected', reviewer_note = %s, reviewed_at = %s, reviewed_by = %s,
                 certificate_number = NULL, date_of_birth = NULL, document_path = NULL
             WHERE id = %s
-        """, (note, datetime.utcnow(), _reviewer(), check_id))
+        """, (note, datetime.now(UTC).replace(tzinfo=None), _reviewer(), check_id))
         conn.commit()
         updated = _fetch(cur, 'bc.id = %s', check_id)
     finally:
