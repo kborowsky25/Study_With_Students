@@ -147,7 +147,7 @@ export function TutorGrid({ tutors, loading, headingLevel }) {
   if (loading) {
     return (
       <ul className="pub-grid" aria-busy="true" aria-label="Loading tutors">
-        {[0, 1, 2].map((i) => <li key={i} className="pub-skeleton" />)}
+        {[0, 1, 2].map((i) => <li key={`loading-${i}`} className="pub-skeleton" />)}
       </ul>
     )
   }

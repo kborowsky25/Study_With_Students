@@ -1,7 +1,7 @@
 // Motion for the public site, kept small and optional:
 // - useReveal: anything with the class `mk-reveal` fades up the first time it scrolls into
 //   view; `style={{ '--i': n }}` staggers siblings. Elements rendered later (tutor cards
-//   after a fetch) are picked up too.
+//   after a fetch), or that gain the class when React reuses a node, are picked up too.
 // - CountUp: a number that counts up once it is on screen.
 // Both do nothing for people who ask for reduced motion, and the CSS (styles/marketing.css)
 // only hides content once this script has started, so nothing stays hidden without it.
@@ -31,9 +31,12 @@ export function useReveal(rootRef) {
     }
     watch(root)
     const added = new MutationObserver((changes) => {
-      for (const change of changes) change.addedNodes.forEach((node) => node.nodeType === 1 && watch(node))
+      for (const change of changes) {
+        if (change.type === 'attributes') watch(change.target)
+        else change.addedNodes.forEach((node) => node.nodeType === 1 && watch(node))
+      }
     })
-    added.observe(root, { childList: true, subtree: true })
+    added.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] })
     root.classList.add('mk-motion')
 
     return () => {

@@ -479,7 +479,7 @@
   .mk-feature, .mk-feature:nth-child(-n + 2) { grid-column: auto; flex-direction: row; }
   .mk-feature-art, .mk-feature:nth-child(-n + 2) .mk-feature-art { flex: none; width: 128px; height: auto; min-height: 112px; padding: 14px; border-right: 1px solid var(--border); border-bottom: 0; }
   .mk-feature-art .sws-ill { width: 100%; height: auto; }
-  .mk-feature-body { align-self: center; padding: 16px 18px; }
+  .mk-feature-body { align-self: center; padding: 16px 18px; border-top: 0; }
 
   /* Steps run down the page, joined on the left */
   .mk-steps { grid-template-columns: minmax(0, 1fr); gap: 0; max-width: 560px; }
@@ -521,6 +521,8 @@
   .mk-numbers p { font-size: 15px; }
   .mk-cta-art { width: 180px; }
   .mk-app .dash-actions, .mk-app .group-head, .mk-app .group-head + .row { display: none; }
+  .mk-app .level > * { white-space: nowrap; }
+  .mk-app .level-track { width: 72px; }
   .mk-unis { margin-top: 56px; }
   .mk-snip .status-label { display: none; }   /* the status glyph alone, so the title fits */
   .mk-feature-art, .mk-feature:nth-child(-n + 2) .mk-feature-art { width: 104px; min-height: 104px; padding: 12px; }
