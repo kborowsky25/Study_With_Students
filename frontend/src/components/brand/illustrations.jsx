@@ -494,18 +494,20 @@ function Phone({ x, y, a = 0 }) {
   )
 }
 
-/** Pencil from its eraser end (x1, y1) to its tip (x2, y2). */
+/** Pencil from its eraser end (x1, y1) to its tip (x2, y2), `w` thick. The eraser, metal band
+ *  and tip scale with the thickness, so a short pencil in a hand keeps its proportions. */
 function Pencil({ x1, y1, x2, y2, w = 7 }) {
   const a = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI
   const L = Math.hypot(x2 - x1, y2 - y1)
   const h = w / 2
+  const k = w / 7
   return (
     <g transform={`translate(${x1} ${y1}) rotate(${r1(a)})`}>
-      <rect x="0" y={-h} width="7" height={w} rx={h} fill={ILL.coralSoft} />
-      <rect x="5" y={-h} width="4.5" height={w} fill={ILL.cloth} />
-      <rect x="9.5" y={-h} width={L - 21.5} height={w} fill={ILL.coral} />
-      <path d={`M${L - 12.5} ${-h}L${L} 0L${L - 12.5} ${h}Z`} fill={ILL.paperShade} />
-      <path d={`M${L - 4.6} ${-h * 0.37}L${L} 0L${L - 4.6} ${h * 0.37}Z`} fill={ILL.ink} />
+      <rect x="0" y={-h} width={7 * k} height={w} rx={h} fill={ILL.coralSoft} />
+      <rect x={5 * k} y={-h} width={4.5 * k} height={w} fill={ILL.cloth} />
+      <rect x={9.5 * k} y={-h} width={Math.max(0, L - 21.5 * k)} height={w} fill={ILL.coral} />
+      <path d={`M${L - 12.5 * k} ${-h}L${L} 0L${L - 12.5 * k} ${h}Z`} fill={ILL.paperShade} />
+      <path d={`M${L - 4.6 * k} ${-h * 0.37}L${L} 0L${L - 4.6 * k} ${h * 0.37}Z`} fill={ILL.ink} />
     </g>
   )
 }

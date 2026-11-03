@@ -57,7 +57,8 @@ export default function Home() {
     <MarketingPage path="/">
       <section className="mk-hero">
         <div className="mk-container">
-          <h1 className="mk-display mk-reveal">Tutoring from students who sat the same exams</h1>
+          {/* Shown at once, not faded in: it is the first thing people (and page-speed checks) see */}
+          <h1 className="mk-display">Tutoring from students who sat the same exams</h1>
           <p className="mk-lead mk-reveal" style={{ '--i': 1 }}>Verified, DBS-checked tutors from top UK universities.</p>
           <div className="mk-actions mk-reveal" style={{ '--i': 2 }}>
             <Link to="/tutors" className="mk-btn mk-btn-primary">Find a tutor</Link>
