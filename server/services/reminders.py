@@ -17,7 +17,7 @@ from ..config import Config
 from ..db import get_db
 from ..routes.study_rooms import CALENDAR_PREFIX
 from ..scheduling import local_now
-from .email import mail_configured
+from .email import mail_configured, smtp_send
 from .ics import google_calendar_url, title_for
 
 # (name, sent when the session starts in more than … and at most …)
@@ -124,15 +124,9 @@ def send_email(to_email, subject, html, text):
         return
     msg = MIMEMultipart('alternative')
     msg['Subject'] = subject
-    msg['From']    = Config.MAIL_USERNAME
-    msg['To']      = to_email
     msg.attach(MIMEText(text, 'plain'))
     msg.attach(MIMEText(html, 'html'))
-    with smtplib.SMTP(Config.MAIL_SERVER, Config.MAIL_PORT) as server:
-        server.ehlo()
-        server.starttls()
-        server.login(Config.MAIL_USERNAME, Config.MAIL_PASSWORD)
-        server.sendmail(Config.MAIL_USERNAME, to_email, msg.as_string())
+    smtp_send(msg, to_email)
 
 
 def send_due_reminders(dry_run=False):

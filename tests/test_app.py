@@ -55,3 +55,40 @@ def test_utc_offset_is_in_mysql_format(monkeypatch):
     assert scheduling.utc_offset() in ('-05:00', '-04:00')
     monkeypatch.setattr(scheduling, '_TZ', None)
     assert scheduling.utc_offset() is None
+
+
+def test_a_pasted_ca_certificate_is_written_to_a_file():
+    from server.config import _ca_file
+    pem = '-----BEGIN CERTIFICATE-----\\nMIIBfake\\n-----END CERTIFICATE-----'  # line breaks kept as \n
+    path = _ca_file(pem)
+    with open(path) as f:
+        assert f.read() == '-----BEGIN CERTIFICATE-----\nMIIBfake\n-----END CERTIFICATE-----'
+    assert _ca_file('/etc/ssl/ca.pem') == '/etc/ssl/ca.pem'
+
+
+def test_mail_goes_from_mail_from_when_set(monkeypatch):
+    from email.mime.text import MIMEText
+
+    from server.config import Config
+    from server.services import email
+
+    sent = {}
+
+    class FakeSMTP:
+        def __init__(self, host, port): sent['server'] = (host, port)
+        def __enter__(self): return self
+        def __exit__(self, *exc): return False
+        def ehlo(self): pass
+        def starttls(self): pass
+        def login(self, user, password): sent['login'] = user
+        def sendmail(self, sender, to, body): sent.update(sender=sender, to=to, body=body)
+
+    monkeypatch.setattr(email.smtplib, 'SMTP', FakeSMTP)
+    monkeypatch.setattr(Config, 'MAIL_SERVER', 'smtp.example.com')
+    monkeypatch.setattr(Config, 'MAIL_USERNAME', 'login@example.com')
+    monkeypatch.setattr(Config, 'MAIL_FROM', 'Study with Students <hello@example.com>')
+    msg = MIMEText('hi')
+    msg['Subject'] = 'Hello'
+    email.smtp_send(msg, 'maya@example.com')
+    assert (sent['login'], sent['sender'], sent['to']) == ('login@example.com', 'hello@example.com', 'maya@example.com')
+    assert 'From: Study with Students <hello@example.com>' in sent['body']

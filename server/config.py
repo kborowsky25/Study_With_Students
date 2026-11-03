@@ -1,5 +1,6 @@
 """Runtime configuration, read once from the environment (and `.env` if present)."""
 import os
+import tempfile
 from datetime import timedelta
 
 from dotenv import load_dotenv
@@ -10,6 +11,17 @@ load_dotenv(os.path.join(ROOT_DIR, '.env'))
 
 def _env(key, default=''):
     return os.environ.get(key, default)
+
+
+def _ca_file(value):
+    """DB_SSL_CA: a path to the database host's CA certificate, or the certificate itself
+    (pasted into the hosting dashboard), which is then written to a temporary file."""
+    if '-----BEGIN' not in value:
+        return value
+    path = os.path.join(tempfile.gettempdir(), 'db-ca.pem')
+    with open(path, 'w') as f:
+        f.write(value.replace('\\n', '\n'))  # some dashboards keep line breaks as \n
+    return path
 
 
 # Vercel sets VERCEL=1 on every deployment and VERCEL_ENV to production, preview or development.
@@ -30,7 +42,7 @@ class Config:
 
     FRONTEND_URL = _env('FRONTEND_URL', 'http://localhost:5173')
 
-    # Database (hosted MySQL providers usually need TLS: set DB_SSL_CA to a CA bundle path)
+    # Database (hosted MySQL providers need TLS: DB_SSL_CA is the CA certificate, or a path to it)
     DB = {
         'host':     _env('DB_HOST', 'localhost'),
         'port':     int(_env('DB_PORT', '3306')),
@@ -38,18 +50,20 @@ class Config:
         'user':     _env('DB_USER', 'root'),
         'password': _env('DB_PASSWORD', ''),
         'connection_timeout': 10,
-        **({'ssl_ca': _env('DB_SSL_CA'), 'ssl_verify_cert': True} if _env('DB_SSL_CA') else {}),
+        **({'ssl_ca': _ca_file(_env('DB_SSL_CA')), 'ssl_verify_cert': True} if _env('DB_SSL_CA') else {}),
     }
 
     # Admin
     SUPER_ADMIN_EMAIL = _env('SUPER_ADMIN_EMAIL', '').lower()
     ADMIN_SECRET      = _env('ADMIN_SECRET', '')
 
-    # Mail (unset → codes are printed to the terminal and returned in debug mode)
+    # Mail (unset → codes are printed to the terminal and returned in debug mode).
+    # MAIL_FROM, e.g. "Study with Students <hello@…>", when the SMTP login isn't the sender.
     MAIL_SERVER   = _env('MAIL_SERVER')
     MAIL_PORT     = int(_env('MAIL_PORT', '587'))
     MAIL_USERNAME = _env('MAIL_USERNAME')
     MAIL_PASSWORD = _env('MAIL_PASSWORD')
+    MAIL_FROM     = _env('MAIL_FROM')
 
     # Stripe
     STRIPE_SECRET_KEY     = _env('STRIPE_SECRET_KEY')
