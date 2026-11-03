@@ -6,7 +6,7 @@ import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { getPublicTutor } from '../api/public'
 import { Icon } from '../components/ui'
 import {
-  BookingSteps, EmptyBox, Price, PublicPage, SignUpCta, StarRating, TutorAvatar,
+  BookingSteps, EmptyBox, Price, PublicPage, SignUpCta, StarRating, TutorAvatar, Verified,
   clip, hourlyPrice, listText, subjectLink, tutorLink,
 } from '../components/public'
 import { BOOKING_FEE_PERCENT } from '../lib/site'
@@ -113,15 +113,15 @@ export default function PublicTutor() {
   if (notFound || (error && !tutor)) {
     return (
       <PublicPage>
-        <section className="pub-hero">
-          <div className="pub-container">
+        <section className="mk-section pub-page">
+          <div className="mk-container">
             {notFound ? (
               <EmptyBox heading="h1" title="This tutor isn’t listed"
                 text="The profile may have been taken down or isn’t finished yet. Plenty of other tutors are ready to help."
-                actions={<Link to="/tutors" className="pub-btn pub-btn-coral">Browse tutors</Link>} />
+                actions={<Link to="/tutors" className="mk-btn mk-btn-primary">Browse tutors</Link>} />
             ) : (
               <EmptyBox heading="h1" alert title="We couldn’t load this tutor" text="Check your connection and try again."
-                actions={<button type="button" className="pub-btn pub-btn-coral" onClick={() => refetch().catch(() => {})}>Try again</button>} />
+                actions={<button type="button" className="mk-btn mk-btn-primary" onClick={() => refetch().catch(() => {})}>Try again</button>} />
             )}
           </div>
         </section>
@@ -132,8 +132,8 @@ export default function PublicTutor() {
   if (loading || !tutor) {
     return (
       <PublicPage>
-        <section className="pub-hero" aria-busy="true" aria-label="Loading tutor">
-          <div className="pub-container pub-profile">
+        <section className="mk-section pub-page" aria-busy="true" aria-label="Loading tutor">
+          <div className="mk-container pub-profile">
             <div className="pub-skeleton" style={{ minHeight: 360 }} />
             <div className="pub-skeleton" style={{ minHeight: 300 }} />
           </div>
@@ -147,8 +147,8 @@ export default function PublicTutor() {
 
   return (
     <PublicPage>
-      <section className="pub-hero">
-        <div className="pub-container">
+      <section className="mk-section pub-page">
+        <div className="mk-container">
           <nav aria-label="Breadcrumb">
             <ol className="pub-crumbs">
               <li><Link to="/tutors">Tutors</Link></li>
@@ -158,45 +158,43 @@ export default function PublicTutor() {
           </nav>
 
           <div className="pub-profile">
-            <div className="pub-profile-main">
+            <div className="pub-profile-main mk-reveal">
               <div className="pub-profile-head">
-                <TutorAvatar tutor={tutor} size={112} />
-                <div style={{ minWidth: 0 }}>
-                  {tutor.verified && <span className="pub-tag" style={{ marginBottom: 12 }}><Icon name="verified" fill />Verified tutor</span>}
-                  <h1 className="pub-h1">{tutor.name}</h1>
-                </div>
+                <TutorAvatar tutor={tutor} size={88} />
+                <h1 className="mk-title">{tutor.name}</h1>
               </div>
               <p className="pub-profile-place">{place}</p>
               <div className="pub-profile-facts">
+                {tutor.verified && <Verified label="Verified tutor" />}
                 <StarRating rating={tutor.rating} count={tutor.review_count} />
                 {tutor.levels.length > 0 && <span className="pub-levels">Teaches {listText(tutor.levels)}</span>}
               </div>
             </div>
 
-            <aside className="pub-box pub-book" aria-label={`Book ${tutor.first_name}`}>
+            <aside className="pub-book mk-reveal" style={{ '--i': 2 }} aria-label={`Book ${tutor.first_name}`}>
               <Price rate={tutor.hourly_rate} note={false} />
               <dl className="pub-split">
                 <div><dt>{tutor.first_name} keeps</dt><dd>{formatMoney(price.tutor, { decimals: 2 })}</dd></div>
                 <div><dt>Booking fee ({BOOKING_FEE_PERCENT}%)</dt><dd>{formatMoney(price.fee, { decimals: 2 })}</dd></div>
               </dl>
-              <div className="pub-actions">
+              <div className="mk-actions">
                 {isAuthenticated ? (
-                  <Link to="/tutor/$tutorId" params={{ tutorId: String(tutor.id) }} className="pub-btn pub-btn-coral">
+                  <Link to="/tutor/$tutorId" params={{ tutorId: String(tutor.id) }} className="mk-btn mk-btn-primary">
                     Request &amp; book in the app<Icon name="arrow_forward" />
                   </Link>
                 ) : (
                   <>
-                    <Link to="/signup" className="pub-btn pub-btn-coral">Sign up to book</Link>
-                    <Link to="/login" className="pub-btn pub-btn-slate">Log in</Link>
+                    <Link to="/signup" className="mk-btn mk-btn-primary">Sign up to book</Link>
+                    <Link to="/login" className="mk-btn mk-btn-ghost">Log in</Link>
                   </>
                 )}
               </div>
               <p className="pub-book-note">Free to join. You pay only after {tutor.first_name} confirms a session.</p>
             </aside>
 
-            <div className="pub-profile-details">
+            <div className="pub-profile-details mk-reveal" style={{ '--i': 1 }}>
               <div className="pub-profile-block">
-                <h2 className="pub-h3">Subjects</h2>
+                <h2>Subjects</h2>
                 <ul className="pub-chips">
                   {tutor.subjects.map((s) => (
                     <li key={s.slug}><Link {...subjectLink(s.slug)} className="pub-chip">{s.name}</Link></li>
@@ -205,13 +203,13 @@ export default function PublicTutor() {
               </div>
 
               <div className="pub-profile-block">
-                <h2 className="pub-h3">About {tutor.first_name}</h2>
+                <h2>About {tutor.first_name}</h2>
                 <p className="pub-about">{tutor.about}</p>
               </div>
 
               {tutor.reviews.length > 0 && (
                 <div className="pub-profile-block">
-                  <h2 className="pub-h3">What students say</h2>
+                  <h2>What students say</h2>
                   <ul className="pub-reviews">
                     {tutor.reviews.map((r, i) => (
                       <li key={i}>

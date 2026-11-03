@@ -5,7 +5,8 @@ import { useTheme } from '../../context/ThemeContext'
 import { Icon } from '../ui'
 import { Logo } from '../brand/Logo'
 
-// Public-site navbar, as on the original homepage: logo, three links, Sign up + Log in.
+// Public-site navbar: logo, four links, the theme switch, Log in and Sign up (or the
+// dashboard once signed in). Below 900px the links move into a menu.
 // Styles: styles/marketing.css (.mk-nav).
 
 const LINKS = [
@@ -50,38 +51,29 @@ export default function Navbar() {
     </Link>
   ))
 
-  const actions = isAuthenticated ? (
-    <>
-      <Link to="/hub" className="mk-btn mk-btn-coral mk-btn-sm mk-nav-cta" onClick={close}>Dashboard</Link>
-      <button type="button" className="mk-btn mk-btn-slate mk-btn-sm mk-nav-cta" onClick={handleLogout}>Log out</button>
-    </>
-  ) : (
-    <>
-      <Link to="/signup" className="mk-btn mk-btn-coral mk-btn-sm mk-nav-cta" onClick={close}>Sign up</Link>
-      <Link to="/login" className="mk-btn mk-btn-slate mk-btn-sm mk-nav-cta" onClick={close}>Log in</Link>
-    </>
-  )
+  const themeLabel = dark ? 'Switch to light mode' : 'Switch to dark mode'
+  const primary = isAuthenticated
+    ? <Link to="/hub" className="mk-btn mk-btn-primary mk-btn-sm" onClick={close}>Dashboard</Link>
+    : <Link to="/signup" className="mk-btn mk-btn-primary mk-btn-sm" onClick={close}>Sign up</Link>
+  const secondary = isAuthenticated
+    ? <button type="button" className="mk-nav-text" onClick={handleLogout}>Log out</button>
+    : <Link to="/login" className="mk-nav-text" onClick={close}>Log in</Link>
 
   return (
-    <header className={`mk-nav${scrolled ? ' is-scrolled' : ''}${open ? ' is-open' : ''}`}>
+    <header className={`mk-nav${scrolled || open ? ' is-raised' : ''}`}>
       <div className="mk-container mk-nav-inner">
         <Link to="/" className="mk-logo" onClick={close} aria-label="Study with Students, home">
-          <Logo size={28} />
+          <Logo size={22} />
         </Link>
 
         <nav className="mk-nav-links" aria-label="Main">{links}</nav>
 
         <div className="mk-nav-actions">
-          <button
-            type="button"
-            className="mk-icon-btn"
-            onClick={toggle}
-            aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-            title={dark ? 'Light mode' : 'Dark mode'}
-          >
+          <button type="button" className="mk-icon-btn mk-theme-btn" onClick={toggle} aria-label={themeLabel} title={themeLabel}>
             <Icon name={dark ? 'light_mode' : 'dark_mode'} />
           </button>
-          {actions}
+          {secondary}
+          <span className="mk-nav-cta">{primary}</span>
           <button
             type="button"
             className="mk-icon-btn mk-menu-btn"
@@ -99,7 +91,23 @@ export default function Navbar() {
         <div id="mk-mobile-menu" className="mk-mobile-menu">
           <div className="mk-container">
             <nav aria-label="Main">{links}</nav>
-            <div className="mk-mobile-actions">{actions}</div>
+            {/* The bar keeps Sign up (or Dashboard); the menu repeats it only where the bar hides it */}
+            <div className="mk-mobile-foot">
+              {isAuthenticated ? (
+                <>
+                  <Link to="/hub" className="mk-btn mk-btn-primary mk-menu-primary" onClick={close}>Dashboard</Link>
+                  <button type="button" className="mk-btn mk-btn-ghost" onClick={handleLogout}>Log out</button>
+                </>
+              ) : (
+                <>
+                  <Link to="/signup" className="mk-btn mk-btn-primary mk-menu-primary" onClick={close}>Sign up</Link>
+                  <Link to="/login" className="mk-btn mk-btn-ghost" onClick={close}>Log in</Link>
+                </>
+              )}
+              <button type="button" className="mk-btn mk-btn-ghost" onClick={toggle}>
+                <Icon name={dark ? 'light_mode' : 'dark_mode'} />{dark ? 'Light mode' : 'Dark mode'}
+              </button>
+            </div>
           </div>
         </div>
       )}

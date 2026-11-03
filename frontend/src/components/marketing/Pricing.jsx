@@ -1,10 +1,11 @@
-// "How pricing works" for the public pages: free to join, families pay the tutor's
-// rate plus a booking fee, tutors keep 100%, the community is free.
-// The fee comes from the booking dialog, so the site and the app always agree.
+// How pricing works, for the public pages: free to join, families pay the tutor's rate
+// plus a booking fee, tutors keep 100%, the community is free. Three numbers and a calculator.
+// The fee comes from lib/site.js, so the site and the booking dialog always agree.
 import { useState } from 'react'
 import { BOOKING_FEE_PERCENT } from '../../lib/site'
 import { Icon } from '../ui'
 import { formatMoney } from '../../lib/format'
+import { Numbers } from '.'
 
 export const FEE = BOOKING_FEE_PERCENT
 
@@ -18,23 +19,24 @@ export function FeeCalculator() {
   return (
     <div className="mk-calc">
       <div className="mk-calc-head">
-        <span>Try it</span>
-        <span className="mk-calc-hint">One-hour session</span>
+        <b>Try it</b>
+        <span>A one-hour session</span>
       </div>
       <label className="mk-calc-rate" htmlFor="mk-rate">
         <span>Your tutor's rate</span>
         <b>{formatMoney(rate)}<small>/ hour</small></b>
       </label>
-      <input
-        id="mk-rate"
-        className="mk-range"
-        type="range"
-        min="10"
-        max="60"
-        step="1"
-        value={rate}
-        onChange={(e) => setRate(Number(e.target.value))}
-      />
+      <div className="mk-range" style={{ '--fill': (rate - 10) / 50 }}>
+        <input
+          id="mk-rate"
+          type="range"
+          min="10"
+          max="60"
+          step="1"
+          value={rate}
+          onChange={(e) => setRate(Number(e.target.value))}
+        />
+      </div>
       <dl className="mk-calc-lines">
         <div><dt>To your tutor</dt><dd>{formatMoney(rate, { decimals: 2 })}</dd></div>
         <div><dt>Booking fee ({FEE}%)</dt><dd>{formatMoney(fee, { decimals: 2 })}</dd></div>
@@ -45,31 +47,18 @@ export function FeeCalculator() {
   )
 }
 
-/** Steps, the free community and the calculator, side by side. */
+/** The model in three numbers, beside the calculator. */
 export function PricingExplainer() {
   return (
     <div className="mk-pricing">
-      <div>
-        <ol className="mk-numbered mk-price-steps">
-          <li>
-            <span className="mk-num" aria-hidden="true">1</span>
-            <div><b>Your tutor sets their rate</b><p>Every tutor chooses their own hourly price.</p></div>
-          </li>
-          <li>
-            <span className="mk-num" aria-hidden="true">2</span>
-            <div><b>You pay the rate plus {FEE}%</b><p>A small booking fee, shown before you pay. It's how we keep the site running.</p></div>
-          </li>
-          <li>
-            <span className="mk-num" aria-hidden="true">3</span>
-            <div><b>Your tutor keeps 100%</b><p>We never take a cut of a tutor's rate.</p></div>
-          </li>
-        </ol>
-        <p className="mk-free">
-          <Icon name="groups" />
-          <span><b>The community is free.</b> The forum, study notes, study rooms and live classes are free for every member.</span>
-        </p>
-      </div>
-      <FeeCalculator />
+      <Numbers
+        items={[
+          [100, '%', 'of the rate goes to your tutor'],
+          [FEE, '%', 'booking fee, shown before you pay'],
+          ['£0', '', 'to join, and the community is free'],
+        ]}
+      />
+      <div className="mk-reveal" style={{ '--i': 1 }}><FeeCalculator /></div>
     </div>
   )
 }

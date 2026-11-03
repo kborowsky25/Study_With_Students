@@ -7,13 +7,14 @@ export default function NotFound() {
   const signedIn = Boolean(localStorage.getItem('sws_token'))
   return (
     <MarketingPage title="Page not found" noindex>
-      <section className="mk-page-hero">
-        <div className="mk-container mk-center">
+      <section className="mk-not-found">
+        <div className="mk-container mk-reveal">
           <div className="mk-not-found-art"><Art name="notFound" /></div>
-          <h1 className="mk-h1">This page is <em>lost.</em></h1>
-          <div className="mk-actions mk-center mk-not-found-actions">
-            <Link to={signedIn ? '/hub' : '/'} className="mk-btn mk-btn-coral">{signedIn ? 'Back to your hub' : 'Go home'}</Link>
-            <Link to="/find-tutors" className="mk-btn mk-btn-slate">Find a tutor</Link>
+          <h1 className="mk-title">This page is lost</h1>
+          <p className="mk-lead">The link may be old, or the page has moved.</p>
+          <div className="mk-actions">
+            <Link to={signedIn ? '/hub' : '/'} className="mk-btn mk-btn-primary">{signedIn ? 'Back to your dashboard' : 'Go home'}</Link>
+            <Link to="/tutors" className="mk-btn mk-btn-ghost">Find a tutor</Link>
           </div>
         </div>
       </section>

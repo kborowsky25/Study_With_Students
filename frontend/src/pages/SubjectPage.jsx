@@ -4,7 +4,6 @@
 import { useEffect } from 'react'
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { getPublicSubjects, getPublicTutors } from '../api/public'
-import { StudyNotes } from '../components/brand/illustrations'
 import { Icon } from '../components/ui'
 import {
   BookingSteps, EmptyBox, Pager, PublicPage, SignUpCta, SubjectChips, TutorGrid,
@@ -86,23 +85,23 @@ export default function SubjectPage() {
   if (missing) {
     return (
       <PublicPage>
-        <section className="pub-hero">
-          <div className="pub-container">
+        <section className="mk-section pub-page">
+          <div className="mk-container">
             <EmptyBox
               heading="h1"
               title="No tutors for that subject yet"
               text={`Nobody on Study with Students teaches “${slug.replace(/-/g, ' ')}” at the moment. Browse every tutor, or teach it yourself.`}
               actions={<>
-                <Link to="/tutors" className="pub-btn pub-btn-coral">Browse all tutors</Link>
-                <Link to="/become-tutor" className="pub-btn pub-btn-slate">Become a tutor</Link>
+                <Link to="/tutors" className="mk-btn mk-btn-primary">Browse all tutors</Link>
+                <Link to="/become-tutor" className="mk-btn mk-btn-ghost">Become a tutor</Link>
               </>}
             />
           </div>
         </section>
         {others.length > 0 && (
-          <section className="pub-section pub-section-tight">
-            <div className="pub-container">
-              <h2 className="pub-h3" style={{ marginBottom: 16 }}>Subjects with tutors</h2>
+          <section className="mk-section" aria-labelledby="others-title">
+            <div className="mk-container">
+              <div className="mk-head"><h2 id="others-title" className="mk-h2">Subjects with tutors</h2></div>
               <SubjectChips subjects={others} />
             </div>
           </section>
@@ -113,47 +112,41 @@ export default function SubjectPage() {
 
   return (
     <PublicPage>
-      <section className="pub-hero">
-        <div className="pub-container pub-hero-grid">
-          <div>
-            <nav aria-label="Breadcrumb">
-              <ol className="pub-crumbs">
-                <li><Link to="/tutors">Tutors</Link></li>
-                {level && subject && <li><Link {...subjectLink(subject.slug)}>{subject.name}</Link></li>}
-                <li aria-current="page">{topic || '…'}</li>
-              </ol>
-            </nav>
-            <h1 className="pub-h1">{topic ? <>{topic} <span className="pub-coral">tutors</span></> : 'Tutors'}</h1>
-            <p className="pub-sub">Taught by university students who know the course.</p>
-            {data && subject && (
-              <p className="pub-lead">
-                {empty
-                  ? `Nobody lists ${topic} yet. See every ${subject.name} tutor instead.`
-                  : `${introText(data, topic)} Tutors keep 100% of their rate. Sessions run from 30 minutes to 2 hours, and you pay only once your tutor confirms.`}
-              </p>
-            )}
-            {levelChips.length > 0 && (
-              <div style={{ marginTop: 26 }}>
-                <SubjectChips subjects={levelChips} current={canonical} label={`${subject.name} by level`} />
-              </div>
-            )}
-          </div>
-          <div className="pub-hero-art"><StudyNotes title="" /></div>
+      <section className="pub-top">
+        <div className="mk-container mk-reveal">
+          <nav aria-label="Breadcrumb">
+            <ol className="pub-crumbs">
+              <li><Link to="/tutors">Tutors</Link></li>
+              {level && subject && <li><Link {...subjectLink(subject.slug)}>{subject.name}</Link></li>}
+              <li aria-current="page">{topic || '…'}</li>
+            </ol>
+          </nav>
+          <h1 className="mk-title">{topic ? `${topic} tutors` : 'Tutors'}</h1>
+          {data && subject && (
+            <p className="mk-lead">
+              {empty
+                ? `Nobody lists ${topic} yet. See every ${subject.name} tutor instead.`
+                : `${introText(data, topic)} Tutors keep 100% of their rate, and you pay only once your tutor confirms a session.`}
+            </p>
+          )}
+          {levelChips.length > 0 && (
+            <SubjectChips subjects={levelChips} current={canonical} label={`${subject.name} by level`} />
+          )}
         </div>
       </section>
 
-      <section className="pub-section pub-section-tight" aria-labelledby="results-title">
-        <div className="pub-container">
+      <section className="mk-section" aria-labelledby="results-title">
+        <div className="mk-container">
           <div className="pub-results-head" style={{ marginTop: 0 }}>
-            <h2 id="results-title" className="pub-h3">{topic ? `${topic} tutors` : 'Tutors'}</h2>
+            <h2 id="results-title">{topic ? `${topic} tutors` : 'Tutors'}</h2>
             {data && !empty && <span className="pub-count">{data.total} tutor{data.total === 1 ? '' : 's'}</span>}
           </div>
           {error ? (
             <EmptyBox alert title="We couldn’t load tutors." text="Check your connection and try again."
-              actions={<button type="button" className="pub-btn pub-btn-coral" onClick={() => refetch().catch(() => {})}>Try again</button>} />
+              actions={<button type="button" className="mk-btn mk-btn-primary" onClick={() => refetch().catch(() => {})}>Try again</button>} />
           ) : empty ? (
             <EmptyBox title={`No ${topic} tutors yet.`}
-              actions={<Link {...subjectLink(subject.slug)} className="pub-btn pub-btn-coral">All {subject.name} tutors<Icon name="arrow_forward" /></Link>} />
+              actions={<Link {...subjectLink(subject.slug)} className="mk-btn mk-btn-primary">All {subject.name} tutors<Icon name="arrow_forward" /></Link>} />
           ) : (
             <TutorGrid tutors={data?.tutors ?? []} loading={loading} />
           )}
@@ -164,10 +157,12 @@ export default function SubjectPage() {
       <BookingSteps rate={data?.rates?.from ?? 20} />
 
       {others.length > 0 && (
-        <section className="pub-section" aria-labelledby="others-title">
-          <div className="pub-container">
-            <h2 id="others-title" className="pub-h2">Other subjects</h2>
-            <p className="pub-lead" style={{ marginBottom: 26 }}>University students tutoring {listText(others.slice(0, 3).map((s) => s.name))}{others.length > 3 ? ' and more' : ''}.</p>
+        <section className="mk-section" aria-labelledby="others-title">
+          <div className="mk-container">
+            <div className="mk-head">
+              <h2 id="others-title" className="mk-h2">Other subjects</h2>
+              <p className="mk-lead">University students tutoring {listText(others.slice(0, 3).map((s) => s.name))}{others.length > 3 ? ' and more' : ''}.</p>
+            </div>
             <SubjectChips subjects={others} />
           </div>
         </section>

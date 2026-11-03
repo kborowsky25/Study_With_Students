@@ -5,26 +5,22 @@
 import { ILLUSTRATIONS } from '../brand/illustrations'
 
 const ART = {
-  // Homepage
+  // Homepage: the five scenes from the original hero, one per part of the platform
   tutoring:    'TutoringOneToOne',
-  group:       'GroupStudy',
+  studyRooms:  'GroupStudy',
   forum:       'StudentForum',
-  events:      'Events',
-  uniGuidance: 'UniGuidance',
-  step1:       'FindTutor',
-  step2:       'Messages',
-  step3:       'Classes',
-  studyNotes:  'StudyNotes',
-  becomeTutor: 'BecomeTutor',
+  liveClasses: 'Events',
+  graduation:  'UniGuidance',
 
-  // How it works, About us, Become a tutor
-  findTutor:   'FindTutor',
+  // Inner pages
+  howItWorks:  'FindTutor',
   mission:     'Students',
-  space:       'BecomeTutor',
-  earnings:    'Earnings',
+  becomeTutor: 'Earnings',
+  founding:    'Profile',
 
-  // Log in and sign up
+  // Log in and sign up; the rocket also closes the homepage
   login:       'Rocket',
+  rocket:      'Rocket',
   signup:      'BecomeTutor',
 
   // 404
