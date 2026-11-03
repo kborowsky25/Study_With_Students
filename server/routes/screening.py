@@ -18,6 +18,14 @@ bp = Blueprint('screening', __name__, url_prefix='/api')
 # ── Tutor screening ───────────────────────────────────────────────────────────
 
 ALLOWED_PROOF_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf'}
+NOT_A_UNI_EMAIL = 'Use your university email address: it ends in .ac.uk'
+
+
+def uk_university_email(email):
+    """Tutors verify a UK university address: the domain ends in .ac.uk (ucl.ac.uk,
+    student.manchester.ac.uk…). Personal addresses like gmail.com don't prove enrolment."""
+    domain = email.rpartition('@')[2]
+    return domain.endswith('.ac.uk') and len(domain) > len('.ac.uk') and '..' not in domain
 MAX_PROOF_BYTES = 10 * 1024 * 1024  # 10 MB (Vercel itself caps request bodies at 4.5 MB)
 
 
@@ -31,6 +39,8 @@ def screening_send_uni_code():
     uni_email = str(data.get('uni_email') or '').strip().lower()
     if not uni_email or len(uni_email) > 254 or '@' not in uni_email or any(c.isspace() for c in uni_email):
         return jsonify({'error': 'A valid university email is required'}), 400
+    if not uk_university_email(uni_email):
+        return jsonify({'error': NOT_A_UNI_EMAIL}), 400
 
     conn = get_db(); cur = conn.cursor()
     try:

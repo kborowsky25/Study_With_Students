@@ -164,6 +164,11 @@ export default function TutorScreening() {
   async function requestCode() {
     const email = uniEmail.trim()
     if (!email) return
+    // Same rule as the API: a UK university address proves enrolment, a personal one doesn't
+    if (!/\.ac\.uk$/i.test(email.split('@')[1] ?? '')) {
+      toast.error('Use your university email address: it ends in .ac.uk')
+      return
+    }
     setSubmitting(true)
     try {
       const { data } = await sendUniCode(email)

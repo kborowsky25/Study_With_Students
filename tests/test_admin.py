@@ -64,6 +64,20 @@ class TestScreening:
         db.run('UPDATE tutor_profiles SET uni_email_verified = 1 WHERE id_tutor = %s', (oliver.tutor_id,))
         assert upload(api, oliver, content=b'x' * (10 * 1024 * 1024 + 1)).status_code == 400
 
+    @pytest.mark.parametrize('uni_email, ok', [
+        ('oliver@ucl.ac.uk', True),
+        ('o.grant@student.manchester.ac.uk', True),
+        ('kilian@gmail.com', False),
+        ('oliver@ac.uk', False),
+        ('oliver@ucl.ac.uk.example.com', False),
+        ('oliver@harvard.edu', False),
+    ])
+    def test_only_uk_university_addresses(self, api, db, make, uni_email, ok):
+        oliver = make.tutor(status='none')
+        res = api.post('/api/tutor-screening/send-uni-code', user=oliver, json={'uni_email': uni_email})
+        assert res.status_code == (200 if ok else 400), res.get_json()
+        assert db.value('SELECT COUNT(*) FROM email_verifications') == (1 if ok else 0)
+
     def test_needs_a_tutor_profile(self, api, make):
         maya = make.user()
         assert api.post('/api/tutor-screening/send-uni-code', user=maya,
