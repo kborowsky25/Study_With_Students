@@ -45,7 +45,6 @@
 .mk-section { padding: var(--mk-space) 0; }
 /* Same background throughout: one gap between sections */
 .mk-section + .mk-section, .mk-hero + .mk-section, .mk-page-hero + .mk-section { padding-top: 0; }
-.mk-center { text-align: center; }
 .mk-nowrap { white-space: nowrap; }   /* "A-level" never breaks at its hyphen */
 
 /* ── Type ────────────────────────────────────────────────────────────────── */
@@ -276,9 +275,6 @@
 .mk-numbers.is-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; border-top: 0; }
 .mk-numbers.is-row li { display: block; padding: 24px 0 0; border-top: 1px solid var(--border); border-bottom: 0; }
 .mk-numbers.is-row p { margin-top: 10px; }
-.mk-free { display: flex; gap: 14px; margin-top: 22px; font-size: 15px; color: var(--text-muted); }
-.mk-free .icon { flex: none; margin-top: 2px; color: var(--coral); font-size: 19px; }
-.mk-free b { color: var(--text); font-weight: 600; }
 
 .mk-calc { padding: 24px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: var(--mk-lift); }
 .mk-calc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 13.5px; color: var(--text-muted); }
@@ -493,7 +489,7 @@
   .mk-page-hero.has-art .mk-page-hero-grid { grid-template-columns: minmax(0, 1fr); }
   .mk-side > .mk-head { position: static; }
   .mk-pricing { max-width: 560px; }
-  .mk-facts { --cols: 1; gap: 0; }
+  .mk-facts { grid-template-columns: minmax(0, 1fr); gap: 0; }   /* beats the inline --cols */
   .mk-facts li { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: center; column-gap: 14px; padding: 18px 0; }
   .mk-facts li > .icon { grid-row: span 2; align-self: start; }
   .mk-facts .mk-h3 { margin-top: 0; }
