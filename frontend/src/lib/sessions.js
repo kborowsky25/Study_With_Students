@@ -86,3 +86,6 @@ export const totalPrice = (ev) => (Number(ev.amount) || 0) + bookingFee(ev)
 
 /** The booking fee an invite credit paid instead of the family (their `booking_fee` is then 0). */
 export const feeWaived = (ev) => Number(ev.fee_waived) || 0
+
+/** A paid session whose payment was refunded in full in Stripe: from then on it counts as cancelled. */
+export const isRefunded = (ev) => ev.status === 'canceled' && ev.cancel_type === 'refunded'

@@ -8,6 +8,7 @@ from flask_jwt_extended import jwt_required
 from ..db import current_user_id, get_db
 from ..ratelimit import rate_limit
 from ..referrals import (
+    FAMILY_REFERRAL_XP,
     MAX_EARNED_CREDITS,
     TUTOR_REFERRAL_XP,
     available_credits,
@@ -38,9 +39,9 @@ def lookup_invite():
 
 def _stage(row):
     """How far an invited person has got: joined → paid / approved → rewarded."""
-    if row['xp_at']:
-        return 'xp'         # an invited tutor was approved: XP earned
-    if row['credit_at']:
+    if row['tutor_at'] or (row['family_at'] and row['family_xp']):
+        return 'xp'         # an invited tutor was approved, or a tutor's family paid: XP earned
+    if row['family_at']:
         return 'credit'     # the family's first session was paid: credit earned
     if row['paid']:
         return 'paid'       # paid, but past the cap on earned credits
@@ -68,12 +69,12 @@ def my_referrals():
                            AND tp.screening_status = 'approved' AND {dbs_verified_sql('tp')}) AS approved,
                    EXISTS (SELECT 1 FROM events e JOIN student_profiles sp ON sp.id_student = e.student_id
                            WHERE sp.id_user = u.id_user AND e.status = 'paid' AND e.amount > 0) AS paid,
-                   credit.created_at AS credit_at, xp.created_at AS xp_at
+                   family.created_at AS family_at, family.xp AS family_xp, tutor.created_at AS tutor_at
             FROM users u
-            LEFT JOIN referral_rewards credit
-                   ON credit.kind = 'family' AND credit.referred_id = u.id_user AND credit.user_id = u.referred_by
-            LEFT JOIN referral_rewards xp
-                   ON xp.kind = 'tutor' AND xp.referred_id = u.id_user AND xp.user_id = u.referred_by
+            LEFT JOIN referral_rewards family
+                   ON family.kind = 'family' AND family.referred_id = u.id_user AND family.user_id = u.referred_by
+            LEFT JOIN referral_rewards tutor
+                   ON tutor.kind = 'tutor' AND tutor.referred_id = u.id_user AND tutor.user_id = u.referred_by
             WHERE u.referred_by = %s
             ORDER BY u.id_user DESC
         """, (uid,))
@@ -83,22 +84,26 @@ def my_referrals():
             'joined_at':   row['created_at'],
             'tutor':       bool(row['tutor']),
             'stage':       _stage(row),
-            'rewarded_at': row['xp_at'] or row['credit_at'],
+            'rewarded_at': row['tutor_at'] or row['family_at'],
         } for row in cur.fetchall()]
 
         cur.execute("""
-            SELECT COALESCE(SUM(kind = 'family'), 0) AS earned, COALESCE(SUM(xp), 0) AS xp
+            SELECT COALESCE(SUM(kind = 'family' AND xp = 0), 0) AS earned, COALESCE(SUM(xp), 0) AS xp
             FROM referral_rewards WHERE user_id = %s
         """, (uid,))
         totals = cur.fetchall()[0]
+        cur.execute("SELECT id_tutor FROM tutor_profiles WHERE id_user = %s LIMIT 1", (uid,))
+        tutor = bool(cur.fetchall())
         return jsonify({
-            'code':         code,
-            'credits':      available_credits(cur, uid, local_now()),
-            'earned':       int(totals['earned']),
-            'cap':          MAX_EARNED_CREDITS,
-            'xp':           int(totals['xp']),
-            'xp_per_tutor': TUTOR_REFERRAL_XP,
-            'invited':      invited,
+            'code':          code,
+            'tutor':         tutor,  # tutors earn XP for families too, not credits
+            'credits':       available_credits(cur, uid, local_now()),
+            'earned':        int(totals['earned']),
+            'cap':           MAX_EARNED_CREDITS,
+            'xp':            int(totals['xp']),
+            'xp_per_family': FAMILY_REFERRAL_XP,
+            'xp_per_tutor':  TUTOR_REFERRAL_XP,
+            'invited':       invited,
         })
     finally:
         cur.close(); conn.close()

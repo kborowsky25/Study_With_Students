@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  bookingFee, canJoin, canReview, feeWaived, isStudyRoomCopy, JOIN_EARLY_MS, needsPayment, totalPrice,
+  bookingFee, canJoin, canReview, feeWaived, isRefunded, isStudyRoomCopy, JOIN_EARLY_MS, needsPayment, totalPrice,
 } from './sessions'
 
 const START = new Date(2026, 10, 4, 18, 0).getTime()
@@ -79,6 +79,12 @@ describe('money', () => {
     expect(feeWaived(waived)).toBe(1.1)
     expect(totalPrice(waived)).toBe(22)
     expect(feeWaived(session({ booking_fee: 1.1 }))).toBe(0)
+  })
+
+  it('isRefunded: cancelled because the payment was refunded', () => {
+    expect(isRefunded(session({ status: 'canceled', cancel_type: 'refunded' }))).toBe(true)
+    expect(isRefunded(session({ status: 'canceled', cancel_type: 'late' }))).toBe(false)
+    expect(isRefunded(session({ status: 'paid' }))).toBe(false)
   })
 
   it('sessions from before the booking fee have none', () => {

@@ -1,14 +1,29 @@
 """Referrals: invite codes, signing up through a link, booking-fee credits (spent, given back,
-earned once per family, capped) and XP for tutors who bring in tutors. Stripe is the fake from
-test_payments.py; nothing leaves the machine."""
-import pytest
+earned once per family, capped), XP for tutors, and refunds taking rewards back. Stripe is the
+fake from test_payments.py, with the real webhook signature check; nothing leaves the machine."""
+import hashlib
+import hmac
+import json
+import time
 
-from server.referrals import CODE_ALPHABET, CODE_LENGTH, MAX_EARNED_CREDITS, TUTOR_REFERRAL_XP, mailbox
+import pytest
+import stripe as stripe_lib
+
+from server.config import Config
+from server.referrals import (
+    CODE_ALPHABET,
+    CODE_LENGTH,
+    FAMILY_REFERRAL_XP,
+    MAX_EARNED_CREDITS,
+    TUTOR_REFERRAL_XP,
+    mailbox,
+)
 from server.routes import payments
 from tests.support import ADMIN_SECRET, Person, iso, local
 from tests.test_payments import FakeStripe
 
 ADMIN = {'X-Admin-Secret': ADMIN_SECRET}
+WEBHOOK_SECRET = 'whsec_test_referrals'
 
 
 @pytest.fixture
@@ -65,10 +80,35 @@ def fees(db, ids):
 def pay(api, stripe, student, tutor, event_id):
     """The tutor confirms, Stripe confirms the checkout and the family comes back to the site."""
     api.put(f'/api/events/{event_id}/status', user=tutor, json={'status': 'confirmed'})
-    stripe.sessions[f'cs_{event_id}'] = {'mode': 'payment', 'payment_status': 'paid',
-                                         'metadata': {'event_id': str(event_id), 'user_id': str(student.id)}}
+    stripe.sessions[f'cs_{event_id}'] = {
+        'mode': 'payment', 'payment_status': 'paid', 'payment_intent': f'pi_{event_id}',
+        'metadata': {'event_id': str(event_id), 'user_id': str(student.id)}}
     res = api.post(f'/api/payments/verify/{event_id}', user=student, json={'session_id': f'cs_{event_id}'})
     assert res.status_code == 200, res.get_json()
+
+
+@pytest.fixture
+def webhook(api, stripe, monkeypatch):
+    """Deliver an event to /api/payments/webhook, signed the way Stripe signs it (the real check)."""
+    stripe.WebhookSignature, stripe.Webhook = stripe_lib.WebhookSignature, stripe_lib.Webhook
+    stripe.error.SignatureVerificationError = stripe_lib.error.SignatureVerificationError
+    monkeypatch.setattr(Config, 'STRIPE_WEBHOOK_SECRET', WEBHOOK_SECRET)
+
+    def deliver(kind, obj, secret=WEBHOOK_SECRET):
+        payload = json.dumps({'id': 'evt_test', 'type': kind, 'data': {'object': obj}})
+        stamp = int(time.time())
+        signature = hmac.new(secret.encode(), f'{stamp}.{payload}'.encode(), hashlib.sha256).hexdigest()
+        return api.post('/api/payments/webhook', data=payload, content_type='application/json',
+                        headers={'Stripe-Signature': f't={stamp},v1={signature}'})
+    return deliver
+
+
+def refund(webhook, event_id, full=True):
+    """Stripe's charge.refunded for the payment of a session paid with pay()."""
+    res = webhook('charge.refunded', {'id': f'ch_{event_id}', 'object': 'charge', 'payment_intent': f'pi_{event_id}',
+                                      'amount': 2200, 'amount_refunded': 2200 if full else 1000, 'refunded': full})
+    assert res.status_code == 200, res.get_json()
+    return res.get_json()['result']
 
 
 @pytest.fixture
@@ -321,6 +361,34 @@ class TestEarning:
         assert (mine['earned'], mine['cap']) == (MAX_EARNED_CREDITS, MAX_EARNED_CREDITS)
         assert {p['name']: p['stage'] for p in mine['invited']} == {'Sam L.': 'paid'}
 
+    def test_tutors_earn_xp_for_a_family_instead_of_a_credit(self, api, db, make, stripe):
+        oliver = make.tutor('Oliver Grant')
+        sam = joined(api, db, code_of(api, oliver))  # a tutor bringing their own student
+        make.connect(sam, oliver)
+        first, second = (book(api, sam, oliver, days=d)[0]['id_event'] for d in (3, 4))
+        pay(api, stripe, sam, oliver, first)
+        pay(api, stripe, sam, oliver, second)
+
+        assert db.value('SELECT xp FROM users WHERE id_user = %s', (oliver.id,)) == FAMILY_REFERRAL_XP
+        assert api.get('/api/auth/me', user=oliver).get_json()['user']['xp'] == FAMILY_REFERRAL_XP
+        mine = summary(api, oliver)
+        assert (mine['tutor'], mine['credits'], mine['earned'], mine['xp']) == (True, 0, 0, FAMILY_REFERRAL_XP)
+        assert [(p['name'], p['stage']) for p in mine['invited']] == [('Sam L.', 'xp')]
+
+    def test_family_xp_is_not_capped_and_never_counts_as_a_credit(self, api, db, make, stripe):
+        oliver = make.tutor('Oliver Grant')
+        for n in range(MAX_EARNED_CREDITS):
+            db.run("INSERT INTO referral_rewards (user_id, referred_id, kind, xp) VALUES (%s, %s, 'family', %s)",
+                   (oliver.id, 1000 + n, FAMILY_REFERRAL_XP))
+        sam = joined(api, db, code_of(api, oliver))
+        make.connect(sam, oliver)
+        pay(api, stripe, sam, oliver, book(api, sam, oliver)[0]['id_event'])
+
+        rewards = db.value('SELECT COUNT(*) FROM referral_rewards WHERE user_id = %s', (oliver.id,))
+        assert rewards == MAX_EARNED_CREDITS + 1
+        assert summary(api, oliver)['credits'] == 0
+        assert api.get(f'/api/tutors/{oliver.tutor_id}/booking-info', user=oliver).get_json()['fee_credits'] == 0
+
     def test_the_invite_list(self, api, db, make, invited, stripe):
         maya, sam, oliver = invited
         joined(api, db, code_of(api, maya), email='lee@example.com', name='Lee')
@@ -398,3 +466,131 @@ class TestTutorXP:
         approve(api, tutor_id)
         assert db.value('SELECT xp FROM users WHERE id_user = %s', (oliver.id,)) == 0
         assert [p['stage'] for p in summary(api, oliver)['invited']] == ['joined']
+
+
+# ── Refunds ───────────────────────────────────────────────────────────────────
+
+class TestRefunds:
+    def test_a_full_refund_cancels_the_session_and_takes_the_reward_back(self, api, db, invited, stripe, webhook):
+        maya, sam, oliver = invited
+        event_id = book(api, sam, oliver)[0]['id_event']  # Sam's welcome credit pays the fee
+        pay(api, stripe, sam, oliver, event_id)
+        assert db.value('SELECT stripe_payment_intent FROM events WHERE id_event = %s', (event_id,)) == f'pi_{event_id}'
+        assert summary(api, maya)['credits'] == 1
+
+        assert refund(webhook, event_id) == 'session refunded'
+        assert db.one('SELECT status, cancel_type FROM events') == {'status': 'canceled', 'cancel_type': 'refunded'}
+        assert summary(api, sam)['credits'] == 1  # Sam's credit is theirs to use again
+        assert db.value("SELECT COUNT(*) FROM referral_rewards WHERE kind = 'family'") == 0
+        assert summary(api, maya)['credits'] == 0
+        assert [p['stage'] for p in summary(api, maya)['invited']] == ['joined']
+
+    def test_the_next_real_payment_earns_it_again(self, api, db, invited, stripe, webhook):
+        maya, sam, oliver = invited
+        first = book(api, sam, oliver)[0]['id_event']
+        pay(api, stripe, sam, oliver, first)
+        refund(webhook, first)
+
+        again = book(api, sam, oliver, days=4)[0]
+        assert (again['booking_fee'], again['fee_waived']) == (0, 1.1)
+        pay(api, stripe, sam, oliver, again['id_event'])
+        assert summary(api, maya)['credits'] == 1
+
+    def test_partial_refunds_change_nothing_and_full_ones_count_once(self, api, db, invited, stripe, webhook):
+        maya, sam, oliver = invited
+        event_id = book(api, sam, oliver)[0]['id_event']
+        pay(api, stripe, sam, oliver, event_id)
+
+        assert refund(webhook, event_id, full=False) == 'ignored: partial refund'
+        assert db.value('SELECT status FROM events') == 'paid'
+        assert summary(api, maya)['credits'] == 1
+
+        assert refund(webhook, event_id) == 'session refunded'
+        assert refund(webhook, event_id) == 'ignored: not paid'  # Stripe delivering it again
+        assert db.value('SELECT status FROM events') == 'canceled'
+        assert summary(api, sam)['credits'] == 1
+
+    def test_the_reward_stays_while_another_payment_stands(self, api, db, invited, stripe, webhook):
+        maya, sam, oliver = invited
+        first, second = (book(api, sam, oliver, days=d)[0]['id_event'] for d in (3, 4))
+        pay(api, stripe, sam, oliver, first)
+        pay(api, stripe, sam, oliver, second)
+
+        refund(webhook, first)
+        assert summary(api, maya)['credits'] == 1
+        refund(webhook, second)
+        assert summary(api, maya)['credits'] == 0
+
+    def test_a_credit_spent_on_a_paid_session_stays_spent(self, api, db, invited, stripe, webhook):
+        maya, sam, oliver = invited
+        pay(api, stripe, sam, oliver, book(api, sam, oliver)[0]['id_event'])
+        mine = book(api, maya, oliver, days=4)[0]['id_event']
+        pay(api, stripe, maya, oliver, mine)  # Maya's earned credit paid this fee
+
+        refund(webhook, 1)
+        assert db.value("SELECT event_id FROM referral_rewards WHERE kind = 'family'") == mine
+        assert fees(db, [mine]) == [(0, 1.1)]
+        # and Sam's next payment doesn't earn Maya a second one
+        pay(api, stripe, sam, oliver, book(api, sam, oliver, days=5)[0]['id_event'])
+        assert db.value("SELECT COUNT(*) FROM referral_rewards WHERE kind = 'family'") == 1
+
+    def test_a_credit_on_an_unpaid_session_goes_and_its_fee_comes_back(self, api, db, invited, stripe, webhook):
+        maya, sam, oliver = invited
+        pay(api, stripe, sam, oliver, book(api, sam, oliver)[0]['id_event'])
+        mine = book(api, maya, oliver, days=4)[0]['id_event']
+        assert fees(db, [mine]) == [(0, 1.1)]
+
+        refund(webhook, 1)
+        assert fees(db, [mine]) == [(1.1, 0)]
+        assert db.value("SELECT COUNT(*) FROM referral_rewards WHERE kind = 'family'") == 0
+
+    def test_a_tutors_xp_comes_off(self, api, db, make, stripe, webhook):
+        oliver = make.tutor('Oliver Grant')
+        sam = joined(api, db, code_of(api, oliver))
+        make.connect(sam, oliver)
+        event_id = book(api, sam, oliver)[0]['id_event']
+        pay(api, stripe, sam, oliver, event_id)
+        assert db.value('SELECT xp FROM users WHERE id_user = %s', (oliver.id,)) == FAMILY_REFERRAL_XP
+
+        refund(webhook, event_id)
+        assert db.value('SELECT xp FROM users WHERE id_user = %s', (oliver.id,)) == 0
+        assert summary(api, oliver)['xp'] == 0
+
+    def test_a_late_copy_of_the_payment_leaves_a_refunded_session_alone(self, api, db, invited, stripe, webhook):
+        maya, sam, oliver = invited
+        event_id = book(api, sam, oliver)[0]['id_event']
+        pay(api, stripe, sam, oliver, event_id)
+        refund(webhook, event_id)
+
+        res = webhook('checkout.session.completed', {
+            'mode': 'payment', 'payment_status': 'paid', 'payment_intent': f'pi_{event_id}',
+            'metadata': {'event_id': str(event_id), 'user_id': str(sam.id)}})
+        assert res.status_code == 200
+        assert db.one('SELECT status, cancel_type FROM events') == {'status': 'canceled', 'cancel_type': 'refunded'}
+        assert summary(api, maya)['credits'] == 0
+
+    def test_the_webhook_records_the_payment_and_its_intent(self, api, db, invited, stripe, webhook):
+        maya, sam, oliver = invited
+        event_id = book(api, sam, oliver)[0]['id_event']
+        api.put(f'/api/events/{event_id}/status', user=oliver, json={'status': 'confirmed'})
+
+        res = webhook('checkout.session.completed', {
+            'mode': 'payment', 'payment_status': 'paid', 'payment_intent': 'pi_from_webhook',
+            'metadata': {'event_id': str(event_id), 'user_id': str(sam.id)}})
+        assert res.get_json()['result'] == 'session paid'
+        assert db.one('SELECT status, stripe_payment_intent FROM events') == {
+            'status': 'paid', 'stripe_payment_intent': 'pi_from_webhook'}
+        assert summary(api, maya)['credits'] == 1
+
+    def test_unknown_or_unsigned_refunds_are_ignored(self, api, db, invited, stripe, webhook):
+        maya, sam, oliver = invited
+        event_id = book(api, sam, oliver)[0]['id_event']
+        pay(api, stripe, sam, oliver, event_id)
+
+        unknown = webhook('charge.refunded', {'payment_intent': 'pi_someone_else', 'refunded': True})
+        assert unknown.get_json()['result'] == 'ignored: unknown payment'
+        forged = webhook('charge.refunded', {'payment_intent': f'pi_{event_id}', 'refunded': True},
+                         secret='whsec_wrong')
+        assert forged.status_code == 400
+        assert db.value('SELECT status FROM events') == 'paid'
+        assert summary(api, maya)['credits'] == 1
