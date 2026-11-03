@@ -1,0 +1,15 @@
+# Lint settings for the API (server/, api/, db/) and its tests: .venv/bin/ruff check .
+target-version = "py312"
+line-length = 120
+extend-exclude = ["legacy", "frontend", "uploads"]
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = [
+    "E702",  # `conn = get_db(); cur = conn.cursor()` — the house style for opening a connection
+]
+
+[lint.per-file-ignores]
+# Aligned column table and an inline HTML email template read better unwrapped.
+"server/schema.py" = ["E501"]
+"server/services/reminders.py" = ["E501"]
