@@ -22,8 +22,6 @@
   --mk-lift: 0 30px 60px -28px rgba(27, 38, 59, 0.24);
   --mk-warm: #fdf2ee;                   /* warm panels behind the five scenes */
   --mk-stage: var(--navy);              /* the stage the product sits on */
-  --mk-glow: 26%;                       /* coral in the glow under the stage */
-  --mk-sheen: color-mix(in srgb, var(--coral) 8%, transparent);   /* the light that follows the mouse */
   --mk-ease: cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
@@ -34,7 +32,7 @@
   line-height: 1.6;
   overflow-x: clip;
 }
-.mk-dark { --mk-lift: 0 30px 60px -24px rgba(4, 8, 16, 0.6); --mk-warm: var(--navy); --mk-stage: #1f2c44; --mk-glow: 34%; --mk-sheen: rgb(var(--fg) / 0.07); }
+.mk-dark { --mk-lift: 0 30px 60px -24px rgba(4, 8, 16, 0.6); --mk-warm: var(--navy); --mk-stage: #1f2c44; }
 .mk > main { flex: 1 0 auto; }
 
 .mk ::selection { background: var(--coral); color: #fff; }
@@ -127,16 +125,12 @@
 .mk-hero .mk-actions { justify-content: center; margin-top: 34px; }
 
 /* The product on a navy stage. Tilted back at first, it flattens, rises and grows as it
-   scrolls into view, over a coral glow that brightens as it lands (useScrollLanding in
-   marketing/stageMotion.js moves .mk-stage and fades .mk-stage-glow in; .mk-stage-wrap is
-   measured and holds the perspective). A mouse pointer carries a soft light over it
-   (useSheen). The dashboard inside: styles/app-preview.css. */
+   scrolls into view (useScrollLanding in marketing/stageMotion.js moves .mk-stage;
+   .mk-stage-wrap is measured and holds the perspective). The dashboard inside:
+   styles/app-preview.css. */
 .mk-stage-wrap { position: relative; max-width: 1120px; margin: 64px auto 0; perspective: 1600px; perspective-origin: 50% 0; }
 .mk-stage { position: relative; overflow: hidden; padding: 48px 56px 0; border-radius: 20px; background: var(--mk-stage); transform-origin: 50% 0; }
 .mk-stage .mk-app { margin: 0 auto -1px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; box-shadow: 0 -1px 0 rgb(255 255 255 / 0.04), 0 24px 60px rgba(4, 8, 16, 0.35); }
-.mk-stage-glow { position: absolute; inset: 22% 3% 0; border-radius: 50%; box-shadow: 0 32px 140px 24px color-mix(in srgb, var(--coral) var(--mk-glow), transparent); pointer-events: none; }
-.mk-stage-sheen { position: absolute; top: 0; left: 0; z-index: 1; width: 480px; height: 480px; margin: -240px 0 0 -240px; border-radius: 50%; background: var(--mk-sheen); filter: blur(72px); opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
-.mk-stage-sheen.is-on { opacity: 1; }
 
 .mk-unis { margin-top: 72px; }
 .mk-unis p { font-size: 14px; color: var(--text-muted); }
@@ -464,8 +458,6 @@
   .mk-hero .mk-actions .mk-btn, .mk-cta .mk-actions .mk-btn, .mk-page-hero .mk-actions .mk-btn { flex: 1 1 150px; }
   .mk-stage-wrap { margin-top: 48px; }
   .mk-stage { padding: 20px 14px 0; border-radius: 16px; }
-  .mk-stage-glow { inset: 35% 4% 0; box-shadow: 0 24px 90px 4px color-mix(in srgb, var(--coral) var(--mk-glow), transparent); }
-  .mk-stage-sheen { display: none; }
   .mk-marquee li { font-size: 16px; }
   .mk-marquee ul { gap: 36px; padding-right: 36px; }
   .mk-numbers li { grid-template-columns: 112px minmax(0, 1fr); gap: 12px; padding: 18px 0; }

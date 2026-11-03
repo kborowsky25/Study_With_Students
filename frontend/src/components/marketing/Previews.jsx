@@ -9,7 +9,7 @@ import { Avatar, Icon, StatusPill } from '../ui'
 import { BOOKING_FEE_PERCENT } from '../../lib/site'
 import { formatMoney } from '../../lib/format'
 import AppPreview from './AppPreview'
-import { useScrollLanding, useSheen } from './stageMotion'
+import { useScrollLanding } from './stageMotion'
 import { longDay, next } from './sample'
 
 const shortDate = (d) => d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
@@ -27,20 +27,15 @@ const PANELS = [
 
 /**
  * The hero: the dashboard on a navy stage. Tilted back at first, it flattens, rises and grows
- * as it scrolls into view, over a coral glow that brightens as it lands, and then its panels
- * come in (useScrollLanding). A mouse pointer carries a soft light over it (useSheen).
+ * as it scrolls into view, and then its panels come in (useScrollLanding).
  */
 export function HeroStage() {
   const wrap = useRef(null)
-  const stage = useRef(null)
   useScrollLanding(wrap, { panels: PANELS })
-  useSheen(stage)
   return (
     <div ref={wrap} className="mk-stage-wrap">
-      <div className="mk-stage-glow" data-glow aria-hidden="true" />
-      <div ref={stage} className="mk-stage" data-stage>
+      <div className="mk-stage" data-stage>
         <AppPreview />
-        <div className="mk-stage-sheen" data-sheen aria-hidden="true" />
       </div>
     </div>
   )
