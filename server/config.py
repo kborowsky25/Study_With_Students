@@ -26,6 +26,11 @@ def _pem(value):
     return '\n'.join([match.group(1), *textwrap.wrap(body, 64), match.group(3)]) + '\n'
 
 
+def _mail_password(value, server):
+    """Google shows app passwords as four groups of four letters; the spaces aren't part of it."""
+    return value.replace(' ', '') if server.strip().lower() == 'smtp.gmail.com' else value
+
+
 def _ca_file(value):
     """DB_SSL_CA: a path to the database host's CA certificate, or the certificate itself
     (pasted into the hosting dashboard), which is then written to a temporary file."""
@@ -75,7 +80,7 @@ class Config:
     MAIL_SERVER   = _env('MAIL_SERVER')
     MAIL_PORT     = int(_env('MAIL_PORT', '587'))
     MAIL_USERNAME = _env('MAIL_USERNAME')
-    MAIL_PASSWORD = _env('MAIL_PASSWORD')
+    MAIL_PASSWORD = _mail_password(_env('MAIL_PASSWORD'), _env('MAIL_SERVER'))
     MAIL_FROM     = _env('MAIL_FROM')
 
     # Stripe

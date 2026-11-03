@@ -9,7 +9,7 @@ from ..config import upload_dir
 from ..db import current_user_id, get_db
 from ..permissions import check_admin, dev_shortcuts_allowed
 from ..ratelimit import json_field, jwt_user, rate_limit
-from ..services.email import mail_configured, send_verification_email
+from ..services.email import SEND_FAILED, mail_configured, send_verification_email
 from ..services.uploads import UploadError, read_upload
 from ..services.verification import issue_code, redeem_code
 
@@ -53,7 +53,8 @@ def screening_send_uni_code():
     try:
         send_verification_email(uni_email, code)
     except Exception as e:
-        print(f'[WARN] Uni email send failed: {e}', flush=True)
+        print(f'[WARN] Uni email send failed: {e!r}', flush=True)
+        return jsonify({'error': SEND_FAILED}), 503
 
     payload = {'message': 'Verification code sent to your university email'}
     if dev_shortcuts_allowed() and not mail_configured():

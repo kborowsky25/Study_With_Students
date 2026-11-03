@@ -6,6 +6,9 @@ from email.utils import parseaddr
 
 from ..config import Config
 
+# Shown when a code couldn't be emailed (the error itself goes to the server log)
+SEND_FAILED = "We couldn't send the email just now. Please try again in a minute."
+
 
 def mail_configured():
     return bool(Config.MAIL_SERVER and Config.MAIL_USERNAME)

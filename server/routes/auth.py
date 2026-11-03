@@ -12,7 +12,7 @@ from ..family import parse_birth_date
 from ..permissions import dev_shortcuts_allowed, is_admin_email
 from ..ratelimit import json_field, rate_limit
 from ..referrals import record_referral
-from ..services.email import mail_configured, send_verification_email
+from ..services.email import SEND_FAILED, mail_configured, send_verification_email
 from ..services.verification import issue_code, redeem_code
 
 bp = Blueprint('auth', __name__, url_prefix='/api')
@@ -102,8 +102,9 @@ def send_verification():
 
     try:
         send_verification_email(email, code)
-    except Exception as e:
-        print(f'[WARN] Email send failed: {e}', flush=True)
+    except Exception as e:  # say so, rather than "sent" for a code that never arrives
+        print(f'[WARN] Email send failed: {e!r}', flush=True)
+        return jsonify({'error': SEND_FAILED}), 503
 
     payload = {'message': 'Verification code sent'}
     if dev_shortcuts_allowed() and not mail_configured():

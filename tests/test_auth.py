@@ -63,6 +63,22 @@ class TestVerificationCode:
         make.user(email='maya@example.com')
         assert api.post('/api/auth/send-verification', json={'email': 'maya@example.com'}).status_code == 409
 
+    def test_says_so_when_the_email_cannot_be_sent(self, api, monkeypatch):
+        from server.routes import auth
+
+        def broken_smtp(to_email, code):
+            raise OSError('535 Username and Password not accepted')
+        monkeypatch.setattr(auth, 'send_verification_email', broken_smtp)
+        res = api.post('/api/auth/send-verification', json={'email': 'maya@example.com'})
+        assert res.status_code == 503
+        assert res.get_json()['error'].startswith("We couldn't send the email")
+
+
+def test_gmail_app_passwords_lose_their_spaces():
+    from server.config import _mail_password
+    assert _mail_password('abcd efgh ijkl mnop', 'smtp.gmail.com') == 'abcdefghijklmnop'
+    assert _mail_password('pass word', 'smtp.example.com') == 'pass word'   # other hosts keep theirs
+
 
 class TestRegister:
     def test_creates_the_account_with_a_hashed_password(self, app, api, db):
