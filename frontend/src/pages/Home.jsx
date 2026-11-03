@@ -65,7 +65,7 @@ export default function Home() {
             <Link to="/tutors" className="mk-btn mk-btn-primary">Find a tutor</Link>
             <Link to="/become-tutor" className="mk-btn mk-btn-ghost">Become a tutor<Icon name="arrow_forward" /></Link>
           </div>
-          <HeroStage style={{ '--i': 3 }} />
+          <HeroStage />
         </div>
         <Universities />
       </section>

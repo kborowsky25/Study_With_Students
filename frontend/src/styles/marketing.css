@@ -22,6 +22,8 @@
   --mk-lift: 0 30px 60px -28px rgba(27, 38, 59, 0.24);
   --mk-warm: #fdf2ee;                   /* warm panels behind the five scenes */
   --mk-stage: var(--navy);              /* the stage the product sits on */
+  --mk-glow: 26%;                       /* coral in the glow under the stage */
+  --mk-sheen: color-mix(in srgb, var(--coral) 8%, transparent);   /* the light that follows the mouse */
   --mk-ease: cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
@@ -32,7 +34,7 @@
   line-height: 1.6;
   overflow-x: clip;
 }
-.mk-dark { --mk-lift: 0 30px 60px -24px rgba(4, 8, 16, 0.6); --mk-warm: var(--navy); --mk-stage: #1f2c44; }
+.mk-dark { --mk-lift: 0 30px 60px -24px rgba(4, 8, 16, 0.6); --mk-warm: var(--navy); --mk-stage: #1f2c44; --mk-glow: 34%; --mk-sheen: rgb(var(--fg) / 0.07); }
 .mk > main { flex: 1 0 auto; }
 
 .mk ::selection { background: var(--coral); color: #fff; }
@@ -124,44 +126,17 @@
 .mk-hero .mk-lead { max-width: 560px; margin: 22px auto 0; }
 .mk-hero .mk-actions { justify-content: center; margin-top: 34px; }
 
-/* The product on a navy stage; two notes from the app float over its edges */
-.mk-stage-wrap { position: relative; max-width: 1120px; margin: 64px auto 0; }
-.mk-stage { overflow: hidden; padding: 48px 56px 0; border-radius: 20px; background: var(--mk-stage); }
+/* The product on a navy stage. Tilted back at first, it flattens, rises and grows as it
+   scrolls into view, over a coral glow that brightens as it lands (useScrollLanding in
+   marketing/stageMotion.js moves .mk-stage and fades .mk-stage-glow in; .mk-stage-wrap is
+   measured and holds the perspective). A mouse pointer carries a soft light over it
+   (useSheen). The dashboard inside: styles/app-preview.css. */
+.mk-stage-wrap { position: relative; max-width: 1120px; margin: 64px auto 0; perspective: 1600px; perspective-origin: 50% 0; }
+.mk-stage { position: relative; overflow: hidden; padding: 48px 56px 0; border-radius: 20px; background: var(--mk-stage); transform-origin: 50% 0; }
 .mk-stage .mk-app { margin: 0 auto -1px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; box-shadow: 0 -1px 0 rgb(255 255 255 / 0.04), 0 24px 60px rgba(4, 8, 16, 0.35); }
-.mk-note { position: absolute; z-index: 1; display: flex; align-items: center; gap: 12px; width: 220px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--elevated); font-size: 13.5px; line-height: 1.4; text-align: left; box-shadow: var(--mk-lift), 0 2px 6px rgba(9, 14, 25, 0.08); user-select: none; }
-.mk-note.is-booked { top: 188px; left: -40px; }
-.mk-note.is-xp { right: -40px; bottom: 96px; width: 196px; }
-
-/* A window onto the app: the app's own classes inside a hairline frame */
-.mk-app {
-  display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
-  max-width: 1000px;
-  margin: 0 auto;
-  overflow: hidden;
-  border: 1px solid var(--border-strong);
-  border-radius: 12px;
-  background: var(--bg);
-  color: var(--text);
-  font-size: 13.5px;
-  line-height: 1.45;
-  text-align: left;
-  box-shadow: var(--mk-lift);
-  user-select: none;
-}
-.mk-app-side { display: flex; flex-direction: column; gap: 14px; padding: 12px 8px; background: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); }
-.mk-app-brand { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px; font-size: 13px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
-.mk-app-brand em { font-style: normal; color: var(--coral); }
-.mk-app-group { display: flex; flex-direction: column; gap: 1px; }
-.mk-app-main { display: flex; flex-direction: column; min-width: 0; }
-.mk-app-top { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 18px; border-bottom: 1px solid var(--border); font-weight: 600; }
-.mk-app-top .icon { font-size: 16px; color: var(--text-faint); }
-.mk-app-content { padding: 22px 24px 26px; }
-.mk-app .dash-grid, .mk-app .dash-col { gap: 16px; }
-/* The app's headings, as text: the page keeps one h1 */
-.mk-app-hello { font-size: 20px; font-weight: 600; letter-spacing: -0.015em; }
-.mk-app-hello em { font-style: normal; color: var(--coral); }
-.mk-app-spot { margin: 2px 0 1px; font-size: 14.5px; font-weight: 600; }
+.mk-stage-glow { position: absolute; inset: 22% 3% 0; border-radius: 50%; box-shadow: 0 32px 140px 24px color-mix(in srgb, var(--coral) var(--mk-glow), transparent); pointer-events: none; }
+.mk-stage-sheen { position: absolute; top: 0; left: 0; z-index: 1; width: 480px; height: 480px; margin: -240px 0 0 -240px; border-radius: 50%; background: var(--mk-sheen); filter: blur(72px); opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
+.mk-stage-sheen.is-on { opacity: 1; }
 
 .mk-unis { margin-top: 72px; }
 .mk-unis p { font-size: 14px; color: var(--text-muted); }
@@ -208,7 +183,7 @@
 .mk-snip-main span { display: block; overflow: hidden; color: var(--text-muted); font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
 .mk-snip-end { flex: none; font-weight: 600; font-variant-numeric: tabular-nums; }
 .mk-snip-end small { margin-left: 1px; color: var(--text-muted); font-size: 12px; font-weight: 500; }
-.mk-snip-icon { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: var(--coral-soft); color: var(--coral); font-size: 17px; }
+.mk-snip-icon { flex: none; color: var(--text-faint); font-size: 18px; }   /* a plain glyph, as in the app */
 
 /* ── Text beside a panel ─────────────────────────────────────────────────── */
 
@@ -399,15 +374,6 @@
   .mk-motion .mk-reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.8s var(--mk-ease), transform 0.8s var(--mk-ease); transition-delay: calc(var(--i, 0) * 90ms); }
   .mk-motion .mk-reveal.is-in { opacity: 1; transform: none; }
 
-  /* The dashboard comes alive: the level fills, the next session slides in */
-  .mk-motion .mk-stage-wrap.is-in .level-track > i { animation: mk-fill 1.4s var(--mk-ease) 0.7s both; }
-  .mk-motion .mk-stage-wrap.is-in .spotlight { animation: mk-slide 0.8s var(--mk-ease) 0.6s both; }
-
-  /* The notes pop in, then float */
-  .mk-motion .mk-stage-wrap .mk-note { opacity: 0; }
-  .mk-motion .mk-stage-wrap.is-in .mk-note { animation: mk-pop 0.7s var(--mk-ease) 0.9s both, mk-bob 6s ease-in-out 1.6s infinite; }
-  .mk-motion .mk-stage-wrap.is-in .mk-note.is-xp { animation-delay: 1.4s, 2.1s; animation-duration: 0.7s, 7s; }
-
   /* University names drift past; hover to pause */
   .mk-marquee-track { animation: mk-marquee 48s linear infinite; }
   .mk-marquee:hover .mk-marquee-track { animation-play-state: paused; }
@@ -419,9 +385,6 @@
   /* The rocket at the end hovers */
   .mk-cta-art .sws-ill { animation: mk-bob 5s ease-in-out infinite; }
 
-  @keyframes mk-fill { from { width: 0; } }
-  @keyframes mk-slide { from { opacity: 0; transform: translateX(-12px); } }
-  @keyframes mk-pop { from { opacity: 0; transform: translateY(14px) scale(0.96); } to { opacity: 1; transform: none; } }
   @keyframes mk-bob { 50% { transform: translateY(-7px); } }
   @keyframes mk-marquee { to { transform: translateX(-25%); } }
   @keyframes mk-flip-out { 0%, 40% { opacity: 1; transform: none; } 50%, 90% { opacity: 0; transform: translateY(-6px); } 100% { opacity: 1; transform: none; } }
@@ -436,11 +399,6 @@
 }
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
-
-@media (max-width: 1199px) {
-  .mk-note.is-booked { left: 20px; }
-  .mk-note.is-xp { right: 20px; }
-}
 
 @media (max-width: 1099px) {
   .mk { --mk-gutter: 24px; --mk-space: 112px; }
@@ -464,9 +422,6 @@
   .mk-mobile-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
   .mk-menu-primary { display: none; grid-column: 1 / -1; }
 
-  .mk-app { grid-template-columns: minmax(0, 1fr); }
-  .mk-app-side, .mk-app .mk-app-aside { display: none; }   /* .mk-app beats app.css .dash-col */
-  .mk-note.is-booked { top: auto; bottom: 28px; }
   .mk-numbers li { grid-template-columns: 150px minmax(0, 1fr); }
   .mk-numbers.is-row { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .mk-numbers.is-row li { display: grid; padding: 20px 0; }
@@ -509,17 +464,14 @@
   .mk-hero .mk-actions .mk-btn, .mk-cta .mk-actions .mk-btn, .mk-page-hero .mk-actions .mk-btn { flex: 1 1 150px; }
   .mk-stage-wrap { margin-top: 48px; }
   .mk-stage { padding: 20px 14px 0; border-radius: 16px; }
-  .mk-note { display: none; }
-  .mk-app-content { padding: 16px 14px 18px; }
+  .mk-stage-glow { inset: 35% 4% 0; box-shadow: 0 24px 90px 4px color-mix(in srgb, var(--coral) var(--mk-glow), transparent); }
+  .mk-stage-sheen { display: none; }
   .mk-marquee li { font-size: 16px; }
   .mk-marquee ul { gap: 36px; padding-right: 36px; }
   .mk-numbers li { grid-template-columns: 112px minmax(0, 1fr); gap: 12px; padding: 18px 0; }
   .mk-numbers b { font-size: 44px; }
   .mk-numbers p { font-size: 15px; }
   .mk-cta-art { width: 180px; }
-  .mk-app .dash-actions, .mk-app .group-head, .mk-app .group-head + .row { display: none; }
-  .mk-app .level > * { white-space: nowrap; }
-  .mk-app .level-track { width: 72px; }
   .mk-unis { margin-top: 56px; }
   .mk-snip .status-label { display: none; }   /* the status glyph alone, so the title fits */
   .mk-feature-art, .mk-feature:nth-child(-n + 2) .mk-feature-art { width: 104px; min-height: 104px; padding: 12px; }
