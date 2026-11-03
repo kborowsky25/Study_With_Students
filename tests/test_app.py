@@ -11,7 +11,7 @@ from server.json import ApiJSONProvider
 def test_health_reports_the_database(api):
     res = api.get('/api/health')
     assert res.status_code == 200
-    assert res.get_json() == {'ok': True, 'database': True}
+    assert res.get_json() == {'ok': True, 'database': True, 'mail': False}  # no SMTP in tests
 
 
 def test_unknown_routes_answer_in_json(api):

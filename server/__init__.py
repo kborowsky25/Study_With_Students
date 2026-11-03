@@ -10,6 +10,7 @@ from .extensions import cors, jwt
 from .json import ApiJSONProvider
 from .routes import BLUEPRINTS
 from .schema import ensure_schema
+from .services.email import mail_configured
 
 # Sent with every API response; vercel.json sets the same ones on the static frontend.
 SECURITY_HEADERS = {
@@ -81,7 +82,7 @@ def create_app(config=Config):
             get_db().close()
         except Exception as e:  # get_db wraps the driver's error
             return jsonify({'ok': False, 'database': False, 'problem': db_problem(e.__cause__ or e)}), 503
-        return jsonify({'ok': True, 'database': True})
+        return jsonify({'ok': True, 'database': True, 'mail': mail_configured()})
 
     try:
         ensure_schema()

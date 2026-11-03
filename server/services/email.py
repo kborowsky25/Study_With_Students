@@ -4,7 +4,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import parseaddr
 
-from ..config import Config
+from ..config import IS_PRODUCTION, Config
 
 # Shown when a code couldn't be emailed (the error itself goes to the server log)
 SEND_FAILED = "We couldn't send the email just now. Please try again in a minute."
@@ -28,6 +28,8 @@ def smtp_send(msg, to_email):
 
 def send_verification_email(to_email, code):
     if not mail_configured():
+        if IS_PRODUCTION:  # nobody reads the terminal there: the route reports it instead
+            raise RuntimeError('MAIL_SERVER and MAIL_USERNAME are not set')
         print(f'\n📧 [DEV EMAIL] To: {to_email} | Verification code: {code}\n', flush=True)
         return
 
