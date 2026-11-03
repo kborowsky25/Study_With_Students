@@ -1,9 +1,9 @@
 /* ── The dashboard to explore, on the homepage (components/marketing/AppPreview.jsx) ──
-   Loaded with the homepage only. The views are drawn with the app's own classes
-   (styles/app.css); these rules add the window around them and the pieces the app keeps in
-   its pages' own stylesheets (the inbox, the month, homework, …), prefixed mk- like the rest
-   of the public site. Colours come from the index.css tokens, so both themes work. The stage
-   it sits on, and its motion, are in styles/marketing.css and marketing/stageMotion.js.      */
+   Loaded with the homepage only: the window and its Home view, drawn with the app's own
+   classes (styles/app.css). The other views load after the page has painted, with their
+   own rules (styles/app-preview-views.css). Prefixed mk- like the rest of the public site;
+   colours come from the index.css tokens, so both themes work. The stage it sits on, and
+   its motion, are in styles/marketing.css and marketing/stageMotion.js.                    */
 
 /* A window onto the app: the app's own classes in a hairline frame. Its height is fixed, so
    switching views never moves the page; what doesn't fit runs off the stage's edge. Anything
@@ -25,8 +25,6 @@
   box-shadow: var(--mk-lift);
   user-select: none;
 }
-.mk-app input { user-select: text; }
-.mk .mk-app input:focus-visible { outline: none; }   /* the field's own border and ring show focus */
 .mk-app-side { display: flex; flex-direction: column; gap: 14px; padding: 12px 8px; background: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); }
 .mk-app-brand { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px; font-size: 13px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
 .mk-app-brand em { font-style: normal; color: var(--coral); }
@@ -42,6 +40,8 @@
 .mk-app .nav-badge { min-width: 17px; height: 16px; padding: 0 4px; font-size: 10.5px; }
 .mk-app-view { flex: 1; min-height: 0; padding: 22px 24px 26px; }
 .mk-app-view.is-raw { display: flex; padding: 0; }
+/* A view still loading leaves the one before it up, dimmed once the wait is noticeable */
+.mk-app-view[aria-busy='true'] { opacity: 0.55; transition: opacity 0.2s ease 0.15s; }
 
 /* The app's page titles and card titles, as text: the page keeps its own headings */
 .mk-app-hello, .mk-app-title { font-size: 20px; font-weight: 600; line-height: 1.3; letter-spacing: -0.015em; }
@@ -49,133 +49,18 @@
 .mk-app-spot { margin: 2px 0 1px; font-size: 14.5px; font-weight: 600; }
 .mk-card-title { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; font-weight: 600; white-space: nowrap; }
 .mk-card-title .icon { font-size: 16px; color: var(--text-faint); }
-.mk-app .dash-head { min-height: 30px; margin-bottom: 16px; }
 .mk-app .dash-grid { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }   /* the window's width decides, not the page's */
 .mk-app .dash-grid, .mk-app .dash-col { gap: 16px; }
 .mk-app .card { overflow: hidden; }
 .mk-app button.card-link { border: 0; background-color: transparent; font-family: inherit; cursor: pointer; }
 .mk-app button.card-link:hover { background-color: rgb(var(--fg) / 0.08); }
 .mk-app .row :is(.title, .meta) { display: block; }   /* spans inside button rows */
-.mk-app .row.is-untouched { min-height: 32px; }
-.mk-app .row.is-untouched .title { font-weight: 400; color: var(--text-faint); }
 .mk-app-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .mk-app-line .title { min-width: 0; }
 .mk-app .title.is-unread { font-weight: 600; }
-.mk-faint { color: var(--text-faint); font-weight: 400; }
 .mk-app-unread { padding: 0; border: 0; background: none; color: var(--coral); font: inherit; cursor: pointer; }
 .mk-app-unread b { color: inherit; }
 .mk-app-unread:hover { text-decoration: underline; text-underline-offset: 3px; }
-.mk-app .tabs:not(.mk-app-tabs) { margin-bottom: 16px; }
-.mk-app-filters { flex-wrap: nowrap; overflow: hidden; }
-.mk-app-filters button { flex: none; }
-/* A study note's file type: the glyph alone, in its colour, as in the app */
-.mk-file { flex: none; font-size: 20px; }
-.mk-file.is-pdf { color: var(--red); }
-.mk-file.is-slides { color: var(--amber); }
-.mk-file.is-doc { color: var(--blue); }
-
-/* A price as families see it: the total, with the tutor's price and the fee under it */
-.mk-price { display: inline-flex; flex-direction: column; align-items: flex-end; line-height: 1.3; white-space: nowrap; }
-.mk-price b { font-weight: 600; }
-.mk-price small { font-size: 11.5px; color: var(--text-faint); }
-.mk-price.is-muted b { color: var(--text-muted); }
-
-/* Messages: the inbox beside the open conversation (one at a time on phones) */
-.mk-inbox { flex: 1; display: grid; grid-template-columns: 236px minmax(0, 1fr); min-width: 0; min-height: 0; }
-.mk-inbox-list { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--border); }
-.mk-inbox-head { padding: 14px 16px 8px; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
-.mk-inbox-filter { display: flex; align-items: center; gap: 8px; height: 32px; margin: 0 10px 6px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--input-bg); color: var(--text-faint); cursor: text; }
-.mk-inbox-filter .icon { font-size: 16px; }
-.mk-inbox-filter input { flex: 1; align-self: stretch; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; font-size: 13px; }
-.mk-inbox-filter input::placeholder { color: var(--text-faint); }
-.mk-inbox-filter:focus-within { border-color: var(--coral); box-shadow: 0 0 0 3px var(--coral-soft); }
-.mk-inbox-rows { display: flex; flex-direction: column; gap: 1px; padding: 2px 6px 10px; }
-.mk-convo { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px; border: 0; border-radius: 8px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
-.mk-convo:hover { background: rgb(var(--fg) / 0.05); }
-.mk-convo.on { background: rgb(var(--fg) / 0.09); }
-.mk-convo-main { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.mk-convo-top { display: flex; align-items: baseline; gap: 8px; }
-.mk-convo-name { flex: 1; overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.mk-convo-time { flex: none; font-size: 11px; color: var(--text-faint); }
-.mk-convo-preview { overflow: hidden; font-size: 12.5px; color: var(--text-faint); text-overflow: ellipsis; white-space: nowrap; }
-.mk-convo.unread .mk-convo-name { font-weight: 700; }
-.mk-convo.unread .mk-convo-preview { color: var(--text-muted); }
-.mk-thread { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-.mk-thread-head { flex: none; display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 18px; border-bottom: 1px solid var(--border); }
-.mk-thread-back { display: none; }
-.mk-thread-who { flex: 1; min-width: 0; }
-.mk-thread-name { overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.mk-thread-sub { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-faint); }
-.mk-thread-sub .icon { font-size: 13px; }
-/* Newest at the bottom; it scrolls only once there's more than fits */
-.mk-thread-scroll { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; padding: 4px 20px 12px; }
-.mk-thread-scroll > :first-child { margin-top: auto; }
-.mk-day { display: flex; align-items: center; gap: 12px; margin: 14px 0 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); }
-.mk-day::before, .mk-day::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-.mk-bubble-row { display: flex; flex-direction: column; align-items: flex-start; margin-top: 3px; }
-.mk-bubble-row.mine { align-items: flex-end; }
-.mk-bubble { max-width: 78%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); line-height: 1.5; overflow-wrap: anywhere; user-select: text; }
-.mk-bubble-row.tail .mk-bubble { border-bottom-left-radius: 5px; }
-.mk-bubble-row.mine .mk-bubble { border-color: transparent; background: var(--coral); color: #fff; }
-.mk-bubble-row.mine.tail .mk-bubble { border-bottom-left-radius: 16px; border-bottom-right-radius: 5px; }
-.mk-bubble-meta { margin: 4px 4px 8px; font-size: 11px; color: var(--text-faint); }
-.mk-composer { flex: none; display: flex; align-items: center; gap: 8px; margin: 0 16px 14px; padding: 5px 5px 5px 12px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface); }
-.mk-composer:focus-within { border-color: var(--coral); box-shadow: 0 0 0 3px var(--coral-soft); }
-.mk-composer input { flex: 1; min-width: 0; height: 30px; border: 0; outline: 0; background: transparent; color: var(--text); font: inherit; }
-.mk-composer input::placeholder { color: var(--text-faint); }
-.mk-composer .btn { width: 32px; padding: 0; }
-.mk-thread-empty { flex: 1; display: flex; align-items: center; justify-content: center; }
-
-/* Calendar: the month (events as chips, dots on phones) beside the chosen day */
-.mk-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
-.mk-cal-head { padding: 6px 7px 5px; font-size: 12px; font-weight: 500; color: var(--text-faint); }
-.mk-cal-day { display: flex; flex-direction: column; align-items: stretch; gap: 3px; min-width: 0; min-height: 52px; padding: 4px 4px 5px; border: 0; border-top: 1px solid var(--border); border-left: 1px solid var(--border); border-radius: 0; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
-.mk-cal-day:nth-child(7n + 8) { border-left: 0; }   /* the first column: the 7 day names come first */
-.mk-cal-day:hover { background: rgb(var(--fg) / 0.05); }
-.mk-cal-day.is-on { background: rgb(var(--fg) / 0.05); box-shadow: inset 0 0 0 1.5px var(--coral); }
-.mk-cal-num { align-self: flex-start; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
-.mk-cal-day.is-out .mk-cal-num { color: var(--text-faint); }
-.mk-cal-day.is-today .mk-cal-num { background: var(--coral-soft); color: var(--coral); font-weight: 600; }
-.mk-cal-events { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.mk-cal-event { --tone: var(--amber); display: block; height: 16px; overflow: hidden; padding: 0 5px; border-radius: 4px; background: color-mix(in srgb, var(--tone) 14%, transparent); box-shadow: inset 2px 0 0 var(--tone); font-size: 10.5px; font-style: normal; font-weight: 500; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.mk-cal-event.is-confirmed { --tone: var(--blue); }
-.mk-cal-event.is-paid { --tone: var(--green); }
-.mk-cal-next { margin-right: -8px; }
-.mk-cal-time { flex: none; width: 40px; font-size: 12.5px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
-
-/* Find tutors */
-.mk-app-search { position: relative; }
-.mk-app-search .icon { position: absolute; top: 50%; left: 10px; color: var(--text-faint); transform: translateY(-50%); pointer-events: none; }
-.mk-app-search .input { padding-left: 34px; }
-.mk-app-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 16px; }
-.mk-app-chips .btn[aria-pressed='true'] { border-color: var(--coral); background: var(--coral-soft); color: var(--coral); }
-.mk-app .row.mk-tutor { align-items: flex-start; row-gap: 8px; padding: 12px 16px; }
-.mk-tutor .row-actions { align-self: center; gap: 6px; }
-.mk-tutor-subjects { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
-.mk-tutor-rate { margin-right: 2px; font-weight: 600; white-space: nowrap; }
-.mk-tutor-rate small { margin-left: 1px; font-size: inherit; font-weight: 500; color: var(--text-faint); }
-
-/* Progress */
-.mk-conf { flex: none; display: inline-flex; gap: 2px; }
-.mk-conf i { width: 10px; height: 6px; border-radius: 1.5px; background: rgb(var(--fg) / 0.16); }
-.mk-conf i.on { background: var(--coral); }
-.mk-conf-label { flex: none; width: 84px; font-size: 12.5px; color: var(--text-muted); white-space: nowrap; }
-.mk-trend { color: var(--green); font-size: 15px; }
-.mk-app .mk-subject .progress { flex: none; width: 88px; }
-.mk-hw-list { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 14px; }
-.mk-hw { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
-.mk-hw-check { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-top: 2px; padding: 0; border: 1.5px solid var(--border-strong); border-radius: 4px; background: transparent; color: #fff; cursor: pointer; transition: background-color 0.1s, border-color 0.1s; }
-.mk-hw-check:hover { border-color: var(--coral); }
-.mk-hw-check.on { border-color: var(--coral); background: var(--coral); }
-.mk-hw-check .icon { font-size: 12px; stroke-width: 2.75; }
-.mk-hw-main { flex: 1; min-width: 0; }
-.mk-hw-task { line-height: 1.45; }
-.mk-hw.is-done .mk-hw-task { color: var(--text-faint); text-decoration: line-through; }
-.mk-hw-meta { margin-top: 1px; font-size: 12px; color: var(--text-faint); }
-
-/* Classes: places taken */
-.mk-seats { display: inline-flex; align-items: center; gap: 8px; width: 104px; }
-.mk-seats .progress { flex: 1; }
 
 /* ── Motion ──────────────────────────────────────────────────────────────── */
 
@@ -194,38 +79,13 @@
   .mk-app .mk-app-tabs { display: flex; }
 }
 
-/* Phones: one column, the tabs for the page titles, one pane of the inbox at a time, the
-   month as dots */
+/* Phones: one column, the tabs for the page titles */
 @media (max-width: 719px) {
   .mk-app { height: 500px; }
   .mk-app-view { padding: 16px 14px 18px; }
   .mk-app .dash-grid { grid-template-columns: minmax(0, 1fr); }
-  .mk-app .dash-head, .mk-app .hello .dash-actions, .mk-app .mk-app-aside { display: none; }
+  .mk-app .hello .dash-actions, .mk-app .mk-app-aside { display: none; }
   .mk-app .hello { margin-bottom: 18px; }
   .mk-app .level > * { white-space: nowrap; }
   .mk-app .level-track { width: 72px; }
-  .mk-app-filters { overflow-x: auto; scrollbar-width: none; }
-  .mk-app-filters::-webkit-scrollbar { display: none; }
-  .mk-inbox { grid-template-columns: minmax(0, 1fr); }
-  .mk-inbox-list { border-right: 0; }
-  .mk-inbox.has-thread .mk-inbox-list, .mk-inbox:not(.has-thread) .mk-thread { display: none; }
-  .mk-thread-head { padding: 0 14px; }
-  .mk-thread-back { display: inline-flex; margin-left: -8px; }
-  .mk-thread-scroll { padding: 4px 14px 12px; }
-  .mk-composer { margin: 0 12px 12px; }
-  .mk-cal-head { padding: 6px 0 4px; text-align: center; }
-  .mk-cal-head span { display: none; }   /* M T W …, not Mon Tue Wed */
-  .mk-cal-day { align-items: center; gap: 2px; min-height: 38px; padding: 3px 1px 4px; }
-  .mk-cal-num { align-self: center; }
-  .mk-cal-events { flex-direction: row; justify-content: center; gap: 3px; }
-  .mk-cal-event { width: 6px; height: 6px; padding: 0; border-radius: 50%; background: var(--tone); box-shadow: none; }
-  .mk-cal-event span { display: none; }
-  .mk-tutor-subjects, .mk-seats, .mk-conf-label { display: none; }
-  .mk-app .row.mk-tutor { padding: 12px 14px; }
-  .mk-app .mk-subject .progress { width: 56px; }
-}
-
-/* Phones and tablets: 16px text in the fields, so focusing one doesn't zoom the page */
-@media (pointer: coarse) {
-  .mk-app input { font-size: 16px; }
 }
