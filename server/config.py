@@ -1,6 +1,8 @@
 """Runtime configuration, read once from the environment (and `.env` if present)."""
 import os
+import re
 import tempfile
+import textwrap
 from datetime import timedelta
 
 from dotenv import load_dotenv
@@ -13,6 +15,17 @@ def _env(key, default=''):
     return os.environ.get(key, default)
 
 
+def _pem(value):
+    """A pasted certificate with its line breaks back, however the dashboard stored them:
+    as real breaks, as \\n, or lost (one line with spaces)."""
+    value = value.replace('\\n', '\n').strip()
+    match = re.fullmatch(r'(-----BEGIN [A-Z ]+-----)(.*?)(-----END [A-Z ]+-----)', value, re.DOTALL)
+    if not match:
+        return value + '\n'
+    body = ''.join(match.group(2).split())
+    return '\n'.join([match.group(1), *textwrap.wrap(body, 64), match.group(3)]) + '\n'
+
+
 def _ca_file(value):
     """DB_SSL_CA: a path to the database host's CA certificate, or the certificate itself
     (pasted into the hosting dashboard), which is then written to a temporary file."""
@@ -20,7 +33,7 @@ def _ca_file(value):
         return value
     path = os.path.join(tempfile.gettempdir(), 'db-ca.pem')
     with open(path, 'w') as f:
-        f.write(value.replace('\\n', '\n'))  # some dashboards keep line breaks as \n
+        f.write(_pem(value))
     return path
 
 

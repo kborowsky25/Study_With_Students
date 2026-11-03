@@ -24,6 +24,22 @@ SECURITY_HEADERS = {
 JSON_CSP = "default-src 'none'; frame-ancestors 'none'"
 
 
+def db_problem(error):
+    """Why the database can't be reached, in a few safe words (never the host or credentials),
+    so /api/health can say which setting to check."""
+    code = getattr(error, 'errno', None)
+    text = str(error).lower()
+    if code in (1044, 1045):
+        return 'access denied: check DB_USER and DB_PASSWORD'
+    if code == 1049:
+        return 'unknown database: check DB_NAME'
+    if any(word in text for word in ('ssl', 'tls', 'certificate')):
+        return 'TLS failed: check DB_SSL_CA'
+    if code in (2003, 2005, 2013) or 'timed out' in text:
+        return "can't reach the database: check DB_HOST, DB_PORT and that the service is running"
+    return 'connection failed'
+
+
 def create_app(config=Config):
     app = Flask(__name__)
     app.config.from_object(config)
@@ -63,10 +79,9 @@ def create_app(config=Config):
     def health():
         try:
             get_db().close()
-            database = True
-        except Exception:
-            database = False
-        return jsonify({'ok': database, 'database': database}), 200 if database else 503
+        except Exception as e:  # get_db wraps the driver's error
+            return jsonify({'ok': False, 'database': False, 'problem': db_problem(e.__cause__ or e)}), 503
+        return jsonify({'ok': True, 'database': True})
 
     try:
         ensure_schema()

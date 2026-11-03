@@ -62,7 +62,7 @@ def test_a_pasted_ca_certificate_is_written_to_a_file():
     pem = '-----BEGIN CERTIFICATE-----\\nMIIBfake\\n-----END CERTIFICATE-----'  # line breaks kept as \n
     path = _ca_file(pem)
     with open(path) as f:
-        assert f.read() == '-----BEGIN CERTIFICATE-----\nMIIBfake\n-----END CERTIFICATE-----'
+        assert f.read() == '-----BEGIN CERTIFICATE-----\nMIIBfake\n-----END CERTIFICATE-----\n'
     assert _ca_file('/etc/ssl/ca.pem') == '/etc/ssl/ca.pem'
 
 
@@ -92,3 +92,21 @@ def test_mail_goes_from_mail_from_when_set(monkeypatch):
     email.smtp_send(msg, 'maya@example.com')
     assert (sent['login'], sent['sender'], sent['to']) == ('login@example.com', 'hello@example.com', 'maya@example.com')
     assert 'From: Study with Students <hello@example.com>' in sent['body']
+
+
+def test_a_certificate_pasted_on_one_line_gets_its_line_breaks_back():
+    from server.config import _pem
+    body = 'A' * 70 + 'B' * 10
+    one_line = f'-----BEGIN CERTIFICATE----- {body[:30]} {body[30:]} -----END CERTIFICATE-----'
+    expected = f"-----BEGIN CERTIFICATE-----\n{'A' * 64}\n{'A' * 6}{'B' * 10}\n-----END CERTIFICATE-----\n"
+    assert _pem(one_line) == expected
+
+
+def test_health_says_which_database_setting_to_check():
+    from mysql.connector import Error
+
+    from server import db_problem
+    assert db_problem(Error(errno=1045, msg='Access denied')).startswith('access denied')
+    assert db_problem(Error(errno=1049, msg="Unknown database 'x'")).startswith('unknown database')
+    assert db_problem(Error(errno=2003, msg="Can't connect")).startswith("can't reach")
+    assert db_problem(Error(msg='SSL connection error: CERTIFICATE_VERIFY_FAILED')).startswith('TLS failed')
