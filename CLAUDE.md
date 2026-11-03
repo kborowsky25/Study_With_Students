@@ -21,10 +21,12 @@ setup and the project layout.
   session is booked; the tutor earns `amount`, the family pays `amount + booking_fee`.
 - Referrals (`server/referrals.py`, page `/referrals`): invite links `/signup?ref=CODE`. An invite credit
   pays one session's fee (`booking_fee` 0, `fee_waived` = the fee) and comes back if it's cancelled unpaid.
-  Rewards are once per invited person, only after a Stripe-verified payment, at most 10 earned credits;
-  tutors who bring in approved tutors get XP (`users.xp`). Nothing here may cost money to run.
+  Rewards are once per invited person, only after a Stripe-verified payment, at most 10 earned credits.
+  Tutors earn XP instead (`users.xp`): for a family's first paid session and for an approved tutor.
   Credits are family-wide: a student's session uses a linked parent's credit, and a parent who joined
-  through an invite earns their inviter a credit when their child's first session is paid.
+  through an invite earns their inviter a reward when their child's first session is paid.
+  A full refund (webhook `charge.refunded`) cancels the session (`cancel_type` `refunded`) and takes
+  back what its payment earned. Nothing here may cost money to run.
 - Parents and safety (`server/family.py`, `routes/family.py`, `routes/safety.py`, `contact_details.py`):
   a parent links to a child once the child accepts (`parent_links`, at most 2). Under-18s (by
   `student_profiles.date_of_birth`) need a linked parent before any session is booked. Who may message

@@ -5,18 +5,21 @@ Signing up through one records users.referred_by, and each invited person earns 
 these rewards at most once (referral_rewards is unique per kind and invited person):
 
   welcome  the invited family's first booking fee is waived: a credit at sign-up
-  family   the inviter's next booking fee is waived: a credit once that family's first
-           session is paid through Stripe, up to MAX_EARNED_CREDITS per inviter
-  tutor    TUTOR_REFERRAL_XP (added to users.xp) for a tutor whose invited tutor is
-           approved: screening approved and DBS verified
+  family   once that family's first session is paid through Stripe, the inviter's next
+           booking fee is waived (a credit, at most MAX_EARNED_CREDITS per inviter) or,
+           for an inviter who tutors, FAMILY_REFERRAL_XP (a fee credit is little use to them)
+  tutor    TUTOR_REFERRAL_XP for a tutor whose invited tutor is approved: screening
+           approved and DBS verified
 
+XP goes into users.xp and is noted on the reward row (`xp`); a reward with no XP is a credit.
 A credit is spent on the next session booked with a booking fee, which then stores
 booking_fee = 0 and fee_waived = the fee the credit covered. It comes back when that
-session is cancelled before it's paid, or when the request expires unanswered.
+session is cancelled before it's paid, or when the request expires unanswered. A full
+refund takes back what the refunded payment earned (take_back_reward).
 
 Credits and the inviter's reward belong to the family: a student's sessions can use their
 linked parents' credits (server/family.py), and a parent who signed up through an invite
-earns their inviter a credit when their child's first session is paid.
+earns their inviter a reward when their child's first session is paid.
 
 The helpers run on the caller's cursor (plain or dictionary) inside its transaction.
 """
@@ -27,6 +30,7 @@ from mysql.connector import IntegrityError
 CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'  # no 0/O or 1/I/L to misread
 CODE_LENGTH = 8
 MAX_EARNED_CREDITS = 10
+FAMILY_REFERRAL_XP = 100
 TUTOR_REFERRAL_XP = 150
 
 GMAIL_DOMAINS = ('gmail.com', 'googlemail.com')
@@ -35,7 +39,7 @@ GMAIL_DOMAINS = ('gmail.com', 'googlemail.com')
 # cancelled, or a request that reached its start time unanswered (it can't be confirmed or
 # moved after that). Parameters: %(user)s and %(now)s; `r` is referral_rewards, `e` events.
 FREE_CREDIT = """
-    r.user_id = %(user)s AND r.kind IN ('welcome', 'family') AND (
+    r.user_id = %(user)s AND r.kind IN ('welcome', 'family') AND r.xp = 0 AND (
         r.event_id IS NULL OR e.id_event IS NULL OR e.status = 'canceled'
         OR (e.status = 'pending' AND e.start_time <= %(now)s
             AND (e.proposed_start IS NULL OR e.proposed_start <= %(now)s)))
@@ -117,13 +121,21 @@ def find_referrer(cur, code):
 # ── Signing up ────────────────────────────────────────────────────────────────
 
 def _grant(cur, user_id, referred_id, kind, xp=0):
-    """Record a reward unless this invited person has already earned that kind. True if new."""
+    """Record a reward unless this invited person has already earned that kind; XP is added
+    to users.xp. True if it's new."""
     try:
         cur.execute("INSERT INTO referral_rewards (user_id, referred_id, kind, xp) VALUES (%s, %s, %s, %s)",
                     (user_id, referred_id, kind, xp))
     except IntegrityError:  # unique per kind and invited person: earned already
         return False
+    if xp:
+        cur.execute("UPDATE users SET xp = xp + %s WHERE id_user = %s", (xp, user_id))
     return True
+
+
+def _is_tutor(cur, user_id):
+    cur.execute("SELECT id_tutor FROM tutor_profiles WHERE id_user = %s LIMIT 1", (user_id,))
+    return bool(_rows(cur))
 
 
 def record_referral(cur, user_id, email, code):
@@ -201,9 +213,9 @@ def release_credit(cur, event_id):
 
 def reward_first_payment(cur, user_id, event_id):
     """Stripe confirmed a session of student `user_id` was paid (by them or a parent): if
-    someone invited the student, or a linked parent, the inviter earns a credit. Once per
-    invited person (so for the family's first paid session), and at most MAX_EARNED_CREDITS
-    per inviter. True if a credit was earned."""
+    someone invited the student, or a linked parent, the inviter earns a credit, or XP if they
+    tutor. Once per invited person (so for the family's first paid session), and at most
+    MAX_EARNED_CREDITS credits per inviter. True if earned."""
     invited = inviter = None
     for member in family_of(cur, user_id):
         cur.execute("SELECT referred_by FROM users WHERE id_user = %s", (member,))
@@ -221,7 +233,10 @@ def reward_first_payment(cur, user_id, event_id):
     cur.execute("SELECT id_user FROM users WHERE id_user = %s FOR UPDATE", (inviter,))
     if not _rows(cur):
         return False
-    cur.execute("SELECT COUNT(*) AS n FROM referral_rewards WHERE user_id = %s AND kind = 'family'", (inviter,))
+    if _is_tutor(cur, inviter):
+        return _grant(cur, inviter, invited, 'family', xp=FAMILY_REFERRAL_XP)
+    cur.execute("SELECT COUNT(*) AS n FROM referral_rewards WHERE user_id = %s AND kind = 'family' AND xp = 0",
+                (inviter,))
     if _row(cur)['n'] >= MAX_EARNED_CREDITS:
         return False
     return _grant(cur, inviter, invited, 'family')
@@ -237,12 +252,49 @@ def reward_tutor_approval(cur, tutor_id):
         WHERE tp.id_tutor = %s AND tp.screening_status = 'approved' AND {dbs_verified_sql('tp')}
     """, (tutor_id,))
     tutor = _row(cur)
-    if not tutor or not tutor['referred_by']:
-        return False
-    cur.execute("SELECT id_tutor FROM tutor_profiles WHERE id_user = %s LIMIT 1", (tutor['referred_by'],))
-    if not _rows(cur):  # the XP is for tutors who bring in tutors
-        return False
-    if not _grant(cur, tutor['referred_by'], tutor['id_user'], 'tutor', xp=TUTOR_REFERRAL_XP):
-        return False
-    cur.execute("UPDATE users SET xp = xp + %s WHERE id_user = %s", (TUTOR_REFERRAL_XP, tutor['referred_by']))
-    return True
+    if not tutor or not tutor['referred_by'] or not _is_tutor(cur, tutor['referred_by']):
+        return False  # the XP is for tutors who bring in tutors
+    return _grant(cur, tutor['referred_by'], tutor['id_user'], 'tutor', xp=TUTOR_REFERRAL_XP)
+
+
+def take_back_reward(cur, user_id):
+    """A full refund of a session of student `user_id`: each invited member of the family (the
+    student or a linked parent) whose reward has no paid session behind it any more loses it.
+    XP comes off. An unused credit goes, and so does one on an unpaid session, which then pays
+    its booking fee again. A credit already spent on a paid session stays spent, and the family
+    can't earn their inviter another.
+
+    Once a reward is gone, the family's next paid session earns it again. True if any was taken.
+    """
+    taken = False
+    for member in family_of(cur, user_id):
+        if _paid_session_behind(cur, member):
+            continue
+        cur.execute("""
+            SELECT r.id, r.user_id, r.xp, r.event_id, e.status
+            FROM referral_rewards r LEFT JOIN events e ON e.id_event = r.event_id
+            WHERE r.kind = 'family' AND r.referred_id = %s FOR UPDATE
+        """, (member,))
+        reward = _row(cur)
+        if not reward or reward['status'] == 'paid':
+            continue
+        if reward['xp']:
+            cur.execute("UPDATE users SET xp = GREATEST(xp - %s, 0) WHERE id_user = %s",
+                        (reward['xp'], reward['user_id']))
+        elif reward['status'] in ('pending', 'confirmed'):
+            cur.execute("UPDATE events SET booking_fee = fee_waived, fee_waived = 0 WHERE id_event = %s",
+                        (reward['event_id'],))
+        cur.execute("DELETE FROM referral_rewards WHERE id = %s", (reward['id'],))
+        taken = True
+    return taken
+
+
+def _paid_session_behind(cur, member):
+    """Whether a paid session still earns `member`'s reward: their own, or a linked child's."""
+    cur.execute("""
+        SELECT e.id_event FROM events e JOIN student_profiles sp ON sp.id_student = e.student_id
+        WHERE e.status = 'paid' AND e.amount > 0 AND (sp.id_user = %s OR sp.id_user IN (
+            SELECT child_user_id FROM parent_links WHERE parent_user_id = %s AND status = 'accepted'))
+        LIMIT 1
+    """, (member, member))
+    return bool(_rows(cur))

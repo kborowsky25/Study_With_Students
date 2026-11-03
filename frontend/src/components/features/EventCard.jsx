@@ -21,7 +21,7 @@ import { useAutoFocus } from '../../hooks/useAutoFocus'
 import { invalidate } from '../../lib/query'
 import {
   FREE_CANCEL_HOURS, REPEAT_WEEKS, canAddToCalendar, canJoin, canReschedule, canReview, feeWaived, googleCalendarUrl,
-  isLateCancel, isUpcoming, laterWeeks, needsPayment, totalPrice,
+  isLateCancel, isRefunded, isUpcoming, laterWeeks, needsPayment, totalPrice,
 } from '../../lib/sessions'
 import { Avatar, DateChip, Icon, StatusPill } from '../ui'
 import { useConfirm } from '../ui/confirm'
@@ -49,7 +49,7 @@ const visualStatus = (ev) =>
 function pillProps(ev) {
   const status = visualStatus(ev)
   if (status === 'expired') return { status: 'canceled', label: 'Expired' }
-  if (status === 'canceled') return { status }
+  if (status === 'canceled') return { status, label: isRefunded(ev) ? 'Refunded' : undefined }
   if (ev.cancel_requested_at && status === 'confirmed') return { status: 'pending', label: 'Cancel requested' }
   if (ev.proposed_start) return { status: 'pending', label: 'New time proposed' }
   if (ev.role === 'tutor' && status === 'pending') return { status, label: 'Needs answer' }

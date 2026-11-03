@@ -21,7 +21,8 @@ const ACTIONS = {
     { icon: 'event_available', label: 'Confirm a session',  xp: 50 },
     { icon: 'payments',        label: 'Get paid for a session', xp: 100 },
     { icon: 'person_add',      label: 'Take on a student',  xp: 30 },
-    { icon: 'redeem',          label: 'Invite a tutor who gets approved', xp: 150, to: '/referrals' },
+    { icon: 'redeem',          label: 'Invite a family who pays', xp: 100, to: '/referrals' },
+    { icon: 'verified_user',   label: 'Invite a tutor who’s approved', xp: 150, to: '/referrals' },
   ],
 }
 

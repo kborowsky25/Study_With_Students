@@ -103,7 +103,11 @@ served with a type derived from the validated extension, notes as downloads, all
 - `POST /api/payments/webhook` accepts only deliveries signed with `STRIPE_WEBHOOK_SECRET`
   and less than 5 minutes old. On `checkout.session.completed` and
   `checkout.session.async_payment_succeeded` it marks the session named in the Checkout's
-  metadata as paid — only for the student named there, and idempotently, as Stripe retries.
+  metadata as paid — only for the student named there, and idempotently, as Stripe retries —
+  and keeps the PaymentIntent. On `charge.refunded` for a **full** refund it cancels the
+  session paid by that PaymentIntent (`cancel_type` `refunded`), gives back the invite credit
+  it used and takes back the referral reward the payment earned. Partial refunds change
+  nothing. A late copy of a payment event never marks a refunded session paid again.
 - The return-URL check (`POST /api/payments/verify/<id>`) re-reads the Checkout Session from
   Stripe and requires a paid, payment-mode checkout for that session and that student.
 
@@ -123,7 +127,8 @@ served with a type derived from the validated extension, notes as downloads, all
    separate database. Never put these in the repository.
 3. **Register the Stripe webhook** (Stripe Dashboard → Developers → Webhooks → Add endpoint):
    URL `https://www.studywithstudents.co.uk/api/payments/webhook`, events
-   `checkout.session.completed` and `checkout.session.async_payment_succeeded`. Copy its
+   `checkout.session.completed`, `checkout.session.async_payment_succeeded` and
+   `charge.refunded` (refunds are made in the Stripe Dashboard). Copy its
    signing secret (`whsec_…`) into `STRIPE_WEBHOOK_SECRET` for Production; create a second
    endpoint in test mode for Preview. Without it, a payment is only recorded if the family
    comes back to the site after paying — close the tab on Stripe's page and the session

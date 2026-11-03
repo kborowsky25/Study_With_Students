@@ -58,9 +58,10 @@ app in `api/index.py` (Python serverless function). In the Vercel project:
    secrets — the error is in the function logs.
 4. **Stripe webhook**: in the Stripe Dashboard add an endpoint for
    `https://www.studywithstudents.co.uk/api/payments/webhook` with the events
-   `checkout.session.completed` and `checkout.session.async_payment_succeeded`, and put its
-   signing secret in `STRIPE_WEBHOOK_SECRET`. It marks a session paid even when the family
-   doesn't come back to the site after paying.
+   `checkout.session.completed`, `checkout.session.async_payment_succeeded` and
+   `charge.refunded`, and put its signing secret in `STRIPE_WEBHOOK_SECRET`. It marks a
+   session paid even when the family doesn't come back to the site after paying, and
+   cancels it when its payment is refunded in full from the Stripe Dashboard.
 5. Push to the production branch. Check `https://www.studywithstudents.co.uk/api/health`
    — it returns `{"ok": true, "database": true}` once the database is reachable.
 

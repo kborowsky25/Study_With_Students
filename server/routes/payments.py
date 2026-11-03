@@ -16,7 +16,8 @@ from ..config import Config
 from ..db import current_user_id, get_db
 from ..extensions import stripe, stripe_dict, stripe_enabled
 from ..family import is_linked_parent
-from ..referrals import reward_first_payment
+from ..referrals import release_credit, reward_first_payment, take_back_reward
+from ..scheduling import local_now
 from ..suspensions import is_suspended
 from .events import EVENT_COLUMNS, EVENT_JOINS, fetch_event, is_room_copy, real_session_sql
 
@@ -35,11 +36,38 @@ def _line_item(name, pence, description=None):
     return {'quantity': 1, 'price_data': {'currency': 'gbp', 'unit_amount': pence, 'product_data': product}}
 
 
-def mark_event_paid(cur, event_id, student_user_id):
+def mark_event_paid(cur, event_id, student_user_id, payment_intent=None):
     """Record a Stripe-verified payment for a session (idempotent; the Stripe webhook uses it too).
-    A family's first payment earns whoever invited them a credit (server/referrals.py).
+    A family's first payment earns whoever invited them a reward (server/referrals.py). The
+    PaymentIntent is kept, so a refund can find the session.
 
     Returns False if the session doesn't exist or isn't that student's.
+    """
+    cur.execute("""
+        SELECT e.status, e.cancel_type FROM events e
+        JOIN student_profiles sp ON sp.id_student = e.student_id
+        WHERE e.id_event = %s AND sp.id_user = %s
+        FOR UPDATE
+    """, (event_id, student_user_id))
+    row = cur.fetchone()
+    if not row:
+        return False
+    status, cancel_type = row
+    if status != 'paid' and cancel_type != 'refunded':  # not a late copy of a payment refunded since
+        cur.execute("UPDATE events SET status = 'paid' WHERE id_event = %s", (event_id,))
+        reward_first_payment(cur, student_user_id, event_id)
+    if payment_intent:
+        cur.execute("UPDATE events SET stripe_payment_intent = COALESCE(stripe_payment_intent, %s) WHERE id_event = %s",
+                    (payment_intent, event_id))
+    return True
+
+
+def mark_event_refunded(cur, event_id, student_user_id):
+    """Record a full Stripe refund of a paid session (idempotent; Stripe retries the webhook).
+    The session counts as cancelled from then on (cancel_type 'refunded'): the invite credit it
+    used goes back to the family, and a reward the payment earned their inviter is taken back.
+
+    Returns False unless it's that student's paid session.
     """
     cur.execute("""
         SELECT e.status FROM events e
@@ -48,11 +76,16 @@ def mark_event_paid(cur, event_id, student_user_id):
         FOR UPDATE
     """, (event_id, student_user_id))
     row = cur.fetchone()
-    if not row:
+    if not row or row[0] != 'paid':
         return False
-    if row[0] != 'paid':
-        cur.execute("UPDATE events SET status = 'paid' WHERE id_event = %s", (event_id,))
-        reward_first_payment(cur, student_user_id, event_id)
+    cur.execute("""
+        UPDATE events
+        SET status = 'canceled', cancel_type = 'refunded', canceled_at = %s, canceled_by = NULL,
+            cancel_requested_at = NULL, proposed_start = NULL, proposed_end = NULL, proposed_by = NULL
+        WHERE id_event = %s
+    """, (local_now(), event_id))
+    release_credit(cur, event_id)
+    take_back_reward(cur, student_user_id)
     return True
 
 
@@ -238,7 +271,7 @@ def verify_payment(event_id):
 
     conn = get_db(); cur = conn.cursor()
     try:
-        if not mark_event_paid(cur, event_id, _student_in(meta)):
+        if not mark_event_paid(cur, event_id, _student_in(meta), session.get('payment_intent')):
             return jsonify({'error': 'Session not found'}), 404
         conn.commit()
         return jsonify({'message': 'Payment recorded'})
@@ -249,6 +282,7 @@ def verify_payment(event_id):
 # ── Stripe webhook ────────────────────────────────────────────────────────────
 
 PAID_EVENTS = ('checkout.session.completed', 'checkout.session.async_payment_succeeded')
+REFUND_EVENT = 'charge.refunded'  # a refund from the Stripe Dashboard (or the API)
 
 
 @bp.route('/payments/webhook', methods=['POST'])
@@ -256,8 +290,8 @@ def stripe_webhook():
     """Stripe → API. No JWT: authenticated by the Stripe-Signature header.
 
     Marks a session paid when its Checkout completes, even if the family never comes back to
-    the site (and for payment methods that settle later). Stripe retries deliveries, so this is
-    idempotent.
+    the site (and for payment methods that settle later), and cancels it when its payment is
+    fully refunded. Stripe retries deliveries, so this is idempotent.
     """
     if stripe is None or not Config.STRIPE_WEBHOOK_SECRET:
         return jsonify({'error': 'Webhooks are not configured'}), 503
@@ -273,8 +307,11 @@ def stripe_webhook():
         return jsonify({'error': 'Invalid signature'}), 400
 
     result = 'ignored'
+    obj = (event.get('data') or {}).get('object') or {}
     if event.get('type') in PAID_EVENTS:
-        result = _record_checkout((event.get('data') or {}).get('object') or {})
+        result = _record_checkout(obj)
+    elif event.get('type') == REFUND_EVENT:
+        result = _record_refund(obj)
     print(f"[stripe] {event.get('id')} {event.get('type')}: {result}", flush=True)
     return jsonify({'received': True, 'result': result})
 
@@ -297,8 +334,33 @@ def _record_checkout(session):
 
     conn = get_db(); cur = conn.cursor()
     try:
-        paid = mark_event_paid(cur, event_id, student_user_id)
+        paid = mark_event_paid(cur, event_id, student_user_id, session.get('payment_intent'))
         conn.commit()  # an exception rolls back and answers 500, so Stripe retries
     finally:
         cur.close(); conn.close()
     return 'session paid' if paid else 'ignored: unknown session'
+
+
+def _record_refund(charge):
+    """Only a full refund changes anything; a partly refunded session stays paid. The session is
+    found by its PaymentIntent, which is kept from when it was paid."""
+    if not charge.get('refunded'):
+        return 'ignored: partial refund'
+    if not charge.get('payment_intent'):
+        return 'ignored: no payment'
+
+    conn = get_db(); cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT e.id_event, sp.id_user FROM events e
+            JOIN student_profiles sp ON sp.id_student = e.student_id
+            WHERE e.stripe_payment_intent = %s
+        """, (charge['payment_intent'],))
+        rows = cur.fetchall()
+        refunded = bool(rows) and mark_event_refunded(cur, *rows[0])
+        conn.commit()  # an exception rolls back and answers 500, so Stripe retries
+    finally:
+        cur.close(); conn.close()
+    if not rows:
+        return 'ignored: unknown payment'
+    return 'session refunded' if refunded else 'ignored: not paid'

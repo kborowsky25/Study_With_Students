@@ -28,14 +28,20 @@ export default function Referrals() {
 
   const link = data?.code ? inviteLink(data.code) : ''
   const invited = data?.invited ?? []
+  const tutor = data?.tutor ?? isTutor  // tutors earn XP rather than booking-fee credits
   const canShare = typeof navigator.share === 'function'
   const show = (value) => (loading ? '—' : value)
 
-  const how = [
-    { icon: 'link',       label: 'A friend signs up with your link',        reward: 'Their first fee waived' },
-    { icon: 'payments',   label: 'They pay for their first session',        reward: 'Your next fee waived' },
+  const signsUp = { icon: 'link', label: 'A friend signs up with your link', reward: 'Their first fee waived' }
+  const pays = { icon: 'payments', label: 'They pay for their first session' }
+  const how = tutor ? [
+    signsUp,
+    { ...pays, reward: `+${data?.xp_per_family ?? 100} XP` },
+    { icon: 'verified_user', label: 'A tutor you invite is approved', reward: `+${data?.xp_per_tutor ?? 150} XP` },
+  ] : [
+    signsUp,
+    { ...pays, reward: 'Your next fee waived' },
     { icon: 'event_busy', label: 'A session is cancelled before it’s paid', reward: 'Credit back' },
-    ...(isTutor ? [{ icon: 'verified_user', label: 'A tutor you invite is approved', reward: `+${data?.xp_per_tutor ?? 150} XP` }] : []),
   ]
 
   async function copy() {
@@ -71,10 +77,12 @@ export default function Referrals() {
       ) : (
         <>
           <div className="metrics">
-            <span><b>{show(data?.credits)}</b>{data?.credits === 1 ? 'credit' : 'credits'} to use</span>
-            <span><b>{show(`${data?.earned} of ${data?.cap}`)}</b>earned</span>
+            {(!tutor || data?.credits > 0) && (
+              <span><b>{show(data?.credits)}</b>{data?.credits === 1 ? 'credit' : 'credits'} to use</span>
+            )}
+            {!tutor && <span><b>{show(`${data?.earned} of ${data?.cap}`)}</b>earned</span>}
             <span><b>{show(invited.length)}</b>joined</span>
-            {isTutor && <span><b>{show(`${data?.xp} XP`)}</b>from invites</span>}
+            {tutor && <span><b>{show(`${data?.xp} XP`)}</b>from invites</span>}
           </div>
 
           <div className="dash-grid">

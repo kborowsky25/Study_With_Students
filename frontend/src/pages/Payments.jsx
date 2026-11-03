@@ -8,7 +8,7 @@ import { createCheckout, getPayments, verifyPayment } from '../api/payments'
 import { errorMessage } from '../api/client'
 import { byStart } from '../lib/dates'
 import { formatMoney, formatTime } from '../lib/format'
-import { bookingFee, feeWaived, needsPayment, totalPrice } from '../lib/sessions'
+import { bookingFee, feeWaived, isRefunded, needsPayment, totalPrice } from '../lib/sessions'
 
 const HISTORY_PREVIEW = 6
 
@@ -117,7 +117,8 @@ export default function Payments() {
   const due = events.filter(needsPayment).sort(byStart)
   const waiting = events.filter((e) => e.status === 'pending' && new Date(e.end_time) > now).sort(byStart)
   const paid = events.filter((e) => e.status === 'paid') // newest first, as the API sends them
-  const history = showAll ? paid : paid.slice(0, HISTORY_PREVIEW)
+  const past = events.filter((e) => e.status === 'paid' || isRefunded(e))
+  const history = showAll ? past : past.slice(0, HISTORY_PREVIEW)
   const loading = phase === 'loading'
   const show = (value) => (loading ? '—' : value)
   const stripeOff = !loading && !stripeEnabled && due.length > 0 // shown next to the disabled Pay buttons
@@ -165,19 +166,19 @@ export default function Payments() {
                 ) : <EmptyState title="Nothing to pay." />}
               </Card>
 
-              <Card title="History" count={paid.length || null}>
-                {loading ? <SkeletonRows rows={3} /> : paid.length ? (
+              <Card title="History" count={past.length || null}>
+                {loading ? <SkeletonRows rows={3} /> : past.length ? (
                   <div className="row-list">
                     {history.map((ev) => (
                       <SessionRow key={ev.id_event} ev={ev}>
-                        <Price ev={ev} />
-                        <StatusPill status="paid" />
+                        <Price ev={ev} muted={isRefunded(ev)} />
+                        {isRefunded(ev) ? <StatusPill status="canceled" label="Refunded" /> : <StatusPill status="paid" />}
                       </SessionRow>
                     ))}
-                    {paid.length > HISTORY_PREVIEW && (
+                    {past.length > HISTORY_PREVIEW && (
                       <button className="row" onClick={() => setShowAll((v) => !v)}
                         style={{ justifyContent: 'center', fontSize: 12.5, fontWeight: 500, color: 'var(--text-muted)' }}>
-                        {showAll ? 'Show less' : `Show all ${paid.length}`}
+                        {showAll ? 'Show less' : `Show all ${past.length}`}
                       </button>
                     )}
                   </div>
