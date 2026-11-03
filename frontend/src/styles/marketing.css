@@ -158,6 +158,10 @@
 .mk-app-top .icon { font-size: 16px; color: var(--text-faint); }
 .mk-app-content { padding: 22px 24px 26px; }
 .mk-app .dash-grid, .mk-app .dash-col { gap: 16px; }
+/* The app's headings, as text: the page keeps one h1 */
+.mk-app-hello { font-size: 20px; font-weight: 600; letter-spacing: -0.015em; }
+.mk-app-hello em { font-style: normal; color: var(--coral); }
+.mk-app-spot { margin: 2px 0 1px; font-size: 14.5px; font-weight: 600; }
 
 .mk-unis { margin-top: 72px; }
 .mk-unis p { font-size: 14px; color: var(--text-muted); }

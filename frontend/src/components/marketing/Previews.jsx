@@ -54,7 +54,7 @@ export function DashboardPreview() {
         <div className="mk-app-content">
           <div className="hello">
             <div>
-              <h1>Ready to study, <em>Maya</em>?</h1>
+              <p className="mk-app-hello">Ready to study, <em>Maya</em>?</p>
               <div className="level">
                 <b>Level 3 · Scholar</b>
                 <span className="level-track"><i style={{ width: '24%' }} /></span>
@@ -80,7 +80,7 @@ export function DashboardPreview() {
                   <div className="spotlight">
                     <div className="grow">
                       <div className="when">Up next · {longDay(upNext)} 18:00–19:00</div>
-                      <h2>Mechanics: projectiles</h2>
+                      <p className="mk-app-spot">Mechanics: projectiles</p>
                       <div className="who">with Oliver Grant</div>
                     </div>
                     <StatusPill status="confirmed" />
