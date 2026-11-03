@@ -4,6 +4,8 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 
 from .config import Config
+from .suspensions import MESSAGE as SUSPENDED_MESSAGE
+from .suspensions import token_suspended
 
 jwt  = JWTManager()
 cors = CORS()
@@ -39,3 +41,14 @@ def _invalid_token(reason):
 @jwt.expired_token_loader
 def _expired_token(header, payload):
     return jsonify({'error': 'Your session has expired — please log in again'}), 401
+
+
+# A suspended account's tokens stop working at once (server/suspensions.py)
+@jwt.token_in_blocklist_loader
+def _suspended(header, payload):
+    return token_suspended(payload.get('sub'))
+
+
+@jwt.revoked_token_loader
+def _revoked_token(header, payload):
+    return jsonify({'error': SUSPENDED_MESSAGE, 'code': 'suspended'}), 401

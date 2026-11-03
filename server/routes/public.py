@@ -35,12 +35,12 @@ PUBLIC_COLUMNS = """
     rv.rating, COALESCE(rv.review_count, 0) AS review_count
 """
 
-# Listed publicly: a finished profile (name, university, subjects, a real bio), not rejected
+# Listed publicly: a finished profile (name, university, subjects, a real bio), not rejected or suspended
 PUBLIC_WHERE = """
     WHERE TRIM(u.name) <> '' AND TRIM(COALESCE(tp.university, '')) <> ''
       AND TRIM(COALESCE(tp.subjects, '')) <> ''
       AND CHAR_LENGTH(TRIM(COALESCE(tp.about_me, ''))) >= %s
-      AND tp.screening_status <> 'rejected'
+      AND tp.screening_status <> 'rejected' AND u.suspended_at IS NULL
 """
 
 CONTACT_DETAILS = re.compile(

@@ -114,6 +114,7 @@ def get_tutors():
         SELECT {TUTOR_COLUMNS}
         {TUTOR_JOINS}
         WHERE u.name <> '' AND COALESCE(tp.university, '') <> '' AND tp.screening_status <> 'rejected'
+          AND u.suspended_at IS NULL
     """
     params = []
     if university:

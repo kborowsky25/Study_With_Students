@@ -1,7 +1,13 @@
 """Payments: families pay the tutor's price plus a visible booking fee (the platform's only
 revenue); tutors keep 100% of their price. The student pays, or one of their linked parents
-(server/family.py); either way only a checkout Stripe confirms marks a session paid."""
+(server/family.py); either way only a checkout Stripe confirms marks a session paid.
+
+A session has one Stripe checkout at a time (events.checkout_session_id), so a child and a
+parent can't both pay for it: see create_checkout_session().
+"""
 import json
+import math
+import time
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
@@ -11,9 +17,13 @@ from ..db import current_user_id, get_db
 from ..extensions import stripe, stripe_dict, stripe_enabled
 from ..family import is_linked_parent
 from ..referrals import reward_first_payment
+from ..suspensions import is_suspended
 from .events import EVENT_COLUMNS, EVENT_JOINS, fetch_event, is_room_copy, real_session_sql
 
 bp = Blueprint('payments', __name__, url_prefix='/api')
+
+CHECKOUT_MINUTES = 35  # a checkout expires on its own after this (Stripe allows 30 minutes to 24 hours)
+CHECKOUT_HOLD = 5      # minutes someone else's open checkout is left alone, in case they're paying
 
 
 def _pence(value):
@@ -65,64 +75,141 @@ def get_payments():
         cur.close(); conn.close()
 
 
+def _existing_checkout(cur, checkout_id, ev, uid):
+    """What to do about the session's last checkout before starting a new one, as (outcome, detail):
+    'yours' (its link), 'paid' (the student it paid for), 'processing', 'busy' (who's paying and
+    the minutes left before it can be replaced) or 'free'. Someone else's checkout that has waited
+    long enough is expired here, so it can't be paid as well."""
+    try:
+        old = stripe_dict(stripe.checkout.Session.retrieve(checkout_id))
+    except stripe.error.StripeError:
+        return 'free', None  # Stripe doesn't know it (e.g. the test-mode data was reset)
+    meta = old.get('metadata') or {}
+    if meta.get('event_id') != str(ev['id_event']):
+        return 'free', None
+    if old.get('status') == 'open':
+        if meta.get('user_id') == str(uid):
+            return 'yours', old.get('url')
+        waited = (time.time() - (old.get('created') or 0)) / 60
+        if waited < CHECKOUT_HOLD:
+            cur.execute("SELECT name FROM users WHERE id_user = %s", (meta.get('user_id'),))
+            payer = (cur.fetchall() or [{'name': ''}])[0]['name']
+            return 'busy', (payer, max(1, math.ceil(CHECKOUT_HOLD - waited)))
+        try:
+            stripe.checkout.Session.expire(checkout_id)
+            return 'free', None
+        except stripe.error.StripeError:  # it can't be expired: most likely it was just paid
+            old = stripe_dict(stripe.checkout.Session.retrieve(checkout_id))
+    if old.get('status') == 'complete':
+        if old.get('payment_status') == 'paid':
+            return 'paid', _student_in(meta)
+        return 'processing', None  # a payment method that settles later (the webhook records it)
+    if old.get('status') == 'open':  # couldn't expire it and it isn't finished either
+        return 'busy', ('Someone', CHECKOUT_HOLD)
+    return 'free', None
+
+
+def _first(name):
+    parts = (name or '').split()
+    return parts[0] if parts else 'Someone'
+
+
 @bp.route('/payments/checkout/<int:event_id>', methods=['POST'])
 @jwt_required()
 def create_checkout_session(event_id):
+    """Start paying for a session: its student, or one of their linked parents.
+
+    One checkout at a time: asking again gives you back your own open checkout. Someone else's
+    open checkout is left alone for CHECKOUT_HOLD minutes (they may be paying), then expired
+    before yours starts; one that went through meanwhile is recorded instead. Requests for the
+    same session take turns (the row is locked), so two people can't start one each.
+    """
     if not stripe_enabled():
         return jsonify({'error': 'Card payments are not configured yet', 'code': 'stripe_not_configured'}), 503
 
     uid  = current_user_id()
     conn = get_db(); cur = conn.cursor(dictionary=True)
     try:
-        ev = fetch_event(cur, event_id)
-        by_parent = bool(ev) and ev['student_user_id'] != uid and is_linked_parent(cur, uid, ev['student_user_id'])
+        cur.execute("SELECT checkout_session_id FROM events WHERE id_event = %s FOR UPDATE", (event_id,))
+        locked = cur.fetchall()
+        ev = fetch_event(cur, event_id) if locked else None
+        if not ev:
+            return jsonify({'error': 'Session not found'}), 404
+        by_parent = ev['student_user_id'] != uid and is_linked_parent(cur, uid, ev['student_user_id'])
+        if ev['student_user_id'] != uid and not by_parent:
+            return jsonify({'error': 'Not your session'}), 403
+        if is_room_copy(ev):  # older calendar copies of study rooms were stored with a price
+            return jsonify({'error': 'Study rooms are free: there is nothing to pay'}), 400
+        if ev['status'] == 'paid':
+            return jsonify({'error': 'This session is already paid', 'code': 'already_paid'}), 409
+        if ev['status'] != 'confirmed':
+            return jsonify({'error': 'Sessions can be paid once the tutor has confirmed them'}), 400
+        if is_suspended(cur, ev['tutor_user_id']):
+            return jsonify({'error': 'This session can’t be paid while the tutor’s account is suspended',
+                            'code': 'tutor_suspended'}), 409
+
+        amount_pence = _pence(ev['amount'])
+        if amount_pence < 50:
+            return jsonify({'error': 'Amount too small for card payment (minimum £0.50)'}), 400
+
+        if locked[0]['checkout_session_id']:
+            outcome, detail = _existing_checkout(cur, locked[0]['checkout_session_id'], ev, uid)
+            if outcome == 'yours':
+                return jsonify({'url': detail})
+            if outcome == 'paid':
+                plain = conn.cursor()  # mark_event_paid reads rows as tuples
+                try:
+                    mark_event_paid(plain, event_id, detail)
+                finally:
+                    plain.close()
+                conn.commit()
+                return jsonify({'error': 'This session has just been paid', 'code': 'already_paid'}), 409
+            if outcome == 'processing':
+                return jsonify({'error': 'A payment for this session is already going through',
+                                'code': 'payment_processing'}), 409
+            if outcome == 'busy':
+                payer, minutes = detail
+                return jsonify({
+                    'error': f'{_first(payer)} is paying for this session right now. If it doesn’t go through, '
+                             f'you can pay in {minutes} minute{"" if minutes == 1 else "s"}.',
+                    'code':  'payment_in_progress',
+                }), 409
+
+        # The tutor's price and the booking fee are separate lines, so the fee is visible at checkout.
+        # Sessions booked before the fee existed have booking_fee 0 and are charged without one, and
+        # so are sessions an invite credit paid the fee of: no £0 line, a note on the session instead.
+        waived = float(ev.get('fee_waived') or 0)
+        note = f'Booking fee of £{waived:.2f} waived with an invite credit' if waived else None
+        line_items = [_line_item(f"{ev['title']} with {ev['tutor_name']}", amount_pence, note)]
+        fee_pence  = _pence(ev.get('booking_fee'))
+        if fee_pence:
+            line_items.append(_line_item('Booking fee', fee_pence))
+
+        # user_id is who pays; a parent paying for their child also records the child
+        metadata = {'event_id': str(event_id), 'user_id': str(uid)}
+        page = '/payments'
+        if by_parent:
+            metadata['student_user_id'] = str(ev['student_user_id'])
+            page = '/hub/parent'
+        try:
+            session = stripe.checkout.Session.create(
+                mode='payment',
+                line_items=line_items,
+                success_url=f'{Config.FRONTEND_URL}{page}?event_id={event_id}&session_id={{CHECKOUT_SESSION_ID}}',
+                cancel_url=f'{Config.FRONTEND_URL}{page}?canceled=1',
+                client_reference_id=str(uid),
+                metadata=metadata,
+                payment_intent_data={'metadata': metadata},
+                expires_at=int(time.time()) + CHECKOUT_MINUTES * 60,
+            )
+        except stripe.error.StripeError as e:
+            print(f'[stripe] payment checkout for event {event_id} failed: {e}', flush=True)
+            return jsonify({'error': 'Could not start the payment — please try again'}), 502
+        cur.execute("UPDATE events SET checkout_session_id = %s WHERE id_event = %s", (session.id, event_id))
+        conn.commit()
+        return jsonify({'url': session.url})
     finally:
         cur.close(); conn.close()
-
-    if not ev:
-        return jsonify({'error': 'Session not found'}), 404
-    if ev['student_user_id'] != uid and not by_parent:
-        return jsonify({'error': 'Not your session'}), 403
-    if is_room_copy(ev):  # older calendar copies of study rooms were stored with a price
-        return jsonify({'error': 'Study rooms are free: there is nothing to pay'}), 400
-    if ev['status'] == 'paid':
-        return jsonify({'error': 'This session is already paid'}), 409
-    if ev['status'] != 'confirmed':
-        return jsonify({'error': 'Sessions can be paid once the tutor has confirmed them'}), 400
-
-    amount_pence = _pence(ev['amount'])
-    if amount_pence < 50:
-        return jsonify({'error': 'Amount too small for card payment (minimum £0.50)'}), 400
-    # The tutor's price and the booking fee are separate lines, so the fee is visible at checkout.
-    # Sessions booked before the fee existed have booking_fee 0 and are charged without one, and
-    # so are sessions an invite credit paid the fee of: no £0 line, a note on the session instead.
-    waived = float(ev.get('fee_waived') or 0)
-    note = f'Booking fee of £{waived:.2f} waived with an invite credit' if waived else None
-    line_items = [_line_item(f"{ev['title']} with {ev['tutor_name']}", amount_pence, note)]
-    fee_pence  = _pence(ev.get('booking_fee'))
-    if fee_pence:
-        line_items.append(_line_item('Booking fee', fee_pence))
-
-    # user_id is who pays; a parent paying for their child also records the child
-    metadata = {'event_id': str(event_id), 'user_id': str(uid)}
-    page = '/payments'
-    if by_parent:
-        metadata['student_user_id'] = str(ev['student_user_id'])
-        page = '/hub/parent'
-    try:
-        session = stripe.checkout.Session.create(
-            mode='payment',
-            line_items=line_items,
-            success_url=f'{Config.FRONTEND_URL}{page}?event_id={event_id}&session_id={{CHECKOUT_SESSION_ID}}',
-            cancel_url=f'{Config.FRONTEND_URL}{page}?canceled=1',
-            client_reference_id=str(uid),
-            metadata=metadata,
-            payment_intent_data={'metadata': metadata},
-        )
-    except stripe.error.StripeError as e:
-        print(f'[stripe] payment checkout for event {event_id} failed: {e}', flush=True)
-        return jsonify({'error': 'Could not start the payment — please try again'}), 502
-    return jsonify({'url': session.url})
 
 
 @bp.route('/payments/verify/<int:event_id>', methods=['POST'])

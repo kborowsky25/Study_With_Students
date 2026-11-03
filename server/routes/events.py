@@ -30,6 +30,7 @@ from ..scheduling import (
     slot_problem,
 )
 from ..services.ics import calendar_file
+from ..suspensions import is_suspended
 from .availability import bp as availability_bp
 from .background import dbs_required_error, tutor_dbs_verified
 from .cron import bp as cron_bp
@@ -242,6 +243,9 @@ def create_event():
                 return jsonify({'error': 'Tutor not found'}), 404
             if tutor['id_user'] == uid:
                 return jsonify({'error': "You can't book a session with yourself"}), 400
+            if is_suspended(cur, tutor['id_user']):
+                return jsonify({'error': 'This tutor isn’t taking bookings right now',
+                                'code': 'tutor_unavailable'}), 403
             if not tutor_dbs_verified(cur, tutor['id_tutor']):
                 return jsonify(dbs_required_error()), 403
             cur.execute("SELECT 1 FROM active_tutors WHERE id_user = %s AND id_tutor = %s", (uid, tutor['id_tutor']))
@@ -269,6 +273,8 @@ def create_event():
         cur.execute("SELECT id_user FROM student_profiles WHERE id_student = %s FOR UPDATE", (student_id,))
         student_user = (cur.fetchone() or {}).get('id_user')
         tutor_id = tutor['id_tutor']
+        if by_tutor and student_user and is_suspended(cur, student_user):
+            return jsonify({'error': 'This student’s account is suspended', 'code': 'student_unavailable'}), 403
         if student_user and needs_parent(cur, student_user):  # under-18s book once a parent is linked
             name = None
             if by_tutor:

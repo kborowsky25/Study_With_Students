@@ -108,6 +108,7 @@ export default function Payments() {
     } catch (err) {
       toast.error(errorMessage(err, 'Could not start checkout'))
       setPaying(null)
+      if (err.response?.data?.code === 'already_paid') load() // a parent paid it meanwhile
     }
   }
 

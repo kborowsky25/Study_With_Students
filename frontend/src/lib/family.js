@@ -1,6 +1,7 @@
 // Parent accounts: query keys, and the wording the parent home page, messages and the student
 // home page share. The rules live in the API (server/family.py).
 import { getChild, getChildConversations, getFamily } from '../api/family'
+import { toDateInput } from './dates'
 import { firstName } from './format'
 import { invalidate } from './query'
 
@@ -21,6 +22,15 @@ export function parentsLine(view, myId) {
   if (!view) return null
   const whose = view.user_id === myId ? 'your' : `${firstName(view.name)}’s`
   return `Visible to ${whose} parent${view.parents > 1 ? 's' : ''}`
+}
+
+/** Students join at 13 or over (the API checks the same: MIN_AGE in server/family.py). */
+export const MIN_AGE = 13
+
+/** Whether a 'YYYY-MM-DD' date of birth is old enough to join today. */
+export function oldEnough(born, today = new Date()) {
+  const latest = toDateInput(new Date(today.getFullYear() - MIN_AGE, today.getMonth(), today.getDate()))
+  return Boolean(born) && born <= latest
 }
 
 /** A sign-up link a student can send to a parent: it opens the sign-up form on "Parent". */

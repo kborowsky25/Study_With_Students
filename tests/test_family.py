@@ -397,6 +397,10 @@ class TestUnder18:
         assert put('2010-04-02').status_code == 200
         assert put('2001-04-02').status_code == 409
         assert put('not a date').status_code == 400
+        res = api.put('/api/users/me/student-bio', user=make.user('Ben Lee'),
+                      json={'date_of_birth': born(12).isoformat()})
+        assert res.status_code == 400
+        assert res.get_json()['error'] == 'Study With Students is for students aged 13 and over'
         me = api.get(f'/api/users/{legacy.id}/profile', user=legacy).get_json()['user']
         assert me['date_of_birth'] == '2010-04-02'
         other = api.get(f'/api/users/{legacy.id}/profile', user=make.user('Sam Lee')).get_json()['user']

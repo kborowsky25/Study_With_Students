@@ -45,6 +45,7 @@ from server import create_app, extensions
 from server.config import Config
 from server.ratelimit import reset_limits
 from server.schema import ensure_schema
+from server.suspensions import forget_suspensions
 from tests.support import COMMUNITY_IS_FREE, HAS_BOOKING_FEE, Api, Database, Factory
 
 # Tests of the new pricing contract, and whether this code base implements it yet.
@@ -93,6 +94,7 @@ def db(app):
     database = Database()
     database.reset()
     reset_limits()
+    forget_suspensions()  # ids start again from 1 in every test
     yield database
     database.close()
 

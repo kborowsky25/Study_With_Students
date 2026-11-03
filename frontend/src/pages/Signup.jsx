@@ -9,6 +9,7 @@ import { Icon } from '../components/ui'
 import Art from '../components/marketing/Art'
 import { MarketingPage } from '../components/marketing'
 import { toDateInput } from '../lib/dates'
+import { MIN_AGE, oldEnough } from '../lib/family'
 
 // Students give their date of birth (under-18s link a parent before booking); parents don't.
 const ACCOUNTS = [['student', 'Student'], ['parent', 'Parent or guardian']]
@@ -138,6 +139,10 @@ export default function Signup() {
     e.preventDefault()
     if (form.password !== form.confirm) { toast.error('Passwords do not match'); return }
     if (form.password.length < 8)       { toast.error('Password must be at least 8 characters'); return }
+    if (account === 'student' && !oldEnough(form.born)) {
+      toast.error(`Study With Students is for students aged ${MIN_AGE} and over`)
+      return
+    }
     setLoading(true)
     try {
       const { data } = await sendVerification(form.email)

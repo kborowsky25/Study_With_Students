@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import { useAuth } from '../context/AuthContext'
 import { PageTitle } from '../context/PageTitleContext'
 import HubLayout from '../components/layout/HubLayout'
 import ScreeningQueue, { ScreeningPill } from '../components/features/ScreeningQueue'
@@ -11,6 +12,8 @@ import { formatDate, formatMoney } from '../lib/format'
 import { bookingFee, feeWaived } from '../lib/sessions'
 import DbsReviewPanel from '../components/features/DbsReviewPanel'
 import ReportsPanel from '../components/features/ReportsPanel'
+import SuspendDialog, { liftSuspension } from '../components/features/SuspendDialog'
+import { useConfirm } from '../components/ui/confirm'
 
 const TABS = [
   ['overview', 'Overview'],
@@ -26,6 +29,7 @@ const ROLES = [
   ['student', 'Students'],
   ['tutor', 'Tutors'],
   ['parent', 'Parents'],
+  ['suspended', 'Suspended'],
 ]
 
 /** One request per admin panel, loaded independently so a slow one doesn't hold up the rest. */
@@ -99,16 +103,24 @@ function Overview({ stats, status, onRetry }) {
 }
 
 function Users({ users, status, onRetry }) {
+  const { user: me } = useAuth()
+  const confirm = useConfirm()
   const [query, setQuery] = useState('')
   const [role, setRole] = useState('')
+  const [suspending, setSuspending] = useState(null)
   const list = users ?? []
   const q = query.trim().toLowerCase()
   const shown = list.filter((u) => {
     const text = !q || u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q)
     const kind = !role || (role === 'tutor' && u.is_tutor) || (role === 'parent' && u.is_parent)
-      || (role === 'student' && !u.is_tutor && !u.is_parent)
+      || (role === 'student' && !u.is_tutor && !u.is_parent) || (role === 'suspended' && u.suspended_at)
     return text && kind
   })
+  const person = (u) => ({ id: u.id_user, name: u.name || 'this account' })
+
+  async function lift(u) {
+    if (await liftSuspension(confirm, person(u))) onRetry()
+  }
 
   return (
     <>
@@ -129,21 +141,30 @@ function Users({ users, status, onRetry }) {
         {status === 'loading' ? <SkeletonRows rows={5} /> : status === 'error' ? <Retry title="Couldn’t load users." onRetry={onRetry} /> : shown.length ? (
           <div className="row-list">
             {shown.map((u) => (
-              <Link key={u.id_user} to="/student/$userId" params={{ userId: String(u.id_user) }} className="row row-wrap">
+              <div key={u.id_user} className="row row-wrap">
                 <Avatar name={u.name || '?'} size={28} />
-                <div className="main">
+                <Link to="/student/$userId" params={{ userId: String(u.id_user) }} className="main" style={{ color: 'inherit' }}>
                   <div className="title">{u.name || 'No name'}</div>
-                  <div className="meta">{u.email}</div>
-                </div>
+                  <div className="meta" title={u.suspended_reason || undefined}>
+                    {u.email}{u.suspended_at && ` · ${u.suspended_reason}`}
+                  </div>
+                </Link>
                 <div className="row-actions">
-                  {u.is_tutor ? <ScreeningPill status={u.screening_status} />
-                    : <span className="side hide-mobile">{u.is_parent ? 'Parent' : 'Student'}</span>}
+                  {u.suspended_at ? <StatusPill status="canceled" label={`Suspended ${formatDate(u.suspended_at)}`} />
+                    : u.is_tutor ? <ScreeningPill status={u.screening_status} />
+                      : <span className="side hide-mobile">{u.is_parent ? 'Parent' : 'Student'}</span>}
+                  {u.email !== me?.email && (u.suspended_at
+                    ? <button className="btn btn-quiet btn-sm" onClick={() => lift(u)}>Lift</button>
+                    : <button className="btn btn-quiet btn-sm" onClick={() => setSuspending(u)}>Suspend</button>)}
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         ) : <EmptyState title="No one matches." />}
       </Card>
+      {suspending && (
+        <SuspendDialog user={person(suspending)} onClose={() => setSuspending(null)} onDone={onRetry} />
+      )}
     </>
   )
 }

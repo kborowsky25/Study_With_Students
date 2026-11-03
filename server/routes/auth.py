@@ -14,6 +14,7 @@ from ..ratelimit import json_field, rate_limit
 from ..referrals import record_referral
 from ..services.email import SEND_FAILED, mail_configured, send_verification_email
 from ..services.verification import issue_code, redeem_code
+from ..suspensions import MESSAGE as SUSPENDED_MESSAGE
 
 bp = Blueprint('auth', __name__, url_prefix='/api')
 
@@ -185,7 +186,7 @@ def login():
 
     conn = get_db(); cur = conn.cursor()
     try:
-        cur.execute("SELECT id_user, password FROM users WHERE email = %s", (email,))
+        cur.execute("SELECT id_user, password, suspended_at FROM users WHERE email = %s", (email,))
         row = cur.fetchone()
         if not row:
             check_password_hash(_dummy_hash(), password)
@@ -193,7 +194,9 @@ def login():
         if not verify_password(row[1], password):
             return jsonify({'error': 'Invalid email or password'}), 401
 
-        user_id, stored = row
+        user_id, stored, suspended_at = row
+        if suspended_at:  # only said to someone who knows the password
+            return jsonify({'error': SUSPENDED_MESSAGE, 'code': 'suspended'}), 403
         if not stored.startswith(HASH_PREFIXES):
             # Upgrade legacy plaintext passwords on first successful login
             cur.execute("UPDATE users SET password = %s WHERE id_user = %s", (hash_password(password), user_id))

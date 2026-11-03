@@ -11,6 +11,7 @@
 .report-block { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); cursor: pointer; }
 
 /* Admin queue */
+.dialog-foot .danger-text { color: var(--red); }
 .dialog.report-review { max-width: 620px; }
 .report-facts { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 6px 12px; font-size: 13px; }
 .report-facts dt { color: var(--text-faint); }

@@ -3,15 +3,17 @@
 //
 //   <ReportsPanel onOpenCount={(n) => …} />
 //
-// A report opens with the conversation it's about. Hidden contact details show what was
-// actually written; users never see that text.
+// A report opens with the conversation it's about, and the reported account can be suspended
+// from there. Hidden contact details show what was actually written; users never see that text.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { Avatar, EmptyState, Icon, SkeletonRows, StatusPill } from '../ui'
-import { closeReport, getHiddenMessages, getReport, getReports } from '../../api/reports'
+import { useConfirm } from '../ui/confirm'
+import SuspendDialog, { liftSuspension } from './SuspendDialog'
+import { closeReport, getHiddenMessages, getReport, getReports } from '../../api/moderation'
 import { errorMessage } from '../../api/client'
 import { useEscape } from '../../hooks/useEscape'
-import { fullDate, timeAgo } from '../../lib/format'
+import { firstName, fullDate, timeAgo } from '../../lib/format'
 import { reasonLabel } from '../../lib/messages'
 import './safety.css'
 
@@ -40,13 +42,21 @@ function ReviewDialog({ id, onClose, onClosed }) {
   const [report, setReport] = useState(null)
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
-  useEscape(onClose)
+  const [suspending, setSuspending] = useState(false)
+  const confirm = useConfirm()
+  useEscape(() => { if (!suspending && !busy) onClose() }) // Escape in a dialog on top closes only that one
 
-  useEffect(() => {
+  const load = useCallback(() =>
     getReport(id)
       .then(({ data }) => setReport(data.report))
-      .catch((err) => { toast.error(errorMessage(err, 'Couldn’t load the report')); onClose() })
-  }, [id, onClose])
+      .catch((err) => { toast.error(errorMessage(err, 'Couldn’t load the report')); onClose() }), [id, onClose])
+  useEffect(() => { load() }, [load])
+
+  async function lift() {
+    setBusy(true)
+    if (await liftSuspension(confirm, { id: report.reported_id, name: report.reported_name })) await load()
+    setBusy(false)
+  }
 
   async function close(outcome) {
     setBusy(true)
@@ -62,64 +72,82 @@ function ReviewDialog({ id, onClose, onClosed }) {
 
   const r = report
   return (
-    <div className="overlay center" onMouseDown={onClose}>
-      <div className="dialog report-review" role="dialog" aria-label="Report" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="dialog-head">
-          <h2>{r ? `${reasonLabel(r.reason)}` : 'Report'}</h2>
-          <button className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="close" /></button>
-        </div>
-        {!r ? <div className="dialog-body"><SkeletonRows rows={4} /></div> : (
-          <>
-            <div className="dialog-body">
-              <dl className="report-facts">
-                <dt>Reported</dt>
-                <dd>{r.reported_name} · {r.reported_email}{r.reported_tutor_id ? ' · tutor' : ''}{r.reports_on_user > 1 ? ` · ${r.reports_on_user} reports in all` : ''}</dd>
-                <dt>By</dt>
-                <dd>{r.reporter_name} · {r.reporter_email}{r.for_child ? ` · parent of ${r.for_child}` : ''}</dd>
-                <dt>When</dt>
-                <dd>{fullDate(r.created_at)}</dd>
-                {r.note && <><dt>Note</dt><dd>{r.note}</dd></>}
-                {r.status !== 'open' && (
+    <>
+      <div className="overlay center" onMouseDown={onClose}>
+        <div className="dialog report-review" role="dialog" aria-label="Report" onMouseDown={(e) => e.stopPropagation()}>
+          <div className="dialog-head">
+            <h2>{r ? `${reasonLabel(r.reason)}` : 'Report'}</h2>
+            <button className="icon-btn" onClick={onClose} aria-label="Close"><Icon name="close" /></button>
+          </div>
+          {!r ? <div className="dialog-body"><SkeletonRows rows={4} /></div> : (
+            <>
+              <div className="dialog-body">
+                <dl className="report-facts">
+                  <dt>Reported</dt>
+                  <dd>{r.reported_name} · {r.reported_email}{r.reported_tutor_id ? ' · tutor' : ''}{r.reports_on_user > 1 ? ` · ${r.reports_on_user} reports in all` : ''}</dd>
+                  <dt>By</dt>
+                  <dd>{r.reporter_name} · {r.reporter_email}{r.for_child ? ` · parent of ${r.for_child}` : ''}</dd>
+                  <dt>When</dt>
+                  <dd>{fullDate(r.created_at)}</dd>
+                  {r.note && <><dt>Note</dt><dd>{r.note}</dd></>}
+                  {r.reported_suspended_at && <><dt>Account</dt><dd>Suspended {fullDate(r.reported_suspended_at)}</dd></>}
+                  {r.status !== 'open' && (
+                    <>
+                      <dt>Outcome</dt>
+                      <dd>{OUTCOME[r.status]} by {r.reviewed_by}, {fullDate(r.reviewed_at)}{r.admin_note ? ` · ${r.admin_note}` : ''}</dd>
+                    </>
+                  )}
+                </dl>
+                {r.message_id && <Quote shown={r.message} original={r.original_message} />}
+                <div>
+                  <div className="eyebrow" style={{ marginBottom: 6 }}>Conversation</div>
+                  {r.conversation.length ? (
+                    <div className="report-log">
+                      {r.conversation.map((m) => (
+                        <div key={m.id_message}>
+                          <span className="who" title={fullDate(m.message_timestamp)}>{m.sender_name}</span>
+                          <span className={`what ${m.id_message === r.message_id ? 'flagged' : ''}`}>
+                            {m.message}
+                            {m.original_message && <span className="original">Written: {m.original_message}</span>}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : <EmptyState title="They haven’t messaged each other." />}
+                </div>
+                {r.status === 'open' && (
+                  <label className="field">
+                    <span>Note for the record</span>
+                    <textarea className="input" rows={2} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} />
+                  </label>
+                )}
+              </div>
+              <div className="dialog-foot">
+                {r.reported_suspended_at
+                  ? <button className="btn btn-quiet" disabled={busy} onClick={lift} style={{ marginRight: 'auto' }}>Lift suspension</button>
+                  : (
+                    <button className="btn btn-quiet danger-text" disabled={busy} onClick={() => setSuspending(true)}
+                      style={{ marginRight: 'auto' }}>
+                      Suspend {firstName(r.reported_name)}
+                    </button>
+                  )}
+                {r.status === 'open' && (
                   <>
-                    <dt>Outcome</dt>
-                    <dd>{OUTCOME[r.status]} by {r.reviewed_by}, {fullDate(r.reviewed_at)}{r.admin_note ? ` · ${r.admin_note}` : ''}</dd>
+                    <button className="btn btn-ghost" disabled={busy} onClick={() => close('dismissed')}>Dismiss</button>
+                    <button className="btn btn-coral" disabled={busy} onClick={() => close('resolved')}>Resolve</button>
                   </>
                 )}
-              </dl>
-              {r.message_id && <Quote shown={r.message} original={r.original_message} />}
-              <div>
-                <div className="eyebrow" style={{ marginBottom: 6 }}>Conversation</div>
-                {r.conversation.length ? (
-                  <div className="report-log">
-                    {r.conversation.map((m) => (
-                      <div key={m.id_message}>
-                        <span className="who" title={fullDate(m.message_timestamp)}>{m.sender_name}</span>
-                        <span className={`what ${m.id_message === r.message_id ? 'flagged' : ''}`}>
-                          {m.message}
-                          {m.original_message && <span className="original">Written: {m.original_message}</span>}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : <EmptyState title="They haven’t messaged each other." />}
               </div>
-              {r.status === 'open' && (
-                <label className="field">
-                  <span>Note for the record</span>
-                  <textarea className="input" rows={2} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} />
-                </label>
-              )}
-            </div>
-            {r.status === 'open' && (
-              <div className="dialog-foot">
-                <button className="btn btn-ghost" disabled={busy} onClick={() => close('dismissed')}>Dismiss</button>
-                <button className="btn btn-coral" disabled={busy} onClick={() => close('resolved')}>Resolve</button>
-              </div>
-            )}
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
-    </div>
+      {suspending && r && (
+        <SuspendDialog user={{ id: r.reported_id, name: r.reported_name }}
+          reason={`${reasonLabel(r.reason)} (report ${r.id})${r.note ? `: ${r.note}` : ''}`}
+          onClose={() => setSuspending(false)} onDone={load} />
+      )}
+    </>
   )
 }
 

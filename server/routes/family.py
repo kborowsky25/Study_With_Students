@@ -111,7 +111,7 @@ def my_family():
             SELECT pl.id AS link_id, pl.status, pl.created_at, pl.answered_at,
                    u.id_user AS user_id, u.name, u.email
             FROM parent_links pl
-            JOIN users u ON u.id_user = pl.parent_user_id
+            JOIN users u ON u.id_user = pl.parent_user_id AND u.suspended_at IS NULL
             WHERE (pl.child_user_id = %(me)s AND pl.status = 'accepted')
                OR (%(student)s AND pl.status = 'pending' AND pl.child_email = %(email)s
                    AND NOT EXISTS (SELECT 1 FROM user_blocks b
@@ -228,7 +228,7 @@ def _pending_invite(cur, link_id, uid):
         SELECT pl.id, pl.parent_user_id, u.name AS parent_name
         FROM parent_links pl
         JOIN users me ON me.id_user = %s AND me.email = pl.child_email
-        JOIN users u  ON u.id_user  = pl.parent_user_id
+        JOIN users u  ON u.id_user  = pl.parent_user_id AND u.suspended_at IS NULL
         WHERE pl.id = %s AND pl.status = 'pending'
         FOR UPDATE
     """, (uid, link_id))
@@ -253,7 +253,11 @@ def accept_invite(link_id):
             return jsonify({'error': 'Only student accounts can be linked to a parent'}), 403
         if is_linked_parent(cur, uid, invite['parent_user_id']):
             return jsonify({'error': f"{_first(invite['parent_name'])} is linked as your child"}), 409
-        cur.execute("SELECT COUNT(*) AS n FROM parent_links WHERE child_user_id = %s AND status = 'accepted'", (uid,))
+        cur.execute("""
+            SELECT COUNT(*) AS n FROM parent_links pl
+            JOIN users parent ON parent.id_user = pl.parent_user_id AND parent.suspended_at IS NULL
+            WHERE pl.child_user_id = %s AND pl.status = 'accepted'
+        """, (uid,))
         if cur.fetchall()[0]['n'] >= MAX_PARENTS:
             return jsonify({'error': f'You can link up to {MAX_PARENTS} parents. Unlink one first.'}), 409
         cur.execute("""
