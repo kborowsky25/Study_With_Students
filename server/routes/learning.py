@@ -124,7 +124,7 @@ def recommended_tutors():
             SELECT {TUTOR_COLUMNS}
             {TUTOR_JOINS}
             WHERE u.name <> '' AND COALESCE(tp.university, '') <> ''
-              AND tp.screening_status <> 'rejected'
+              AND tp.screening_status <> 'rejected' AND u.suspended_at IS NULL
               AND tp.id_user <> %s
               AND tp.id_tutor NOT IN (SELECT id_tutor FROM active_tutors WHERE id_user = %s)
         """, (uid, uid))

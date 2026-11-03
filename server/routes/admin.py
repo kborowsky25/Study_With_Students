@@ -124,7 +124,7 @@ def admin_users():
     conn = get_db(); cur = conn.cursor(dictionary=True)
     try:
         cur.execute("""
-            SELECT u.id_user, u.name, u.email, u.is_parent,
+            SELECT u.id_user, u.name, u.email, u.is_parent, u.suspended_at, u.suspended_reason, u.suspended_by,
                    (SELECT COUNT(*) FROM tutor_profiles tp WHERE tp.id_user = u.id_user) AS is_tutor,
                    (SELECT tp.screening_status FROM tutor_profiles tp
                      WHERE tp.id_user = u.id_user LIMIT 1) AS screening_status

@@ -6,15 +6,17 @@ MAX_PARENTS linked parents, and either side can unlink. A linked parent sees the
 sessions, lesson notes, homework and progress, reads (never writes in) their conversations
 with tutors, and can pay for their sessions.
 
-Students give their date of birth when they sign up (student_profiles.date_of_birth).
-Under-18s need a linked parent before a session can be booked: see needs_parent().
-Accounts from before dates of birth were asked for have none, and aren't treated as minors.
+Students give their date of birth when they sign up (student_profiles.date_of_birth), and
+must be MIN_AGE (13) or over. Under-18s need a linked parent before a session can be booked:
+see needs_parent(). Accounts from before dates of birth were asked for have none, and aren't
+treated as minors. A suspended parent doesn't count as linked (server/suspensions.py).
 """
 from datetime import date
 
 MAX_PARENTS = 2
 ADULT_AGE = 18
-YOUNGEST, OLDEST = 5, 100  # sensible ages to sign up at
+MIN_AGE = 13   # the youngest a student can join (UK GDPR: younger children need a parent's consent)
+OLDEST = 100   # anything older is a typo
 
 
 def minor_sql(user_ref):
@@ -34,16 +36,20 @@ def is_minor(cur, user_id):
     return _exists(cur, f'SELECT 1 FROM DUAL WHERE {minor_sql("%s")}', (user_id,))
 
 
+# An accepted link whose parent isn't suspended
+LINKED = """
+    SELECT 1 FROM parent_links pl
+    JOIN users parent ON parent.id_user = pl.parent_user_id AND parent.suspended_at IS NULL
+    WHERE pl.status = 'accepted' AND pl.child_user_id = %s
+"""
+
+
 def is_linked_parent(cur, parent_id, child_id):
-    return _exists(cur, """
-        SELECT 1 FROM parent_links
-        WHERE parent_user_id = %s AND child_user_id = %s AND status = 'accepted'
-    """, (parent_id, child_id))
+    return _exists(cur, f'{LINKED} AND pl.parent_user_id = %s', (child_id, parent_id))
 
 
 def has_parent(cur, child_id):
-    return _exists(cur, "SELECT 1 FROM parent_links WHERE child_user_id = %s AND status = 'accepted'",
-                   (child_id,))
+    return _exists(cur, LINKED, (child_id,))
 
 
 def needs_parent(cur, student_user_id):
@@ -72,6 +78,8 @@ def parse_birth_date(value, today=None):
         born = date.fromisoformat(str(value or '').strip()[:10])
     except ValueError:
         return None, 'Enter your date of birth'
-    if born >= today or not YOUNGEST <= age_on(born, today) <= OLDEST:
+    if born >= today or age_on(born, today) > OLDEST:
         return None, 'Check your date of birth'
+    if age_on(born, today) < MIN_AGE:
+        return None, f'Study With Students is for students aged {MIN_AGE} and over'
     return born, None

@@ -5,7 +5,8 @@ tutor may write to the students whose request they accepted, and anyone may repl
 wrote to them. So nobody can start a conversation with an under-18 student: only the tutors they
 asked for, and people they wrote to themselves, can message them. "Verified" is an approved
 tutor screening; a tutor profile still waiting for it can't start conversations either way.
-A block stops messages both ways (server/routes/safety.py).
+A block stops messages both ways (server/routes/safety.py), and nobody can write to a suspended
+account (server/suspensions.py).
 
 Between a tutor and a student or parent (and whenever an under-18 is involved), phone numbers,
 emails and off-platform handles are hidden (server/contact_details.py). The original stays in
@@ -29,7 +30,7 @@ MAX_MESSAGE_LENGTH = 4000
 # Who `%(me)s` may write to, as a condition on the other person, `u`. The same rule decides
 # sending, the "can I reply" state of a thread and who the people search finds.
 CAN_WRITE = f"""
-    u.id_user <> %(me)s
+    u.id_user <> %(me)s AND u.suspended_at IS NULL
     AND NOT EXISTS (SELECT 1 FROM user_blocks b
                     WHERE (b.blocker_id = u.id_user AND b.blocked_id = %(me)s)
                        OR (b.blocker_id = %(me)s AND b.blocked_id = u.id_user))
@@ -72,7 +73,7 @@ def refusal(cur, me, other):
     The wording never says whether someone is under 18.
     """
     cur.execute("""
-        SELECT u.name,
+        SELECT u.name, u.suspended_at IS NOT NULL AS suspended,
                EXISTS (SELECT 1 FROM user_blocks WHERE blocker_id = %(me)s AND blocked_id = u.id_user) AS i_blocked,
                EXISTS (SELECT 1 FROM user_blocks WHERE blocker_id = u.id_user AND blocked_id = %(me)s) AS blocked_me,
                EXISTS (SELECT 1 FROM tutor_profiles WHERE id_user = u.id_user) AS is_tutor,
@@ -85,6 +86,8 @@ def refusal(cur, me, other):
     if not rows or me == other:
         return 'not_allowed', 'You can’t message this person'
     r, first = rows[0], _first(rows[0]['name'])
+    if r['suspended']:
+        return 'suspended', 'This account is suspended'
     if r['i_blocked']:
         return 'you_blocked', f'You blocked {first}. Unblock them to send a message.'
     if r['blocked_me']:

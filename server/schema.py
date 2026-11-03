@@ -58,6 +58,11 @@ COLUMN_MIGRATIONS = [
     ('users',            'is_parent',              "TINYINT(1) NOT NULL DEFAULT 0"),
     ('student_profiles', 'date_of_birth',          "DATE NULL"),
     ('messages',         'original_message',       "TEXT NULL"),
+    # One Stripe checkout at a time per session (payments.py), and suspended accounts (suspensions.py)
+    ('events',           'checkout_session_id',    "VARCHAR(255) NULL"),
+    ('users',            'suspended_at',           "DATETIME NULL"),
+    ('users',            'suspended_reason',       "TEXT NULL"),
+    ('users',            'suspended_by',           "VARCHAR(255) NULL"),
 ]
 
 FORUM_CATEGORIES = [

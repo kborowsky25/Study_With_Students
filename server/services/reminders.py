@@ -67,7 +67,7 @@ def _parents(cur, events):
         return {}
     cur.execute(f"""
         SELECT pl.child_user_id, u.id_user, u.email
-        FROM parent_links pl JOIN users u ON u.id_user = pl.parent_user_id
+        FROM parent_links pl JOIN users u ON u.id_user = pl.parent_user_id AND u.suspended_at IS NULL
         WHERE pl.status = 'accepted' AND pl.child_user_id IN ({', '.join(['%s'] * len(ids))})
         ORDER BY pl.id
     """, ids)

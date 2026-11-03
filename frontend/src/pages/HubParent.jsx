@@ -234,6 +234,7 @@ export default function HubParent() {
     } catch (err) {
       toast.error(errorMessage(err, 'Could not start checkout'))
       setPaying(null)
+      if (err.response?.data?.code === 'already_paid') invalidate('family') // the child paid it meanwhile
     }
   }
 

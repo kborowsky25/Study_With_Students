@@ -115,10 +115,12 @@ and should include these rules.
 ## 6. What the app enforces
 
 **Ages.** Students give their date of birth when they sign up (`student_profiles.date_of_birth`),
-and under-18 is worked out from it every time, so nobody stays "under 18" by mistake. Accounts
-from before sign-up asked for it have no date of birth and are treated as adults; they can add
-one, once, on their profile. A date of birth can't be changed by the user afterwards (it would
-undo the rules below). It is self-declared: we don't verify it.
+and must be **13 or over**: under-13s can't create an account (UK GDPR asks for a parent's consent
+below that age). Under-18 is worked out from the date of birth every time, so nobody stays
+"under 18" by mistake. Accounts from before sign-up asked for it have no date of birth and are
+treated as adults; they can add one, once, on their profile (13 or over there too). A date of
+birth can't be changed by the user afterwards (it would undo the rules below). It is
+self-declared: we don't verify it.
 
 **Parents and guardians.**
 
@@ -169,6 +171,22 @@ linked parent says so quietly in its header ("Visible to Maya's parent").
   with what was actually written. A tutor who keeps trying is a warning sign.
 - Blocking someone stops messages both ways until it's undone (from the conversation's menu).
 
+**Suspending an account.** An admin can suspend anyone except the super-admin, from Admin → Users
+or from a report, and must say why (kept with who did it and when). A suspended account:
+
+- is signed out everywhere (its tokens stop working within 30 seconds on every server instance,
+  at once on the one that suspended it) and can't log in;
+- can't be messaged or booked, a suspended tutor's sessions can't be paid, and a suspended tutor
+  disappears from Find tutors, recommendations and the public tutor pages;
+- has its upcoming sessions cancelled (as "cancelled by admin"), with any open checkout for them
+  closed. Paid sessions among them have to be refunded by hand in Stripe; the admin is told how
+  many;
+- no longer counts as anyone's linked parent, so an under-18 whose only parent is suspended
+  needs another one before booking; it gets no session reminders, and its open invites are
+  hidden from the child.
+
+Lifting a suspension lets them log in again; cancelled sessions stay cancelled.
+
 **What it can't stop.** A child can give a false date of birth, or make a second account and
 "invite" themselves as their own parent. The rules make parental visibility the default, not a
 guarantee. Determined people can also get contact details past the guard (for example a
@@ -204,11 +222,11 @@ and reviewable.
    through an umbrella body or by registering with DBS. It then becomes responsible for
    eligibility, ID checks and the DBS Code of Practice.
 9. **Retention periods** for the check record (section 3) and for backups.
-10. **Write the tutor code of conduct** and build the missing pieces: account suspension (an
-    admin can only resolve reports and revoke DBS checks today), and reporting outside messages.
-11. **Under-13s.** Sign-up accepts anyone aged 5 or over. Decide whether under-13s may sign up
-    themselves (UK GDPR consent age is 13) or only through a parent, and say so in the privacy
-    notice.
+10. **Write the tutor code of conduct**, decide when an account is suspended (and for how long),
+    and build reporting outside messages (forum, sessions). Suspended users aren't told by email;
+    the message they see says to contact us, which needs the contact from item 1.
+11. **Under-13s.** Sign-up now requires students to be 13 or over. Say so in the terms and the
+    privacy notice; children who are 13 to 17 are still covered by the ICO Children's code.
 12. **Reading messages for moderation.** Admins can read reported conversations and the
     original text of hidden contact details, and parents can read their child's conversations
     with tutors. Cover both in the privacy notice and the terms, and decide how long reports and
@@ -229,5 +247,9 @@ and reviewable.
   `server/contact_details.py`, tested in `tests/test_contact_details.py`.
 - Report and block: `server/routes/safety.py`; admin panel
   `frontend/src/components/features/ReportsPanel.jsx`.
+- Suspension: `server/suspensions.py` (the rules and the token check, wired in
+  `server/extensions.py`); the admin endpoints in `server/routes/safety.py`; the dialog
+  `frontend/src/components/features/SuspendDialog.jsx`.
 - Tables: `parent_links`, `user_blocks`, `reports` in `db/schema.sql`; columns `users.is_parent`,
+  `users.suspended_at` (with `suspended_reason` and `suspended_by`),
   `student_profiles.date_of_birth` and `messages.original_message` in `server/schema.py`.

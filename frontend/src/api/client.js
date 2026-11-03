@@ -26,6 +26,8 @@ client.interceptors.response.use(
   (err) => {
     const status = err.response?.status
     if (status === 401 && err.config?.url !== '/auth/login' && localStorage.getItem('sws_token')) {
+      // An admin suspended the account: say so, once, as it signs out
+      if (err.response?.data?.code === 'suspended') toast.error(err.response.data.error, { id: 'suspended', duration: 8000 })
       localStorage.removeItem('sws_token')
       localStorage.removeItem('sws_user')
       sessionExpiredListeners.forEach((listener) => listener())

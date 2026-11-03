@@ -1,4 +1,4 @@
-"""Report and block, and the admin queue that reviews reports.
+"""Report and block, the admin queue that reviews reports, and suspending accounts.
 
 Anyone can report a user, or a message they received from them, with a reason and an optional
 note. A linked parent can report a message sent to their child in a conversation they can read.
@@ -7,14 +7,22 @@ details were hidden, with the original text.
 
 Blocking someone stops messages both ways until it's undone (messages.CAN_WRITE), hides
 invites from them (routes/family.py), and marks what they already sent as read.
+
+An admin can suspend anyone but the super-admin, with a reason (Admin → Users, or a report):
+what that stops is in server/suspensions.py. It also cancels their upcoming sessions and closes
+any open checkout for them; paid ones are left for the admin to refund in Stripe.
 """
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt, jwt_required, verify_jwt_in_request
 
 from ..db import current_user_id, get_db
+from ..extensions import stripe, stripe_enabled
 from ..family import is_linked_parent
-from ..permissions import check_admin
+from ..permissions import check_admin, is_admin_email
 from ..ratelimit import jwt_user, rate_limit
+from ..referrals import release_credit
+from ..scheduling import local_now
+from ..suspensions import forget_suspensions
 
 bp = Blueprint('safety', __name__, url_prefix='/api')
 
@@ -149,6 +157,7 @@ REPORT_COLUMNS = """
     r.id, r.reason, r.note, r.status, r.created_at, r.reviewed_at, r.reviewed_by, r.admin_note,
     r.reporter_id, ur.name AS reporter_name, ur.email AS reporter_email,
     r.reported_id, ud.name AS reported_name, ud.email AS reported_email, tp.id_tutor AS reported_tutor_id,
+    ud.suspended_at AS reported_suspended_at,
     (SELECT COUNT(*) FROM reports r2 WHERE r2.reported_id = r.reported_id) AS reports_on_user,
     r.message_id, m.message, m.original_message, m.message_timestamp, m.id_sender, m.id_receiver,
     uc.name AS receiver_name
@@ -280,3 +289,97 @@ def admin_hidden_messages():
         return jsonify({'messages': rows})
     finally:
         cur.close(); conn.close()
+
+
+# ── Suspending accounts ───────────────────────────────────────────────────────
+
+def _cancel_upcoming(cur, user_id):
+    """Cancel the sessions still to come that `user_id` teaches or takes. Returns them, as they were."""
+    now = local_now()
+    cur.execute("""
+        SELECT e.id_event, e.status, e.checkout_session_id
+        FROM events e
+        LEFT JOIN tutor_profiles   tp ON tp.id_tutor   = e.tutor_id
+        LEFT JOIN student_profiles sp ON sp.id_student = e.student_id
+        WHERE (tp.id_user = %s OR sp.id_user = %s)
+          AND e.status IN ('pending', 'confirmed', 'paid') AND e.start_time > %s
+        FOR UPDATE
+    """, (user_id, user_id, now))
+    events = cur.fetchall()
+    for ev in events:
+        cur.execute("""
+            UPDATE events
+            SET status = 'canceled', canceled_by = 'admin', canceled_at = %s, cancel_type = 'suspended',
+                cancel_requested_at = NULL, proposed_start = NULL, proposed_end = NULL, proposed_by = NULL
+            WHERE id_event = %s
+        """, (now, ev['id_event']))
+        release_credit(cur, ev['id_event'])  # an invite credit spent on it can be used again
+    return events
+
+
+def _close_checkouts(events):
+    """Expire the open Stripe checkouts of cancelled sessions, so nobody can pay for them now."""
+    if not stripe_enabled():
+        return
+    for ev in events:
+        if ev['checkout_session_id'] and ev['status'] != 'paid':
+            try:
+                stripe.checkout.Session.expire(ev['checkout_session_id'])
+            except stripe.error.StripeError:
+                pass  # already expired or finished
+
+
+@bp.route('/admin/users/<int:user_id>/suspend', methods=['POST'])
+def admin_suspend(user_id):
+    """Suspend an account, with a `reason` for the record."""
+    if not check_admin():
+        return _unauthorized()
+    reason = str((request.get_json(silent=True) or {}).get('reason') or '').strip()[:MAX_NOTE]
+    if not reason:
+        return jsonify({'error': 'Say why, for the record'}), 400
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT id_user, name, email, suspended_at FROM users WHERE id_user = %s FOR UPDATE", (user_id,))
+        rows = cur.fetchall()
+        if not rows:
+            return jsonify({'error': 'User not found'}), 404
+        user = rows[0]
+        if is_admin_email(user['email']):
+            return jsonify({'error': 'The admin account can’t be suspended'}), 400
+        if user['suspended_at']:
+            return jsonify({'error': 'This account is already suspended'}), 409
+        cur.execute("UPDATE users SET suspended_at = NOW(), suspended_reason = %s, suspended_by = %s "
+                    "WHERE id_user = %s", (reason, _reviewer(), user_id))
+        cancelled = _cancel_upcoming(cur, user_id)
+        conn.commit()
+    finally:
+        cur.close(); conn.close()
+    forget_suspensions()  # their tokens stop working on this instance straight away
+    _close_checkouts(cancelled)
+    return jsonify({
+        'message': f"Suspended {_first(user['name'])}",
+        'cancelled': len(cancelled),
+        'cancelled_paid': sum(ev['status'] == 'paid' for ev in cancelled),
+    })
+
+
+@bp.route('/admin/users/<int:user_id>/unsuspend', methods=['POST'])
+def admin_unsuspend(user_id):
+    """Lift a suspension. Sessions it cancelled stay cancelled."""
+    if not check_admin():
+        return _unauthorized()
+    conn = get_db(); cur = conn.cursor(dictionary=True)
+    try:
+        cur.execute("SELECT name, suspended_at FROM users WHERE id_user = %s", (user_id,))
+        rows = cur.fetchall()
+        if not rows:
+            return jsonify({'error': 'User not found'}), 404
+        if not rows[0]['suspended_at']:
+            return jsonify({'error': 'This account isn’t suspended'}), 409
+        cur.execute("UPDATE users SET suspended_at = NULL, suspended_reason = NULL, suspended_by = NULL "
+                    "WHERE id_user = %s", (user_id,))
+        conn.commit()
+    finally:
+        cur.close(); conn.close()
+    forget_suspensions()
+    return jsonify({'message': f"{_first(rows[0]['name'])} can log in again"})

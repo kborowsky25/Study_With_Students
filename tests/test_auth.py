@@ -7,7 +7,7 @@ import pytest
 from flask_jwt_extended import decode_token
 from werkzeug.security import check_password_hash
 
-from tests.support import ADMIN_EMAIL, PASSWORD, utcnow
+from tests.support import ADMIN_EMAIL, PASSWORD, born, utcnow
 
 HASH_PREFIXES = ('scrypt:', 'pbkdf2:')
 NEW_PASSWORD = 'a-long-password'
@@ -87,13 +87,25 @@ class TestRegister:
                             (body['user']['id'],))) == BIRTH_DATE
         assert db.value('SELECT used FROM email_verifications WHERE code = %s', (code,)) == 1
 
-    @pytest.mark.parametrize('born', [None, '', 'not a date', '2999-01-01', '1900-01-01', '2024-01-01'])
-    def test_students_give_a_real_date_of_birth(self, api, db, born):
+    @pytest.mark.parametrize('birth_date', [None, '', 'not a date', '2999-01-01', '1900-01-01'])
+    def test_students_give_a_real_date_of_birth(self, api, db, birth_date):
         code = request_code(api, db)
-        res = register(api, code, date_of_birth=born)
+        res = register(api, code, date_of_birth=birth_date)
         assert res.status_code == 400
         assert 'date of birth' in res.get_json()['error']
         assert db.value('SELECT used FROM email_verifications WHERE code = %s', (code,)) == 0  # still usable
+
+    @pytest.mark.parametrize('years, days', [(12, 364), (12, 0), (8, 0), (2, 0)])
+    def test_students_are_13_or_over(self, api, db, years, days):
+        code = request_code(api, db)
+        res = register(api, code, date_of_birth=born(years, days).isoformat())
+        assert res.status_code == 400
+        assert res.get_json()['error'] == 'Study With Students is for students aged 13 and over'
+        assert db.value('SELECT COUNT(*) FROM users') == 0
+
+    def test_thirteen_from_the_birthday(self, api, db):
+        code = request_code(api, db)
+        assert register(api, code, date_of_birth=born(13).isoformat()).status_code == 201
 
     def test_parent_account(self, app, api, db):
         code = request_code(api, db, 'kate@example.com')
